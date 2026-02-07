@@ -1,7 +1,7 @@
 package com.fvd.indexs.services;
 
 import com.fvd.common.validators.InputValidator;
-import com.fvd.github.clients.GitHubClient;
+import com.fvd.github.clients.GitHubService;
 import com.fvd.indexs.stores.IndexStore;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +13,7 @@ import java.util.Optional;
 public class IndexService {
 
     private final IndexStore indexStore;
-    private final GitHubClient gitHubClient;
+    private final GitHubService gitHubService;
 
     public String getOrFetchIndex(String version) {
         InputValidator.validateVersion(version);
@@ -21,7 +21,7 @@ public class IndexService {
         if (cached.isPresent()) {
             return cached.get();
         }
-        String json = gitHubClient.fetchIndex(version);
+        String json = gitHubService.fetchIndex(version);
         indexStore.writeRaw(version, json);
         return json;
     }

@@ -2,7 +2,7 @@ package com.fvd.github.services;
 
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.github.clients.GitHubClient;
+import com.fvd.github.clients.GitHubService;
 import com.fvd.github.exceptions.UpstreamException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,7 +29,7 @@ import static org.mockito.Mockito.when;
 class ZipDownloadServiceTest {
 
     @Mock
-    private GitHubClient gitHubClient;
+    private GitHubService gitHubService;
 
     private DocStore docStore;
     private CacheService cacheService;
@@ -42,7 +42,7 @@ class ZipDownloadServiceTest {
     void setUp() {
         cacheService = new CacheService(tempDir.toString());
         docStore = new DocStore(cacheService);
-        service = new ZipDownloadService(gitHubClient, docStore, cacheService);
+        service = new ZipDownloadService(gitHubService, docStore, cacheService);
     }
 
     // -- extractRelativePath tests (existing) --
@@ -84,7 +84,7 @@ class ZipDownloadServiceTest {
                 entry("quarkus-3.21/docs/src/main/asciidoc/config.adoc", "= Config"),
                 entry("quarkus-3.21/pom.xml", "<project/>")
         );
-        when(gitHubClient.fetchZipStream("3.21")).thenReturn(new ByteArrayInputStream(zip));
+        when(gitHubService.fetchZipStream("3.21")).thenReturn(new ByteArrayInputStream(zip));
 
         List<String> extracted = service.streamAndExtract("3.21");
 
@@ -99,7 +99,7 @@ class ZipDownloadServiceTest {
                 entry("quarkus-3.21/pom.xml", "<project/>"),
                 entry("quarkus-3.21/src/main/java/Foo.java", "class Foo {}")
         );
-        when(gitHubClient.fetchZipStream("3.21")).thenReturn(new ByteArrayInputStream(zip));
+        when(gitHubService.fetchZipStream("3.21")).thenReturn(new ByteArrayInputStream(zip));
 
         List<String> extracted = service.streamAndExtract("3.21");
 
@@ -111,7 +111,7 @@ class ZipDownloadServiceTest {
         byte[] zip = buildZip(
                 entry("quarkus-3.21/docs/src/main/asciidoc/guides/sub/deep.adoc", "= Deep Guide")
         );
-        when(gitHubClient.fetchZipStream("3.21")).thenReturn(new ByteArrayInputStream(zip));
+        when(gitHubService.fetchZipStream("3.21")).thenReturn(new ByteArrayInputStream(zip));
 
         List<String> extracted = service.streamAndExtract("3.21");
 
@@ -131,7 +131,7 @@ class ZipDownloadServiceTest {
                 throw new IOException("Simulated stream failure");
             }
         };
-        when(gitHubClient.fetchZipStream("3.21")).thenReturn(brokenStream);
+        when(gitHubService.fetchZipStream("3.21")).thenReturn(brokenStream);
 
         assertThatThrownBy(() -> service.streamAndExtract("3.21"))
                 .isInstanceOf(UpstreamException.class);
@@ -145,7 +145,7 @@ class ZipDownloadServiceTest {
         byte[] zip = buildZip(
                 entry("quarkus-3.21/docs/src/main/asciidoc/new-file.adoc", "= New content")
         );
-        when(gitHubClient.fetchZipStream("3.21")).thenReturn(new ByteArrayInputStream(zip));
+        when(gitHubService.fetchZipStream("3.21")).thenReturn(new ByteArrayInputStream(zip));
 
         service.streamAndExtract("3.21");
 
@@ -161,7 +161,7 @@ class ZipDownloadServiceTest {
         docStore.write("3.21", "existing.adoc", "= Existing");
 
         // Build a partial zip that will fail mid-stream by throwing during read
-        when(gitHubClient.fetchZipStream("3.21")).thenReturn(new InputStream() {
+        when(gitHubService.fetchZipStream("3.21")).thenReturn(new InputStream() {
             private final byte[] corruptData = new byte[]{0x50, 0x4b, 0x03, 0x04}; // ZIP magic bytes
             private int pos = 0;
             @Override

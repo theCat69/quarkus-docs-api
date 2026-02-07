@@ -1,7 +1,7 @@
 package com.fvd.indexs.services;
 
 import com.fvd.cache.services.CacheService;
-import com.fvd.github.clients.GitHubClient;
+import com.fvd.github.clients.GitHubService;
 import com.fvd.indexs.stores.IndexStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,7 +22,7 @@ class IndexServiceTest {
     Path tempDir;
 
     @Mock
-    GitHubClient gitHubClient;
+    GitHubService gitHubService;
 
     IndexService indexService;
     IndexStore indexStore;
@@ -31,7 +31,7 @@ class IndexServiceTest {
     void setUp() {
         CacheService cacheService = new CacheService(tempDir.toString());
         indexStore = new IndexStore(cacheService);
-        indexService = new IndexService(indexStore, gitHubClient);
+        indexService = new IndexService(indexStore, gitHubService);
     }
 
     @Test
@@ -42,18 +42,18 @@ class IndexServiceTest {
         String result = indexService.getOrFetchIndex("3.21");
 
         assertThat(result).isEqualTo(json);
-        verify(gitHubClient, never()).fetchIndex("3.21");
+        verify(gitHubService, never()).fetchIndex("3.21");
     }
 
     @Test
     void getOrFetchIndexFetchesFromGitHubOnCacheMiss() {
         String json = "[{\"name\":\"fetched.adoc\",\"sha\":\"def456\"}]";
-        when(gitHubClient.fetchIndex("3.21")).thenReturn(json);
+        when(gitHubService.fetchIndex("3.21")).thenReturn(json);
 
         String result = indexService.getOrFetchIndex("3.21");
 
         assertThat(result).isEqualTo(json);
-        verify(gitHubClient).fetchIndex("3.21");
+        verify(gitHubService).fetchIndex("3.21");
         // Also verify it was cached for next time
         assertThat(indexStore.readRaw("3.21")).isPresent().hasValue(json);
     }

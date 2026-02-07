@@ -3,7 +3,7 @@ package com.fvd.github.services;
 import com.fvd.cache.services.CacheService;
 import com.fvd.common.validators.InputValidator;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.github.clients.GitHubClient;
+import com.fvd.github.clients.GitHubService;
 import com.fvd.github.exceptions.UpstreamException;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,7 @@ public class ZipDownloadService {
 
     private static final String ASCIIDOC_PREFIX = "docs/src/main/asciidoc/";
 
-    private final GitHubClient gitHubClient;
+    private final GitHubService gitHubService;
     private final DocStore docStore;
     private final CacheService cacheService;
 
@@ -62,7 +62,7 @@ public class ZipDownloadService {
 
     private void extractToStaging(String version, Path stagingDir, List<String> extractedFiles)
             throws IOException {
-        try (InputStream zipStream = gitHubClient.fetchZipStream(version);
+        try (InputStream zipStream = gitHubService.fetchZipStream(version);
              ZipInputStream zis = new ZipInputStream(zipStream)) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {

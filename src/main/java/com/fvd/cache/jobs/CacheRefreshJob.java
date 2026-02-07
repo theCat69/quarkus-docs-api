@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.github.clients.GitHubClient;
+import com.fvd.github.clients.GitHubService;
 import com.fvd.github.exceptions.UpstreamException;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.stores.IndexStore;
@@ -22,7 +22,7 @@ import java.util.*;
 public class CacheRefreshJob {
 
     private final CacheService cacheService;
-    private final GitHubClient gitHubClient;
+    private final GitHubService gitHubService;
     private final IndexStore indexStore;
     private final DocStore docStore;
     private final KeywordIndexer keywordIndexer;
@@ -48,7 +48,7 @@ public class CacheRefreshJob {
     void refreshVersion(String version) {
         log.info("Refreshing cache for version {}", version);
 
-        String newIndexJson = gitHubClient.fetchIndex(version);
+        String newIndexJson = gitHubService.fetchIndex(version);
         List<Map<String, Object>> newEntries = parseIndex(newIndexJson);
         Map<String, String> newShaByName = buildShaMap(newEntries);
 
@@ -82,7 +82,7 @@ public class CacheRefreshJob {
     }
 
     private void fetchAndCacheDoc(String version, String fileName) {
-        String jsonResponse = gitHubClient.fetchFileContent(fileName, version);
+        String jsonResponse = gitHubService.fetchFileContent(fileName, version);
         String content = decodeContent(jsonResponse, fileName);
         docStore.write(version, fileName, content);
     }
@@ -104,7 +104,7 @@ public class CacheRefreshJob {
 
     private List<Map<String, Object>> parseIndex(String json) {
         try {
-            return objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {});
+            return objectMapper.readValue(json, new TypeReference<>() {});
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse index JSON", e);
         }

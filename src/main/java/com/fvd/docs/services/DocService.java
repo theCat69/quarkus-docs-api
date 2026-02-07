@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.common.validators.InputValidator;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.github.clients.GitHubClient;
+import com.fvd.github.clients.GitHubService;
 import com.fvd.github.exceptions.UpstreamException;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,7 @@ import java.util.Optional;
 public class DocService {
 
     private final DocStore docStore;
-    private final GitHubClient gitHubClient;
+    private final GitHubService gitHubService;
     private final ObjectMapper objectMapper;
 
     public String getOrFetchDoc(String version, String path) {
@@ -27,7 +27,7 @@ public class DocService {
         if (cached.isPresent()) {
             return cached.get();
         }
-        String jsonResponse = gitHubClient.fetchFileContent(path, version);
+        String jsonResponse = gitHubService.fetchFileContent(path, version);
         String content = decodeContent(jsonResponse, path);
         docStore.write(version, path, content);
         return content;

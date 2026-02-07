@@ -3,7 +3,7 @@ package com.fvd.docs.services;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.github.clients.GitHubClient;
+import com.fvd.github.clients.GitHubService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,7 +24,7 @@ class DocServiceTest {
     Path tempDir;
 
     @Mock
-    GitHubClient gitHubClient;
+    GitHubService gitHubService;
 
     DocService docService;
     DocStore docStore;
@@ -33,7 +33,7 @@ class DocServiceTest {
     void setUp() {
         CacheService cacheService = new CacheService(tempDir.toString());
         docStore = new DocStore(cacheService);
-        docService = new DocService(docStore, gitHubClient, new ObjectMapper());
+        docService = new DocService(docStore, gitHubService, new ObjectMapper());
     }
 
     @Test
@@ -43,7 +43,7 @@ class DocServiceTest {
         String result = docService.getOrFetchDoc("3.21", "security-oidc.adoc");
 
         assertThat(result).isEqualTo("= Security OIDC");
-        verify(gitHubClient, never()).fetchFileContent("security-oidc.adoc", "3.21");
+        verify(gitHubService, never()).fetchFileContent("security-oidc.adoc", "3.21");
     }
 
     @Test
@@ -51,12 +51,12 @@ class DocServiceTest {
         String content = "= Fetched Doc\nSome content";
         String encoded = Base64.getEncoder().encodeToString(content.getBytes());
         String jsonResponse = "{\"encoding\":\"base64\",\"content\":\"" + encoded + "\"}";
-        when(gitHubClient.fetchFileContent("security-oidc.adoc", "3.21")).thenReturn(jsonResponse);
+        when(gitHubService.fetchFileContent("security-oidc.adoc", "3.21")).thenReturn(jsonResponse);
 
         String result = docService.getOrFetchDoc("3.21", "security-oidc.adoc");
 
         assertThat(result).isEqualTo(content);
-        verify(gitHubClient).fetchFileContent("security-oidc.adoc", "3.21");
+        verify(gitHubService).fetchFileContent("security-oidc.adoc", "3.21");
         // Also verify it was cached for next time
         assertThat(docStore.read("3.21", "security-oidc.adoc")).isPresent().hasValue(content);
     }
