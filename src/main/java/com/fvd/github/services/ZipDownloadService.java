@@ -7,7 +7,7 @@ import com.fvd.github.clients.GitHubClient;
 import com.fvd.github.exceptions.UpstreamException;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,6 +22,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class ZipDownloadService {
 
     private static final String ASCIIDOC_PREFIX = "docs/src/main/asciidoc/";
@@ -29,13 +30,6 @@ public class ZipDownloadService {
     private final GitHubClient gitHubClient;
     private final DocStore docStore;
     private final CacheService cacheService;
-
-    @Inject
-    public ZipDownloadService(GitHubClient gitHubClient, DocStore docStore, CacheService cacheService) {
-        this.gitHubClient = gitHubClient;
-        this.docStore = docStore;
-        this.cacheService = cacheService;
-    }
 
     /**
      * Streams the zip archive for the given version, extracts asciidoc files

@@ -2,6 +2,7 @@ package com.fvd.cache.services;
 
 import com.fvd.common.validators.InputValidator;
 import jakarta.enterprise.context.ApplicationScoped;
+import lombok.Getter;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.IOException;
@@ -10,6 +11,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 
+@Getter
 @ApplicationScoped
 public class CacheService {
 
@@ -17,10 +19,6 @@ public class CacheService {
 
     public CacheService(@ConfigProperty(name = "app.cache.dir", defaultValue = ".cache") String cacheDir) {
         this.cacheRoot = Path.of(cacheDir);
-    }
-
-    public Path getCacheRoot() {
-        return cacheRoot;
     }
 
     public Path versionDir(String version) {

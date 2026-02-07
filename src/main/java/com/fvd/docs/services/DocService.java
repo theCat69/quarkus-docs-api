@@ -7,24 +7,18 @@ import com.fvd.docs.stores.DocStore;
 import com.fvd.github.clients.GitHubClient;
 import com.fvd.github.exceptions.UpstreamException;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 
 import java.util.Base64;
 import java.util.Optional;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class DocService {
 
     private final DocStore docStore;
     private final GitHubClient gitHubClient;
     private final ObjectMapper objectMapper;
-
-    @Inject
-    public DocService(DocStore docStore, GitHubClient gitHubClient, ObjectMapper objectMapper) {
-        this.docStore = docStore;
-        this.gitHubClient = gitHubClient;
-        this.objectMapper = objectMapper;
-    }
 
     public String getOrFetchDoc(String version, String path) {
         InputValidator.validateVersion(version);

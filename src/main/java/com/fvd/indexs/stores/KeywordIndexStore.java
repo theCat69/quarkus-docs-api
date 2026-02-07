@@ -3,7 +3,7 @@ package com.fvd.indexs.stores;
 import com.fvd.cache.services.CacheService;
 import com.fvd.common.validators.InputValidator;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,16 +12,12 @@ import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class KeywordIndexStore {
 
     private static final String KEYWORD_INDEX_NAME = "keyword_index.json";
 
     private final CacheService cacheService;
-
-    @Inject
-    public KeywordIndexStore(CacheService cacheService) {
-        this.cacheService = cacheService;
-    }
 
     public Optional<String> read(String version) {
         InputValidator.validateVersion(version);

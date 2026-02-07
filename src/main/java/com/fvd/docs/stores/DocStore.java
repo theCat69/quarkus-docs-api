@@ -3,7 +3,7 @@ package com.fvd.docs.stores;
 import com.fvd.cache.services.CacheService;
 import com.fvd.common.validators.InputValidator;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,14 +13,10 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class DocStore {
 
     private final CacheService cacheService;
-
-    @Inject
-    public DocStore(CacheService cacheService) {
-        this.cacheService = cacheService;
-    }
 
     public Optional<String> read(String version, String filePath) {
         InputValidator.validateVersion(version);

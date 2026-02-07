@@ -4,21 +4,16 @@ import com.fvd.common.validators.InputValidator;
 import com.fvd.github.clients.GitHubClient;
 import com.fvd.indexs.stores.IndexStore;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 
 import java.util.Optional;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class IndexService {
 
     private final IndexStore indexStore;
     private final GitHubClient gitHubClient;
-
-    @Inject
-    public IndexService(IndexStore indexStore, GitHubClient gitHubClient) {
-        this.indexStore = indexStore;
-        this.gitHubClient = gitHubClient;
-    }
 
     public String getOrFetchIndex(String version) {
         InputValidator.validateVersion(version);

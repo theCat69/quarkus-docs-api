@@ -12,11 +12,12 @@ import com.fvd.indexs.stores.IndexStore;
 import io.quarkus.logging.Log;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 
 import java.util.*;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class CacheRefreshJob {
 
     private final CacheService cacheService;
@@ -25,18 +26,6 @@ public class CacheRefreshJob {
     private final DocStore docStore;
     private final KeywordIndexer keywordIndexer;
     private final ObjectMapper objectMapper;
-
-    @Inject
-    public CacheRefreshJob(CacheService cacheService, GitHubClient gitHubClient,
-                           IndexStore indexStore, DocStore docStore,
-                           KeywordIndexer keywordIndexer, ObjectMapper objectMapper) {
-        this.cacheService = cacheService;
-        this.gitHubClient = gitHubClient;
-        this.indexStore = indexStore;
-        this.docStore = docStore;
-        this.keywordIndexer = keywordIndexer;
-        this.objectMapper = objectMapper;
-    }
 
     @Scheduled(every = "${app.refresh.interval:6h}")
     public void refresh() {

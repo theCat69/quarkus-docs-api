@@ -6,12 +6,14 @@ import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.*;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import io.quarkus.logging.Log;
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 
 import java.util.*;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class SearchService {
 
     private static final int MAX_FILE_RESULTS = 10;
@@ -24,17 +26,6 @@ public class SearchService {
     private final KeywordIndexer keywordIndexer;
     private final DocStore docStore;
 
-    @Inject
-    public SearchService(KeywordIndexStore keywordIndexStore, ObjectMapper objectMapper,
-                         ZipDownloadService zipDownloadService, KeywordIndexer keywordIndexer,
-                         DocStore docStore) {
-        this.keywordIndexStore = keywordIndexStore;
-        this.objectMapper = objectMapper;
-        this.zipDownloadService = zipDownloadService;
-        this.keywordIndexer = keywordIndexer;
-        this.docStore = docStore;
-    }
-
     public List<FileSearchResult> searchFiles(String version, List<String> keywords) {
         ensureIndex(version);
         KeywordIndex index = loadIndex(version);
@@ -44,8 +35,18 @@ public class SearchService {
 
         Set<String> keywordSet = new HashSet<>(keywords.stream()
                 .map(String::toLowerCase).toList());
+        Map<String, Double> scores = getScores(index, keywordSet);
+
+        return scores.entrySet().stream()
+                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                .limit(MAX_FILE_RESULTS)
+                .map(e -> new FileSearchResult(e.getKey(), e.getValue()))
+                .toList();
+    }
+
+    @Nonnull
+    private static Map<String, Double> getScores(KeywordIndex index, Set<String> keywordSet) {
         Map<String, Double> scores = new HashMap<>();
-        Map<String, Integer> matchedKeywordCounts = new HashMap<>();
 
         for (FileKeywordEntry file : index.files) {
             double score = 0;
@@ -61,15 +62,9 @@ public class SearchService {
                     score *= MULTI_KEYWORD_BOOST;
                 }
                 scores.put(file.path, score);
-                matchedKeywordCounts.put(file.path, matchedCount);
             }
         }
-
-        return scores.entrySet().stream()
-                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
-                .limit(MAX_FILE_RESULTS)
-                .map(e -> new FileSearchResult(e.getKey(), e.getValue()))
-                .toList();
+        return scores;
     }
 
     public List<SectionSearchResult> searchSections(String version, List<String> keywords,

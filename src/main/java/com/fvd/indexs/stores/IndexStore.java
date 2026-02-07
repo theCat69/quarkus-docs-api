@@ -3,7 +3,7 @@ package com.fvd.indexs.stores;
 import com.fvd.cache.services.CacheService;
 import com.fvd.common.validators.InputValidator;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,16 +12,12 @@ import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class IndexStore {
 
     private static final String FILE_INDEX_NAME = "file_index.json";
 
     private final CacheService cacheService;
-
-    @Inject
-    public IndexStore(CacheService cacheService) {
-        this.cacheService = cacheService;
-    }
 
     public Optional<String> readRaw(String version) {
         InputValidator.validateVersion(version);

@@ -1,11 +1,10 @@
 package com.fvd.common.validators;
 
 import com.fvd.common.exceptions.InvalidInputException;
+import lombok.experimental.UtilityClass;
 
+@UtilityClass
 public class InputValidator {
-
-    private InputValidator() {
-    }
 
     public static void requireNonEmpty(String value, String paramName) {
         if (value == null || value.isBlank()) {

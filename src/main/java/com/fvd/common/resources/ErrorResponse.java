@@ -1,15 +1,11 @@
 package com.fvd.common.resources;
 
-public class ErrorResponse {
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 
+@NoArgsConstructor
+@AllArgsConstructor
+public class ErrorResponse {
     public int status;
     public String message;
-
-    public ErrorResponse() {
-    }
-
-    public ErrorResponse(int status, String message) {
-        this.status = status;
-        this.message = message;
-    }
 }
