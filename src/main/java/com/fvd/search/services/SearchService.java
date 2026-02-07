@@ -5,13 +5,14 @@ import com.fvd.docs.stores.DocStore;
 import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.*;
 import com.fvd.indexs.stores.KeywordIndexStore;
-import io.quarkus.logging.Log;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 
+@Slf4j
 @ApplicationScoped
 @RequiredArgsConstructor
 public class SearchService {
@@ -122,7 +123,7 @@ public class SearchService {
             }
             keywordIndexer.build(version, files);
         } catch (Exception e) {
-            Log.warnf(e, "Failed to lazily build keyword index for version %s", version);
+            log.warn("Failed to lazily build keyword index for version {}", version, e);
         }
     }
 

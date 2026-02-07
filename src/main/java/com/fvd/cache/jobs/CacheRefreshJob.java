@@ -9,13 +9,14 @@ import com.fvd.github.clients.GitHubClient;
 import com.fvd.github.exceptions.UpstreamException;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.stores.IndexStore;
-import io.quarkus.logging.Log;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 
+@Slf4j
 @ApplicationScoped
 @RequiredArgsConstructor
 public class CacheRefreshJob {
@@ -31,7 +32,7 @@ public class CacheRefreshJob {
     public void refresh() {
         List<String> versions = cacheService.listCachedVersions();
         if (versions.isEmpty()) {
-            Log.info("No cached versions to refresh");
+            log.info("No cached versions to refresh");
             return;
         }
 
@@ -39,13 +40,13 @@ public class CacheRefreshJob {
             try {
                 refreshVersion(version);
             } catch (Exception e) {
-                Log.errorf(e, "Failed to refresh cache for version %s, keeping existing cache", version);
+                log.error("Failed to refresh cache for version {}, keeping existing cache", version, e);
             }
         }
     }
 
     void refreshVersion(String version) {
-        Log.infof("Refreshing cache for version %s", version);
+        log.info("Refreshing cache for version {}", version);
 
         String newIndexJson = gitHubClient.fetchIndex(version);
         List<Map<String, Object>> newEntries = parseIndex(newIndexJson);
@@ -63,7 +64,7 @@ public class CacheRefreshJob {
             String newSha = entry.getValue();
             String oldSha = oldShaByName.get(fileName);
             if (oldSha == null || !oldSha.equals(newSha)) {
-                Log.infof("Re-fetching changed file: %s (version %s)", fileName, version);
+                log.info("Re-fetching changed file: {} (version {})", fileName, version);
                 fetchAndCacheDoc(version, fileName);
             }
         }
@@ -77,7 +78,7 @@ public class CacheRefreshJob {
                 .toList();
         keywordIndexer.build(version, allFileNames);
 
-        Log.infof("Cache refresh completed for version %s", version);
+        log.info("Cache refresh completed for version {}", version);
     }
 
     private void fetchAndCacheDoc(String version, String fileName) {

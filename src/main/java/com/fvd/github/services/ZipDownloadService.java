@@ -5,9 +5,9 @@ import com.fvd.common.validators.InputValidator;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.clients.GitHubClient;
 import com.fvd.github.exceptions.UpstreamException;
-import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+@Slf4j
 @ApplicationScoped
 @RequiredArgsConstructor
 public class ZipDownloadService {
@@ -47,7 +48,7 @@ public class ZipDownloadService {
             Files.createDirectories(stagingDir);
             extractToStaging(version, stagingDir, extractedFiles);
             moveStagingToCache(version, stagingDir, extractedFiles);
-            Log.infof("Extracted %d asciidoc files for version %s", extractedFiles.size(), version);
+            log.info("Extracted {} asciidoc files for version {}", extractedFiles.size(), version);
         } catch (IOException e) {
             cleanupStagingDir(stagingDir);
             throw new UpstreamException("Failed to extract zip for version: " + version, e);
@@ -110,7 +111,7 @@ public class ZipDownloadService {
                 }
             });
         } catch (IOException e) {
-            Log.errorf(e, "Failed to clean up staging directory: %s", stagingDir);
+            log.error("Failed to clean up staging directory: {}", stagingDir, e);
         }
     }
 
