@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'io.quarkus'
+    id 'io.freefair.lombok' version "9.2.0"
 }
 
 repositories {
@@ -9,21 +10,22 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'io.quarkiverse.wiremock:quarkus-wiremock:1.5.3'
-    testImplementation 'io.quarkiverse.wiremock:quarkus-wiremock-test:1.5.3'
     implementation enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
     implementation 'io.quarkus:quarkus-rest'
     implementation 'io.quarkus:quarkus-rest-client-jackson'
     implementation 'io.quarkus:quarkus-rest-client'
     implementation 'io.quarkus:quarkus-rest-jackson'
+    implementation 'io.quarkus:quarkus-smallrye-openapi'
     implementation 'io.quarkus:quarkus-scheduler'
     implementation 'io.quarkus:quarkus-smallrye-health'
     implementation 'io.quarkus:quarkus-arc'
+    compileOnly 'io.quarkiverse.wiremock:quarkus-wiremock:1.5.3'
     testImplementation 'io.quarkus:quarkus-junit'
     testImplementation 'io.rest-assured:rest-assured'
     testImplementation 'org.assertj:assertj-core:3.27.7'
     testImplementation 'org.mockito:mockito-core:5.18.0'
     testImplementation 'org.mockito:mockito-junit-jupiter:5.18.0'
+    testImplementation 'io.quarkiverse.wiremock:quarkus-wiremock-test:1.5.3'
 }
 
 group = 'com.fvd'
