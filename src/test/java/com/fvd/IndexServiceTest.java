@@ -1,18 +1,27 @@
 package com.fvd;
 
 import java.nio.file.Path;
-import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class IndexServiceTest {
 
     @TempDir
     Path tempDir;
+
+    @Mock
+    GitHubClient gitHubClient;
 
     IndexService indexService;
     IndexStore indexStore;
@@ -21,25 +30,30 @@ class IndexServiceTest {
     void setUp() {
         CacheService cacheService = new CacheService(tempDir.toString());
         indexStore = new IndexStore(cacheService);
-        GitHubClient gitHubClient = new GitHubClient(Optional.empty(),
-                "https://api.github.com/repos/quarkusio/quarkus/contents/",
-                "https://github.com/quarkusio/quarkus/archive/refs/heads/");
         indexService = new IndexService(indexStore, gitHubClient);
     }
 
     @Test
-    void getOrFetchIndexReturnsCachedIndex() {
+    void getOrFetchIndexReturnsCachedIndexWithoutCallingGitHub() {
         String json = "[{\"name\":\"test.adoc\",\"sha\":\"abc123\"}]";
         indexStore.writeRaw("3.21", json);
+
         String result = indexService.getOrFetchIndex("3.21");
+
         assertThat(result).isEqualTo(json);
+        verify(gitHubClient, never()).fetchIndex("3.21");
     }
 
     @Test
-    void getOrFetchIndexReturnsEmptyOptionalWhenNoCacheAndNoNetwork() {
-        // Without network, this should throw UpstreamException
-        // This tests that the cache-first path works
-        indexStore.writeRaw("3.21", "[]");
-        assertThat(indexService.getOrFetchIndex("3.21")).isEqualTo("[]");
+    void getOrFetchIndexFetchesFromGitHubOnCacheMiss() {
+        String json = "[{\"name\":\"fetched.adoc\",\"sha\":\"def456\"}]";
+        when(gitHubClient.fetchIndex("3.21")).thenReturn(json);
+
+        String result = indexService.getOrFetchIndex("3.21");
+
+        assertThat(result).isEqualTo(json);
+        verify(gitHubClient).fetchIndex("3.21");
+        // Also verify it was cached for next time
+        assertThat(indexStore.readRaw("3.21")).isPresent().hasValue(json);
     }
 }
