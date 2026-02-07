@@ -33,7 +33,7 @@ Upstream URLs:
 
 ## Tasks
 
-- [ ] Implement scheduled job for cache freshness.
-- [ ] Compare old/new index entries by SHA.
-- [ ] Refresh changed docs and replace `file_index.json`.
-- [ ] Rebuild keyword index after changes.
+- [x] Implement scheduled job for cache freshness.
+- [x] Compare old/new index entries by SHA.
+- [x] Refresh changed docs and replace `file_index.json`.
+- [x] Rebuild keyword index after changes.

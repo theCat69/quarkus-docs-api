@@ -31,7 +31,7 @@ This feature exposes keyword search over cached docs. It uses the keyword index 
 
 ## Tasks
 
-- [ ] Implement file-level score aggregation and multi-keyword boost.
-- [ ] Implement section-level search restricted to `filePaths`.
-- [ ] Enforce result limits (5-10 files, 3-5 sections).
-- [ ] Return stable, sorted results by descending score.
+- [x] Implement file-level score aggregation and multi-keyword boost.
+- [x] Implement section-level search restricted to `filePaths`.
+- [x] Enforce result limits (5-10 files, 3-5 sections).
+- [x] Return stable, sorted results by descending score.

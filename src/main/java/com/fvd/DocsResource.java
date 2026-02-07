@@ -1,5 +1,6 @@
 package com.fvd;
 
+import java.util.Arrays;
 import java.util.List;
 
 import jakarta.inject.Inject;
@@ -15,11 +16,13 @@ public class DocsResource {
 
     private final IndexService indexService;
     private final DocService docService;
+    private final SearchService searchService;
 
     @Inject
-    public DocsResource(IndexService indexService, DocService docService) {
+    public DocsResource(IndexService indexService, DocService docService, SearchService searchService) {
         this.indexService = indexService;
         this.docService = docService;
+        this.searchService = searchService;
     }
 
     @GET
@@ -45,7 +48,9 @@ public class DocsResource {
                                                         @QueryParam("keywords") String keywords) {
         InputValidator.validateVersion(version);
         InputValidator.validateKeywords(keywords);
-        return new SearchResponse<>(List.of());
+        List<String> keywordList = Arrays.asList(keywords.split(","));
+        List<FileSearchResult> results = searchService.searchFiles(version, keywordList);
+        return new SearchResponse<>(results);
     }
 
     @GET
@@ -56,7 +61,10 @@ public class DocsResource {
         InputValidator.validateVersion(version);
         InputValidator.validateKeywords(keywords);
         InputValidator.validateFilePaths(filePaths);
-        return new SearchResponse<>(List.of());
+        List<String> keywordList = Arrays.asList(keywords.split(","));
+        List<String> filePathList = Arrays.asList(filePaths.split(","));
+        List<SectionSearchResult> results = searchService.searchSections(version, keywordList, filePathList);
+        return new SearchResponse<>(results);
     }
 
     @GET

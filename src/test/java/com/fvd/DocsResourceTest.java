@@ -11,6 +11,7 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 
 import io.quarkiverse.wiremock.devservice.ConnectWireMock;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -18,6 +19,7 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.not;
 
 @QuarkusTest
@@ -25,6 +27,9 @@ import static org.hamcrest.Matchers.not;
 class DocsResourceTest {
 
     WireMockServer wiremock;
+
+    @Inject
+    KeywordIndexStore keywordIndexStore;
 
     @BeforeEach
     void cleanTestCache() throws IOException {
@@ -166,7 +171,7 @@ class DocsResourceTest {
     }
 
     @Test
-    void testSearchFilesEndpointValid() {
+    void testSearchFilesEndpointNoIndexReturnsEmpty() {
         given()
             .queryParam("version", "3.21")
             .queryParam("keywords", "oidc,security")
@@ -174,6 +179,20 @@ class DocsResourceTest {
             .then()
                 .statusCode(200)
                 .body("results.size()", is(0));
+    }
+
+    @Test
+    void testSearchFilesEndpointReturnsResults() {
+        seedKeywordIndex();
+        given()
+            .queryParam("version", "3.21")
+            .queryParam("keywords", "security")
+            .when().get("/api/search/files")
+            .then()
+                .statusCode(200)
+                .body("results.size()", greaterThan(0))
+                .body("results[0].path", equalTo("security-overview.adoc"))
+                .body("results[0].score", greaterThan(0f));
     }
 
     @Test
@@ -218,7 +237,7 @@ class DocsResourceTest {
     }
 
     @Test
-    void testSearchSectionsEndpointValid() {
+    void testSearchSectionsEndpointNoIndexReturnsEmpty() {
         given()
             .queryParam("version", "3.21")
             .queryParam("keywords", "oidc")
@@ -227,5 +246,56 @@ class DocsResourceTest {
             .then()
                 .statusCode(200)
                 .body("results.size()", is(0));
+    }
+
+    @Test
+    void testSearchSectionsEndpointReturnsResults() {
+        seedKeywordIndex();
+        given()
+            .queryParam("version", "3.21")
+            .queryParam("keywords", "security")
+            .queryParam("filePaths", "security-overview.adoc")
+            .when().get("/api/search/sections")
+            .then()
+                .statusCode(200)
+                .body("results.size()", greaterThan(0))
+                .body("results[0].path", equalTo("security-overview.adoc"))
+                .body("results[0].score", greaterThan(0f));
+    }
+
+    private void seedKeywordIndex() {
+        String keywordIndexJson = """
+                {
+                  "files": [
+                    {
+                      "path": "security-overview.adoc",
+                      "keywords": [
+                        {"word": "security", "score": 15},
+                        {"word": "quarkus", "score": 8}
+                      ],
+                      "sections": [
+                        {
+                          "title": "Security Overview",
+                          "start": 1,
+                          "end": 10,
+                          "keywords": [
+                            {"word": "security", "score": 12},
+                            {"word": "overview", "score": 5}
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "path": "config.adoc",
+                      "keywords": [
+                        {"word": "config", "score": 10},
+                        {"word": "quarkus", "score": 5}
+                      ],
+                      "sections": []
+                    }
+                  ]
+                }
+                """;
+        keywordIndexStore.write("3.21", keywordIndexJson);
     }
 }
