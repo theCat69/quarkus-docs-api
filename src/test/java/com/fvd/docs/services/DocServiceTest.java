@@ -1,8 +1,8 @@
 package com.fvd.docs.services;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
+import com.fvd.github.clients.GithubApiFile;
 import com.fvd.github.services.GitHubService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,7 +33,7 @@ class DocServiceTest {
     void setUp() {
         CacheService cacheService = new CacheService(tempDir.toString());
         docStore = new DocStore(cacheService);
-        docService = new DocService(docStore, gitHubService, new ObjectMapper());
+        docService = new DocService(docStore, gitHubService);
     }
 
     @Test
@@ -50,8 +50,9 @@ class DocServiceTest {
     void getOrFetchDocFetchesFromGitHubOnCacheMiss() {
         String content = "= Fetched Doc\nSome content";
         String encoded = Base64.getEncoder().encodeToString(content.getBytes());
-        String jsonResponse = "{\"encoding\":\"base64\",\"content\":\"" + encoded + "\"}";
-        when(gitHubService.fetchFileContent("security-oidc.adoc", "3.21")).thenReturn(jsonResponse);
+        GithubApiFile file = new GithubApiFile("security-oidc.adoc",
+                "docs/src/main/asciidoc/security-oidc.adoc", "abc123", encoded, "base64");
+        when(gitHubService.fetchFileContent("security-oidc.adoc", "3.21")).thenReturn(file);
 
         String result = docService.getOrFetchDoc("3.21", "security-oidc.adoc");
 
@@ -62,33 +63,36 @@ class DocServiceTest {
     }
 
     @Test
-    void decodeContentHandlesBase64() {
+    void getOrFetchDocHandlesBase64Content() {
         String original = "= Hello World\nSome content";
         String encoded = Base64.getEncoder().encodeToString(original.getBytes());
-        String json = "{\"encoding\":\"base64\",\"content\":\"" + encoded + "\"}";
+        GithubApiFile file = new GithubApiFile("test.adoc", "path/test.adoc", "sha1", encoded, "base64");
+        when(gitHubService.fetchFileContent("test.adoc", "3.21")).thenReturn(file);
 
-        String result = docService.decodeContent(json, "test.adoc");
+        String result = docService.getOrFetchDoc("3.21", "test.adoc");
 
         assertThat(result).isEqualTo(original);
     }
 
     @Test
-    void decodeContentHandlesBase64WithNewlines() {
+    void getOrFetchDocHandlesBase64WithNewlines() {
         String original = "= Hello World\nSome content that is long enough to have line breaks in base64";
         String encoded = Base64.getEncoder().encodeToString(original.getBytes());
-        String withNewlines = encoded.replaceAll("(.{76})", "$1\\\\n");
-        String json = "{\"encoding\":\"base64\",\"content\":\"" + withNewlines + "\"}";
+        String withNewlines = encoded.replaceAll("(.{76})", "$1\n");
+        GithubApiFile file = new GithubApiFile("test.adoc", "path/test.adoc", "sha1", withNewlines, "base64");
+        when(gitHubService.fetchFileContent("test.adoc", "3.21")).thenReturn(file);
 
-        String result = docService.decodeContent(json, "test.adoc");
+        String result = docService.getOrFetchDoc("3.21", "test.adoc");
 
         assertThat(result).isEqualTo(original);
     }
 
     @Test
-    void decodeContentHandlesPlainText() {
-        String json = "{\"content\":\"plain text content\"}";
+    void getOrFetchDocHandlesPlainText() {
+        GithubApiFile file = new GithubApiFile("test.adoc", "path/test.adoc", "sha1", "plain text content", null);
+        when(gitHubService.fetchFileContent("test.adoc", "3.21")).thenReturn(file);
 
-        String result = docService.decodeContent(json, "test.adoc");
+        String result = docService.getOrFetchDoc("3.21", "test.adoc");
 
         assertThat(result).isEqualTo("plain text content");
     }

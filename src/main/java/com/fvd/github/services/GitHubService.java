@@ -1,6 +1,7 @@
 package com.fvd.github.services;
 
 import com.fvd.github.clients.GithubApiClient;
+import com.fvd.github.clients.GithubApiFile;
 import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.clients.GithubRepositoryClient;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -21,7 +22,7 @@ public class GitHubService {
         return githubApiClient.fetchIndex(version);
     }
 
-    public String fetchFileContent(String filePath, String version) {
+    public GithubApiFile fetchFileContent(String filePath, String version) {
         return githubApiClient.fetchFile(filePath, version);
     }
 

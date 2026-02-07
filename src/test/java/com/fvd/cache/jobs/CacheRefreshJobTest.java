@@ -3,6 +3,8 @@ package com.fvd.cache.jobs;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
+import com.fvd.github.clients.GithubApiFile;
+import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.exceptions.UpstreamException;
 import com.fvd.github.services.GitHubService;
 import com.fvd.indexs.indexers.KeywordIndex;
@@ -14,7 +16,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Base64;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -58,7 +62,7 @@ class CacheRefreshJobTest {
     @Test
     void refreshFetchesNewIndexForCachedVersion() {
         when(cacheService.listCachedVersions()).thenReturn(List.of("3.21"));
-        when(indexStore.readRaw("3.21")).thenReturn(java.util.Optional.of(oldIndex()));
+        when(indexStore.read("3.21")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.21")).thenReturn(oldIndex());
         when(keywordIndexer.build(eq("3.21"), any())).thenReturn(new KeywordIndex(List.of()));
 
@@ -70,10 +74,10 @@ class CacheRefreshJobTest {
     @Test
     void refreshDetectsChangedFilesAndRefetches() {
         when(cacheService.listCachedVersions()).thenReturn(List.of("3.21"));
-        when(indexStore.readRaw("3.21")).thenReturn(java.util.Optional.of(oldIndex()));
+        when(indexStore.read("3.21")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.21")).thenReturn(newIndexWithChangedSha());
-        String docJson = githubDocResponse("updated content");
-        when(gitHubService.fetchFileContent("security-overview.adoc", "3.21")).thenReturn(docJson);
+        GithubApiFile docFile = githubDocFile("updated content");
+        when(gitHubService.fetchFileContent("security-overview.adoc", "3.21")).thenReturn(docFile);
         when(keywordIndexer.build(eq("3.21"), any())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
@@ -88,25 +92,25 @@ class CacheRefreshJobTest {
     @Test
     void refreshReplacesFileIndexWithNewData() {
         when(cacheService.listCachedVersions()).thenReturn(List.of("3.21"));
-        when(indexStore.readRaw("3.21")).thenReturn(java.util.Optional.of(oldIndex()));
-        String newIndex = newIndexWithChangedSha();
+        when(indexStore.read("3.21")).thenReturn(Optional.of(oldIndex()));
+        List<GithubApiIndex> newIndex = newIndexWithChangedSha();
         when(gitHubService.fetchIndex("3.21")).thenReturn(newIndex);
-        String docJson = githubDocResponse("updated content");
-        when(gitHubService.fetchFileContent("security-overview.adoc", "3.21")).thenReturn(docJson);
+        GithubApiFile docFile = githubDocFile("updated content");
+        when(gitHubService.fetchFileContent("security-overview.adoc", "3.21")).thenReturn(docFile);
         when(keywordIndexer.build(eq("3.21"), any())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
-        verify(indexStore).writeRaw("3.21", newIndex);
+        verify(indexStore).write("3.21", newIndex);
     }
 
     @Test
     void refreshRebuildsKeywordIndexAfterUpdate() {
         when(cacheService.listCachedVersions()).thenReturn(List.of("3.21"));
-        when(indexStore.readRaw("3.21")).thenReturn(java.util.Optional.of(oldIndex()));
+        when(indexStore.read("3.21")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.21")).thenReturn(newIndexWithChangedSha());
-        String docJson = githubDocResponse("updated content");
-        when(gitHubService.fetchFileContent("security-overview.adoc", "3.21")).thenReturn(docJson);
+        GithubApiFile docFile = githubDocFile("updated content");
+        when(gitHubService.fetchFileContent("security-overview.adoc", "3.21")).thenReturn(docFile);
         when(keywordIndexer.build(eq("3.21"), any())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
@@ -117,10 +121,10 @@ class CacheRefreshJobTest {
     @Test
     void refreshHandlesNewFilesInIndex() {
         when(cacheService.listCachedVersions()).thenReturn(List.of("3.21"));
-        when(indexStore.readRaw("3.21")).thenReturn(java.util.Optional.of(oldIndex()));
+        when(indexStore.read("3.21")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.21")).thenReturn(newIndexWithAddedFile());
-        String docJson = githubDocResponse("new file content");
-        when(gitHubService.fetchFileContent("new-file.adoc", "3.21")).thenReturn(docJson);
+        GithubApiFile docFile = githubDocFile("new file content");
+        when(gitHubService.fetchFileContent("new-file.adoc", "3.21")).thenReturn(docFile);
         when(keywordIndexer.build(eq("3.21"), any())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
@@ -133,7 +137,7 @@ class CacheRefreshJobTest {
     @Test
     void refreshHandlesRemovedFilesInIndex() {
         when(cacheService.listCachedVersions()).thenReturn(List.of("3.21"));
-        when(indexStore.readRaw("3.21")).thenReturn(java.util.Optional.of(oldIndex()));
+        when(indexStore.read("3.21")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.21")).thenReturn(newIndexWithRemovedFile());
         when(keywordIndexer.build(eq("3.21"), any())).thenReturn(new KeywordIndex(List.of()));
 
@@ -146,12 +150,12 @@ class CacheRefreshJobTest {
     @Test
     void refreshFetchesAllFilesWhenNoExistingIndex() {
         when(cacheService.listCachedVersions()).thenReturn(List.of("3.21"));
-        when(indexStore.readRaw("3.21")).thenReturn(java.util.Optional.empty());
+        when(indexStore.read("3.21")).thenReturn(Optional.empty());
         when(gitHubService.fetchIndex("3.21")).thenReturn(oldIndex());
-        String docJson1 = githubDocResponse("security content");
-        String docJson2 = githubDocResponse("config content");
-        when(gitHubService.fetchFileContent("security-overview.adoc", "3.21")).thenReturn(docJson1);
-        when(gitHubService.fetchFileContent("config.adoc", "3.21")).thenReturn(docJson2);
+        GithubApiFile docFile1 = githubDocFile("security content");
+        GithubApiFile docFile2 = githubDocFile("config content");
+        when(gitHubService.fetchFileContent("security-overview.adoc", "3.21")).thenReturn(docFile1);
+        when(gitHubService.fetchFileContent("config.adoc", "3.21")).thenReturn(docFile2);
         when(keywordIndexer.build(eq("3.21"), any())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
@@ -167,14 +171,14 @@ class CacheRefreshJobTest {
     void refreshContinuesWithOtherVersionsWhenOneFails() {
         when(cacheService.listCachedVersions()).thenReturn(List.of("3.20", "3.21"));
         when(gitHubService.fetchIndex("3.20")).thenThrow(new UpstreamException("GitHub down"));
-        when(indexStore.readRaw("3.21")).thenReturn(java.util.Optional.of(oldIndex()));
+        when(indexStore.read("3.21")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.21")).thenReturn(oldIndex());
         when(keywordIndexer.build(eq("3.21"), any())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
         // 3.21 should still be processed despite 3.20 failure
-        verify(indexStore).writeRaw("3.21", oldIndex());
+        verify(indexStore).write("3.21", oldIndex());
     }
 
     @Test
@@ -185,14 +189,14 @@ class CacheRefreshJobTest {
         job.refresh();
 
         // Should NOT modify the existing index or keyword index
-        verify(indexStore, never()).writeRaw(anyString(), anyString());
+        verify(indexStore, never()).write(anyString(), anyList());
         verify(keywordIndexer, never()).build(anyString(), any());
     }
 
     @Test
     void refreshNoChangesStillUpdatesIndexAndRebuildKeywords() {
         when(cacheService.listCachedVersions()).thenReturn(List.of("3.21"));
-        when(indexStore.readRaw("3.21")).thenReturn(java.util.Optional.of(oldIndex()));
+        when(indexStore.read("3.21")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.21")).thenReturn(oldIndex());
         when(keywordIndexer.build(eq("3.21"), any())).thenReturn(new KeywordIndex(List.of()));
 
@@ -201,7 +205,7 @@ class CacheRefreshJobTest {
         // No docs should be re-fetched
         verify(gitHubService, never()).fetchFileContent(anyString(), anyString());
         // Index should still be written
-        verify(indexStore).writeRaw("3.21", oldIndex());
+        verify(indexStore).write("3.21", oldIndex());
         // Keywords should still be rebuilt
         verify(keywordIndexer).build(eq("3.21"), eq(List.of("security-overview.adoc", "config.adoc")));
     }
@@ -209,8 +213,8 @@ class CacheRefreshJobTest {
     @Test
     void refreshMultipleVersions() {
         when(cacheService.listCachedVersions()).thenReturn(List.of("3.20", "3.21"));
-        when(indexStore.readRaw("3.20")).thenReturn(java.util.Optional.of(oldIndex()));
-        when(indexStore.readRaw("3.21")).thenReturn(java.util.Optional.of(oldIndex()));
+        when(indexStore.read("3.20")).thenReturn(Optional.of(oldIndex()));
+        when(indexStore.read("3.21")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.20")).thenReturn(oldIndex());
         when(gitHubService.fetchIndex("3.21")).thenReturn(oldIndex());
         when(keywordIndexer.build(eq("3.20"), any())).thenReturn(new KeywordIndex(List.of()));
@@ -220,95 +224,50 @@ class CacheRefreshJobTest {
 
         verify(gitHubService).fetchIndex("3.20");
         verify(gitHubService).fetchIndex("3.21");
-        verify(indexStore).writeRaw("3.20", oldIndex());
-        verify(indexStore).writeRaw("3.21", oldIndex());
+        verify(indexStore).write("3.20", oldIndex());
+        verify(indexStore).write("3.21", oldIndex());
     }
 
-    // -- Helper methods for building test index JSON --
+    // -- Helper methods for building test data --
 
-    private String oldIndex() {
-        return """
-                [
-                  {
-                    "name": "security-overview.adoc",
-                    "path": "docs/src/main/asciidoc/security-overview.adoc",
-                    "sha": "aaa111",
-                    "type": "file"
-                  },
-                  {
-                    "name": "config.adoc",
-                    "path": "docs/src/main/asciidoc/config.adoc",
-                    "sha": "bbb222",
-                    "type": "file"
-                  }
-                ]
-                """;
+    private List<GithubApiIndex> oldIndex() {
+        return List.of(
+                new GithubApiIndex("security-overview.adoc",
+                        "docs/src/main/asciidoc/security-overview.adoc", "aaa111"),
+                new GithubApiIndex("config.adoc",
+                        "docs/src/main/asciidoc/config.adoc", "bbb222")
+        );
     }
 
-    private String newIndexWithChangedSha() {
-        return """
-                [
-                  {
-                    "name": "security-overview.adoc",
-                    "path": "docs/src/main/asciidoc/security-overview.adoc",
-                    "sha": "ccc333",
-                    "type": "file"
-                  },
-                  {
-                    "name": "config.adoc",
-                    "path": "docs/src/main/asciidoc/config.adoc",
-                    "sha": "bbb222",
-                    "type": "file"
-                  }
-                ]
-                """;
+    private List<GithubApiIndex> newIndexWithChangedSha() {
+        return List.of(
+                new GithubApiIndex("security-overview.adoc",
+                        "docs/src/main/asciidoc/security-overview.adoc", "ccc333"),
+                new GithubApiIndex("config.adoc",
+                        "docs/src/main/asciidoc/config.adoc", "bbb222")
+        );
     }
 
-    private String newIndexWithAddedFile() {
-        return """
-                [
-                  {
-                    "name": "security-overview.adoc",
-                    "path": "docs/src/main/asciidoc/security-overview.adoc",
-                    "sha": "aaa111",
-                    "type": "file"
-                  },
-                  {
-                    "name": "config.adoc",
-                    "path": "docs/src/main/asciidoc/config.adoc",
-                    "sha": "bbb222",
-                    "type": "file"
-                  },
-                  {
-                    "name": "new-file.adoc",
-                    "path": "docs/src/main/asciidoc/new-file.adoc",
-                    "sha": "ddd444",
-                    "type": "file"
-                  }
-                ]
-                """;
+    private List<GithubApiIndex> newIndexWithAddedFile() {
+        return List.of(
+                new GithubApiIndex("security-overview.adoc",
+                        "docs/src/main/asciidoc/security-overview.adoc", "aaa111"),
+                new GithubApiIndex("config.adoc",
+                        "docs/src/main/asciidoc/config.adoc", "bbb222"),
+                new GithubApiIndex("new-file.adoc",
+                        "docs/src/main/asciidoc/new-file.adoc", "ddd444")
+        );
     }
 
-    private String newIndexWithRemovedFile() {
-        return """
-                [
-                  {
-                    "name": "config.adoc",
-                    "path": "docs/src/main/asciidoc/config.adoc",
-                    "sha": "bbb222",
-                    "type": "file"
-                  }
-                ]
-                """;
+    private List<GithubApiIndex> newIndexWithRemovedFile() {
+        return List.of(
+                new GithubApiIndex("config.adoc",
+                        "docs/src/main/asciidoc/config.adoc", "bbb222")
+        );
     }
 
-    private String githubDocResponse(String content) {
-        String encoded = java.util.Base64.getEncoder().encodeToString(content.getBytes());
-        return """
-                {
-                  "content": "%s",
-                  "encoding": "base64"
-                }
-                """.formatted(encoded);
+    private GithubApiFile githubDocFile(String content) {
+        String encoded = Base64.getEncoder().encodeToString(content.getBytes());
+        return new GithubApiFile("file.adoc", "path/file.adoc", "sha1", encoded, "base64");
     }
 }

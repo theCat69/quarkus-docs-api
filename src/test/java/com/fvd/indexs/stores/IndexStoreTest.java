@@ -1,12 +1,15 @@
 package com.fvd.indexs.stores;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.cache.services.CacheService;
 import com.fvd.common.exceptions.InvalidInputException;
+import com.fvd.github.clients.GithubApiIndex;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,39 +25,50 @@ class IndexStoreTest {
     @BeforeEach
     void setUp() {
         CacheService cacheService = new CacheService(tempDir.toString());
-        indexStore = new IndexStore(cacheService);
+        indexStore = new IndexStore(cacheService, new ObjectMapper());
     }
 
     @Test
-    void readRawReturnsEmptyWhenMissing() {
-        Optional<String> result = indexStore.readRaw("3.21");
+    void readReturnsEmptyWhenMissing() {
+        Optional<List<GithubApiIndex>> result = indexStore.read("3.21");
         assertThat(result).isEmpty();
     }
 
     @Test
     void writeAndReadRoundTrip() {
-        String json = "[{\"name\":\"test.adoc\"}]";
-        indexStore.writeRaw("3.21", json);
-        Optional<String> result = indexStore.readRaw("3.21");
-        assertThat(result).isPresent().contains(json);
+        List<GithubApiIndex> index = List.of(
+                new GithubApiIndex("test.adoc", "path/test.adoc", "sha1"));
+        indexStore.write("3.21", index);
+        Optional<List<GithubApiIndex>> result = indexStore.read("3.21");
+        assertThat(result).isPresent();
+        assertThat(result.get()).hasSize(1);
+        assertThat(result.get().get(0).name).isEqualTo("test.adoc");
+        assertThat(result.get().get(0).sha).isEqualTo("sha1");
     }
 
     @Test
     void writeOverwritesExisting() {
-        indexStore.writeRaw("3.21", "[\"old\"]");
-        indexStore.writeRaw("3.21", "[\"new\"]");
-        assertThat(indexStore.readRaw("3.21")).contains("[\"new\"]");
+        List<GithubApiIndex> oldIndex = List.of(
+                new GithubApiIndex("old.adoc", "path/old.adoc", "old-sha"));
+        List<GithubApiIndex> newIndex = List.of(
+                new GithubApiIndex("new.adoc", "path/new.adoc", "new-sha"));
+        indexStore.write("3.21", oldIndex);
+        indexStore.write("3.21", newIndex);
+        Optional<List<GithubApiIndex>> result = indexStore.read("3.21");
+        assertThat(result).isPresent();
+        assertThat(result.get()).hasSize(1);
+        assertThat(result.get().get(0).name).isEqualTo("new.adoc");
     }
 
     @Test
-    void readRawRejectsInvalidVersion() {
-        assertThatThrownBy(() -> indexStore.readRaw("../etc"))
+    void readRejectsInvalidVersion() {
+        assertThatThrownBy(() -> indexStore.read("../etc"))
                 .isInstanceOf(InvalidInputException.class);
     }
 
     @Test
-    void writeRawRejectsInvalidVersion() {
-        assertThatThrownBy(() -> indexStore.writeRaw("../etc", "[]"))
+    void writeRejectsInvalidVersion() {
+        assertThatThrownBy(() -> indexStore.write("../etc", List.of()))
                 .isInstanceOf(InvalidInputException.class);
     }
 }

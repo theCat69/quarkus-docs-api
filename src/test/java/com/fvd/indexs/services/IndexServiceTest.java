@@ -1,6 +1,8 @@
 package com.fvd.indexs.services;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.cache.services.CacheService;
+import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.services.GitHubService;
 import com.fvd.indexs.stores.IndexStore;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -30,31 +33,35 @@ class IndexServiceTest {
     @BeforeEach
     void setUp() {
         CacheService cacheService = new CacheService(tempDir.toString());
-        indexStore = new IndexStore(cacheService);
+        indexStore = new IndexStore(cacheService, new ObjectMapper());
         indexService = new IndexService(indexStore, gitHubService);
     }
 
     @Test
     void getOrFetchIndexReturnsCachedIndexWithoutCallingGitHub() {
-        String json = "[{\"name\":\"test.adoc\",\"sha\":\"abc123\"}]";
-        indexStore.writeRaw("3.21", json);
+        List<GithubApiIndex> index = List.of(new GithubApiIndex("test.adoc", "path/test.adoc", "abc123"));
+        indexStore.write("3.21", index);
 
-        String result = indexService.getOrFetchIndex("3.21");
+        List<GithubApiIndex> result = indexService.getOrFetchIndex("3.21");
 
-        assertThat(result).isEqualTo(json);
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).name).isEqualTo("test.adoc");
+        assertThat(result.get(0).sha).isEqualTo("abc123");
         verify(gitHubService, never()).fetchIndex("3.21");
     }
 
     @Test
     void getOrFetchIndexFetchesFromGitHubOnCacheMiss() {
-        String json = "[{\"name\":\"fetched.adoc\",\"sha\":\"def456\"}]";
-        when(gitHubService.fetchIndex("3.21")).thenReturn(json);
+        List<GithubApiIndex> index = List.of(new GithubApiIndex("fetched.adoc", "path/fetched.adoc", "def456"));
+        when(gitHubService.fetchIndex("3.21")).thenReturn(index);
 
-        String result = indexService.getOrFetchIndex("3.21");
+        List<GithubApiIndex> result = indexService.getOrFetchIndex("3.21");
 
-        assertThat(result).isEqualTo(json);
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).name).isEqualTo("fetched.adoc");
+        assertThat(result.get(0).sha).isEqualTo("def456");
         verify(gitHubService).fetchIndex("3.21");
         // Also verify it was cached for next time
-        assertThat(indexStore.readRaw("3.21")).isPresent().hasValue(json);
+        assertThat(indexStore.read("3.21")).isPresent();
     }
 }

@@ -1,11 +1,11 @@
 package com.fvd.cache.jobs;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
+import com.fvd.github.clients.GithubApiFile;
 import com.fvd.github.clients.GithubApiIndex;
-import com.fvd.github.exceptions.UpstreamException;
 import com.fvd.github.services.GitHubService;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.stores.IndexStore;
@@ -14,7 +14,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @ApplicationScoped
@@ -48,12 +51,11 @@ public class CacheRefreshJob {
     void refreshVersion(String version) {
         log.info("Refreshing cache for version {}", version);
 
-        List<GithubApiIndex> newIndexJson = gitHubService.fetchIndex(version);
-        Map<String, String> newShaByName = buildShaMap(newEntries);
+        List<GithubApiIndex> newIndex = gitHubService.fetchIndex(version);
+        Map<String, String> newShaByName = buildShaMap(newIndex);
 
-        Optional<String> oldIndexJson = indexStore.readRaw(version);
-        Map<String, String> oldShaByName = oldIndexJson
-                .map(this::parseIndex)
+        Optional<List<GithubApiIndex>> oldIndex = indexStore.read(version);
+        Map<String, String> oldShaByName = oldIndex
                 .map(this::buildShaMap)
                 .orElse(Map.of());
 
@@ -69,11 +71,11 @@ public class CacheRefreshJob {
         }
 
         // Replace file index with new data
-        indexStore.writeRaw(version, newIndexJson);
+        indexStore.write(version, newIndex);
 
         // Rebuild keyword index with all files from the new index
-        List<String> allFileNames = newEntries.stream()
-                .map(e -> (String) e.get("name"))
+        List<String> allFileNames = newIndex.stream()
+                .map(e -> e.name)
                 .toList();
         keywordIndexer.build(version, allFileNames);
 
@@ -81,33 +83,16 @@ public class CacheRefreshJob {
     }
 
     private void fetchAndCacheDoc(String version, String fileName) {
-        String jsonResponse = gitHubService.fetchFileContent(fileName, version);
-        String content = decodeContent(jsonResponse, fileName);
+        GithubApiFile file = gitHubService.fetchFileContent(fileName, version);
+        String content = file.decodeContent();
         docStore.write(version, fileName, content);
     }
 
-    private String decodeContent(String jsonResponse, String fileName) {
-        try {
-            JsonNode node = objectMapper.readTree(jsonResponse);
-            String encoding = node.has("encoding") ? node.get("encoding").asText() : "";
-            String rawContent = node.has("content") ? node.get("content").asText() : "";
-            if ("base64".equals(encoding)) {
-                String cleaned = rawContent.replaceAll("\\s", "");
-                return new String(Base64.getDecoder().decode(cleaned));
-            }
-            return rawContent;
-        } catch (Exception e) {
-            throw new UpstreamException("Failed to decode content for: " + fileName, e);
-        }
-    }
-
-    private Map<String, String> buildShaMap(List<Map<String, Object>> entries) {
+    private Map<String, String> buildShaMap(List<GithubApiIndex> entries) {
         Map<String, String> shaByName = new HashMap<>();
-        for (Map<String, Object> entry : entries) {
-            String name = (String) entry.get("name");
-            String sha = (String) entry.get("sha");
-            if (name != null && sha != null) {
-                shaByName.put(name, sha);
+        for (GithubApiIndex entry : entries) {
+            if (entry.name != null && entry.sha != null) {
+                shaByName.put(entry.name, entry.sha);
             }
         }
         return shaByName;

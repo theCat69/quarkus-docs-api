@@ -22,7 +22,7 @@ public interface GithubApiClient {
 
     @GET
     @Path("{filePath}")
-    String fetchFile(@Encoded String filePath, @QueryParam("ref") String version);
+    GithubApiFile fetchFile(@Encoded String filePath, @QueryParam("ref") String version);
 
     @ClientExceptionMapper
     static RuntimeException toException(Response response) {
