@@ -1,15 +1,21 @@
 package com.fvd;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import java.nio.file.Path;
 import java.util.List;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
 class SearchServiceTest {
 
@@ -25,7 +31,7 @@ class SearchServiceTest {
         CacheService cacheService = new CacheService(tempDir.toString());
         keywordIndexStore = new KeywordIndexStore(cacheService);
         objectMapper = new ObjectMapper();
-        searchService = new SearchService(keywordIndexStore, objectMapper);
+        searchService = new SearchService(keywordIndexStore, objectMapper, null, null, null);
     }
 
     private void seedIndex(String version, KeywordIndex index) throws Exception {
@@ -87,8 +93,6 @@ class SearchServiceTest {
 
         List<FileSearchResult> results = searchService.searchFiles("3.21", List.of("security", "oidc"));
 
-        // multi.adoc: 5 + 5 + boost for matching 2 keywords
-        // single.adoc: 10 (no boost, only 1 keyword matched)
         FileSearchResult multiResult = results.stream()
                 .filter(r -> r.path.equals("multi.adoc")).findFirst().orElseThrow();
         FileSearchResult singleResult = results.stream()
@@ -108,7 +112,6 @@ class SearchServiceTest {
         List<FileSearchResult> results = searchService.searchFiles("3.21", List.of("test"));
 
         assertThat(results).hasSize(10);
-        // Should be the top-10 by score
         assertThat(results.get(0).path).isEqualTo("file0.adoc");
         assertThat(results.get(9).path).isEqualTo("file9.adoc");
     }
@@ -127,7 +130,7 @@ class SearchServiceTest {
     }
 
     @Test
-    void searchFilesReturnsEmptyWhenNoIndexExists() {
+    void searchFilesReturnsEmptyWhenNoIndexAndNoDeps() {
         List<FileSearchResult> results = searchService.searchFiles("3.21", List.of("security"));
 
         assertThat(results).isEmpty();
@@ -213,10 +216,118 @@ class SearchServiceTest {
     }
 
     @Test
-    void searchSectionsReturnsEmptyWhenNoIndexExists() {
+    void searchSectionsReturnsEmptyWhenNoIndexAndNoDeps() {
         List<SectionSearchResult> results = searchService.searchSections(
                 "3.21", List.of("security"), List.of("test.adoc"));
 
         assertThat(results).isEmpty();
+    }
+
+    // --- Lazy initialization tests ---
+
+    @Nested
+    @ExtendWith(MockitoExtension.class)
+    class LazyInitTests {
+
+        @Mock
+        private ZipDownloadService zipDownloadService;
+
+        @Mock
+        private KeywordIndexer keywordIndexer;
+
+        @Mock
+        private DocStore docStore;
+
+        private SearchService lazySearchService;
+        private KeywordIndexStore lazyKeywordIndexStore;
+
+        @BeforeEach
+        void setUpLazy() {
+            CacheService cacheService = new CacheService(tempDir.toString());
+            lazyKeywordIndexStore = new KeywordIndexStore(cacheService);
+            lazySearchService = new SearchService(lazyKeywordIndexStore, objectMapper,
+                    zipDownloadService, keywordIndexer, docStore);
+        }
+
+        @Test
+        void searchFilesTriggersDownloadWhenNoIndexAndNoCache() {
+            when(docStore.docsExist("3.21")).thenReturn(false);
+            when(zipDownloadService.streamAndExtract("3.21"))
+                    .thenReturn(List.of("security.adoc", "config.adoc"));
+            when(keywordIndexer.build(eq("3.21"), eq(List.of("security.adoc", "config.adoc"))))
+                    .thenReturn(new KeywordIndex(List.of()));
+
+            List<FileSearchResult> results = lazySearchService.searchFiles("3.21", List.of("security"));
+
+            verify(zipDownloadService).streamAndExtract("3.21");
+            verify(keywordIndexer).build("3.21", List.of("security.adoc", "config.adoc"));
+            assertThat(results).isEmpty(); // no matching keywords in the empty index
+        }
+
+        @Test
+        void searchFilesBuildsIndexFromExistingDocsWithoutDownload() {
+            when(docStore.docsExist("3.21")).thenReturn(true);
+            when(docStore.listDocFiles("3.21")).thenReturn(List.of("security.adoc"));
+            when(keywordIndexer.build(eq("3.21"), eq(List.of("security.adoc"))))
+                    .thenReturn(new KeywordIndex(List.of()));
+
+            lazySearchService.searchFiles("3.21", List.of("security"));
+
+            verify(zipDownloadService, never()).streamAndExtract("3.21");
+            verify(keywordIndexer).build("3.21", List.of("security.adoc"));
+        }
+
+        @Test
+        void searchFilesDoesNotTriggerDownloadWhenIndexExists() throws Exception {
+            // Pre-seed a keyword index so lazy init is not needed
+            KeywordIndex index = new KeywordIndex(List.of(
+                    new FileKeywordEntry("test.adoc",
+                            List.of(new KeywordScore("security", 10)), List.of())
+            ));
+            String json = objectMapper.writeValueAsString(index);
+            lazyKeywordIndexStore.write("3.21", json);
+
+            List<FileSearchResult> results = lazySearchService.searchFiles("3.21", List.of("security"));
+
+            verify(zipDownloadService, never()).streamAndExtract("3.21");
+            verify(keywordIndexer, never()).build(any(), any());
+            assertThat(results).hasSize(1);
+            assertThat(results.get(0).path).isEqualTo("test.adoc");
+        }
+
+        @Test
+        void searchSectionsTriggersDownloadWhenNoIndexAndNoCache() {
+            when(docStore.docsExist("3.21")).thenReturn(false);
+            when(zipDownloadService.streamAndExtract("3.21"))
+                    .thenReturn(List.of("security.adoc"));
+            when(keywordIndexer.build(eq("3.21"), eq(List.of("security.adoc"))))
+                    .thenReturn(new KeywordIndex(List.of()));
+
+            List<SectionSearchResult> results = lazySearchService.searchSections(
+                    "3.21", List.of("security"), List.of("security.adoc"));
+
+            verify(zipDownloadService).streamAndExtract("3.21");
+            verify(keywordIndexer).build("3.21", List.of("security.adoc"));
+            assertThat(results).isEmpty();
+        }
+
+        @Test
+        void searchSectionsDoesNotTriggerDownloadWhenIndexExists() throws Exception {
+            KeywordIndex index = new KeywordIndex(List.of(
+                    new FileKeywordEntry("test.adoc", List.of(), List.of(
+                            new SectionKeywordEntry("Section 1", 1, 10,
+                                    List.of(new KeywordScore("security", 5)))
+                    ))
+            ));
+            String json = objectMapper.writeValueAsString(index);
+            lazyKeywordIndexStore.write("3.21", json);
+
+            List<SectionSearchResult> results = lazySearchService.searchSections(
+                    "3.21", List.of("security"), List.of("test.adoc"));
+
+            verify(zipDownloadService, never()).streamAndExtract("3.21");
+            verify(keywordIndexer, never()).build(any(), any());
+            assertThat(results).hasSize(1);
+        }
     }
 }

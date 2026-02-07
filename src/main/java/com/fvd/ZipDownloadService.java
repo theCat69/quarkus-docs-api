@@ -1,12 +1,20 @@
 package com.fvd;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-
+import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 @ApplicationScoped
 public class ZipDownloadService {
@@ -15,15 +23,45 @@ public class ZipDownloadService {
 
     private final GitHubClient gitHubClient;
     private final DocStore docStore;
+    private final CacheService cacheService;
 
     @Inject
-    public ZipDownloadService(GitHubClient gitHubClient, DocStore docStore) {
+    public ZipDownloadService(GitHubClient gitHubClient, DocStore docStore, CacheService cacheService) {
         this.gitHubClient = gitHubClient;
         this.docStore = docStore;
+        this.cacheService = cacheService;
     }
 
-    public void extractDocsSubfolder(String version) {
+    /**
+     * Streams the zip archive for the given version, extracts asciidoc files
+     * into a staging directory, then moves them to the real cache on success.
+     *
+     * @return list of extracted file names (relative paths within the asciidoc subtree)
+     */
+    public List<String> streamAndExtract(String version) {
         InputValidator.validateVersion(version);
+        cacheService.ensureVersionDir(version);
+        Path stagingDir = cacheService.versionDir(version).resolve("docs-staging");
+        List<String> extractedFiles = new ArrayList<>();
+
+        try {
+            Files.createDirectories(stagingDir);
+            extractToStaging(version, stagingDir, extractedFiles);
+            moveStagingToCache(version, stagingDir, extractedFiles);
+            Log.infof("Extracted %d asciidoc files for version %s", extractedFiles.size(), version);
+        } catch (IOException e) {
+            cleanupStagingDir(stagingDir);
+            throw new UpstreamException("Failed to extract zip for version: " + version, e);
+        } catch (UpstreamException e) {
+            cleanupStagingDir(stagingDir);
+            throw e;
+        }
+
+        return extractedFiles;
+    }
+
+    private void extractToStaging(String version, Path stagingDir, List<String> extractedFiles)
+            throws IOException {
         try (InputStream zipStream = gitHubClient.fetchZipStream(version);
              ZipInputStream zis = new ZipInputStream(zipStream)) {
             ZipEntry entry;
@@ -34,19 +72,58 @@ public class ZipDownloadService {
                 String entryName = entry.getName();
                 String relativePath = extractRelativePath(entryName);
                 if (relativePath != null) {
-                    String content = new String(zis.readAllBytes());
-                    docStore.write(version, relativePath, content);
+                    Path targetFile = stagingDir.resolve(relativePath);
+                    Files.createDirectories(targetFile.getParent());
+                    Files.writeString(targetFile, new String(zis.readAllBytes()));
+                    extractedFiles.add(relativePath);
                 }
                 zis.closeEntry();
             }
-        } catch (IOException e) {
-            throw new UpstreamException("Failed to extract zip for version: " + version, e);
         }
     }
 
+    private void moveStagingToCache(String version, Path stagingDir, List<String> extractedFiles)
+            throws IOException {
+        for (String relativePath : extractedFiles) {
+            Path staged = stagingDir.resolve(relativePath);
+            String content = Files.readString(staged);
+            docStore.write(version, relativePath, content);
+        }
+        cleanupStagingDir(stagingDir);
+    }
+
+    private void cleanupStagingDir(Path stagingDir) {
+        if (!Files.exists(stagingDir)) {
+            return;
+        }
+        try {
+            Files.walkFileTree(stagingDir, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException e) {
+            Log.errorf(e, "Failed to clean up staging directory: %s", stagingDir);
+        }
+    }
+
+    /**
+     * Legacy method kept for backward compatibility.
+     * Prefer {@link #streamAndExtract(String)} for safe extraction.
+     */
+    public void extractDocsSubfolder(String version) {
+        streamAndExtract(version);
+    }
+
     String extractRelativePath(String entryName) {
-        // Zip entries start with "quarkus-<version>/docs/src/main/asciidoc/..."
-        // We need to strip the repo prefix and the asciidoc prefix
         int asciidocIdx = entryName.indexOf(ASCIIDOC_PREFIX);
         if (asciidocIdx < 0) {
             return null;

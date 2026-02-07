@@ -1,11 +1,12 @@
 package com.fvd;
 
-import java.nio.file.Path;
-import java.util.Optional;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -78,5 +79,32 @@ class DocStoreTest {
     void writeRejectsPathTraversal() {
         assertThatThrownBy(() -> docStore.write("3.21", "../../etc/passwd", "content"))
                 .isInstanceOf(InvalidInputException.class);
+    }
+
+    @Test
+    void listDocFilesReturnsEmptyWhenNoDocsDir() {
+        List<String> result = docStore.listDocFiles("3.21");
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void listDocFilesReturnsSortedRelativePaths() {
+        docStore.write("3.21", "config.adoc", "config content");
+        docStore.write("3.21", "security-overview.adoc", "security content");
+        docStore.write("3.21", "cdi.adoc", "cdi content");
+
+        List<String> result = docStore.listDocFiles("3.21");
+
+        assertThat(result).containsExactly("cdi.adoc", "config.adoc", "security-overview.adoc");
+    }
+
+    @Test
+    void listDocFilesIncludesNestedFiles() {
+        docStore.write("3.21", "top.adoc", "top");
+        docStore.write("3.21", "guides/nested.adoc", "nested");
+
+        List<String> result = docStore.listDocFiles("3.21");
+
+        assertThat(result).containsExactly("guides/nested.adoc", "top.adoc");
     }
 }

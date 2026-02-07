@@ -1,12 +1,14 @@
 package com.fvd;
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import java.util.stream.Stream;
 
 @ApplicationScoped
 public class DocStore {
@@ -42,6 +44,23 @@ public class DocStore {
             Files.writeString(docFile, content);
         } catch (IOException e) {
             throw new RuntimeException("Failed to write doc: " + filePath, e);
+        }
+    }
+
+    public List<String> listDocFiles(String version) {
+        Path docsDir = cacheService.versionDir(version).resolve("docs");
+        if (!Files.isDirectory(docsDir)) {
+            return List.of();
+        }
+        try (Stream<Path> stream = Files.walk(docsDir)) {
+            return stream
+                    .filter(Files::isRegularFile)
+                    .map(docsDir::relativize)
+                    .map(Path::toString)
+                    .sorted()
+                    .toList();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to list doc files for version: " + version, e);
         }
     }
 

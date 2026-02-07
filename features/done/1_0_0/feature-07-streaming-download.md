@@ -30,7 +30,7 @@ Upstream URL:
 
 ## Tasks
 
-- [ ] Stream zip download to disk or stream extractor.
-- [ ] Extract only `docs/src/main/asciidoc` into `.cache/<version>/docs`.
-- [ ] Trigger streaming on keyword search when cache is missing.
-- [ ] Add safeguards for partial or failed extraction.
+- [x] Stream zip download to disk or stream extractor.
+- [x] Extract only `docs/src/main/asciidoc` into `.cache/<version>/docs`.
+- [x] Trigger streaming on keyword search when cache is missing.
+- [x] Add safeguards for partial or failed extraction.

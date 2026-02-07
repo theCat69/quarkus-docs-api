@@ -1,18 +1,11 @@
 package com.fvd;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+
+import java.util.*;
 
 @ApplicationScoped
 public class SearchService {
@@ -23,14 +16,23 @@ public class SearchService {
 
     private final KeywordIndexStore keywordIndexStore;
     private final ObjectMapper objectMapper;
+    private final ZipDownloadService zipDownloadService;
+    private final KeywordIndexer keywordIndexer;
+    private final DocStore docStore;
 
     @Inject
-    public SearchService(KeywordIndexStore keywordIndexStore, ObjectMapper objectMapper) {
+    public SearchService(KeywordIndexStore keywordIndexStore, ObjectMapper objectMapper,
+                         ZipDownloadService zipDownloadService, KeywordIndexer keywordIndexer,
+                         DocStore docStore) {
         this.keywordIndexStore = keywordIndexStore;
         this.objectMapper = objectMapper;
+        this.zipDownloadService = zipDownloadService;
+        this.keywordIndexer = keywordIndexer;
+        this.docStore = docStore;
     }
 
     public List<FileSearchResult> searchFiles(String version, List<String> keywords) {
+        ensureIndex(version);
         KeywordIndex index = loadIndex(version);
         if (index == null) {
             return List.of();
@@ -68,6 +70,7 @@ public class SearchService {
 
     public List<SectionSearchResult> searchSections(String version, List<String> keywords,
                                                      List<String> filePaths) {
+        ensureIndex(version);
         KeywordIndex index = loadIndex(version);
         if (index == null) {
             return List.of();
@@ -101,6 +104,27 @@ public class SearchService {
             return results.subList(0, MAX_SECTION_RESULTS);
         }
         return results;
+    }
+
+    private void ensureIndex(String version) {
+        Optional<String> existing = keywordIndexStore.read(version);
+        if (existing.isPresent()) {
+            return;
+        }
+        if (zipDownloadService == null || keywordIndexer == null || docStore == null) {
+            return;
+        }
+        try {
+            List<String> files;
+            if (docStore.docsExist(version)) {
+                files = docStore.listDocFiles(version);
+            } else {
+                files = zipDownloadService.streamAndExtract(version);
+            }
+            keywordIndexer.build(version, files);
+        } catch (Exception e) {
+            Log.warnf(e, "Failed to lazily build keyword index for version %s", version);
+        }
     }
 
     private KeywordIndex loadIndex(String version) {
