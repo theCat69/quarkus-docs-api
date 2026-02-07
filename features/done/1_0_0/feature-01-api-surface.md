@@ -60,7 +60,7 @@ Responses should be stable and lightweight:
 
 ## Tasks
 
-- [ ] Define GET routes and DTOs in Quarkus.
-- [ ] Implement input validation and error mapping.
-- [ ] Add required `/api/health` endpoint.
-- [ ] Document response JSON for index/doc/search endpoints.
+- [x] Define GET routes and DTOs in Quarkus.
+- [x] Implement input validation and error mapping.
+- [x] Add required `/api/health` endpoint.
+- [x] Document response JSON for index/doc/search endpoints.
