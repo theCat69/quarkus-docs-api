@@ -3,7 +3,7 @@ package com.fvd.docs.services;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.github.clients.GitHubService;
+import com.fvd.github.services.GitHubService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.common.validators.InputValidator;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.github.clients.GitHubService;
 import com.fvd.github.exceptions.UpstreamException;
+import com.fvd.github.services.GitHubService;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 

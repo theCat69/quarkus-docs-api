@@ -2,7 +2,6 @@ package com.fvd.github.services;
 
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.github.clients.GitHubService;
 import com.fvd.github.exceptions.UpstreamException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

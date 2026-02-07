@@ -3,7 +3,6 @@ package com.fvd.github.services;
 import com.fvd.cache.services.CacheService;
 import com.fvd.common.validators.InputValidator;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.github.clients.GitHubService;
 import com.fvd.github.exceptions.UpstreamException;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;

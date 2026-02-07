@@ -1,5 +1,7 @@
-package com.fvd.github.clients;
+package com.fvd.github.services;
 
+import com.fvd.github.clients.GithubApiClient;
+import com.fvd.github.clients.GithubRepositoryClient;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 

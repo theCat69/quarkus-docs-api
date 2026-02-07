@@ -1,7 +1,7 @@
 package com.fvd.indexs.services;
 
 import com.fvd.cache.services.CacheService;
-import com.fvd.github.clients.GitHubService;
+import com.fvd.github.services.GitHubService;
 import com.fvd.indexs.stores.IndexStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
