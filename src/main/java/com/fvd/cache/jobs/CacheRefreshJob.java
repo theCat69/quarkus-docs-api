@@ -1,10 +1,10 @@
 package com.fvd.cache.jobs;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
+import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.exceptions.UpstreamException;
 import com.fvd.github.services.GitHubService;
 import com.fvd.indexs.indexers.KeywordIndexer;
@@ -48,8 +48,7 @@ public class CacheRefreshJob {
     void refreshVersion(String version) {
         log.info("Refreshing cache for version {}", version);
 
-        String newIndexJson = gitHubService.fetchIndex(version);
-        List<Map<String, Object>> newEntries = parseIndex(newIndexJson);
+        List<GithubApiIndex> newIndexJson = gitHubService.fetchIndex(version);
         Map<String, String> newShaByName = buildShaMap(newEntries);
 
         Optional<String> oldIndexJson = indexStore.readRaw(version);
@@ -99,14 +98,6 @@ public class CacheRefreshJob {
             return rawContent;
         } catch (Exception e) {
             throw new UpstreamException("Failed to decode content for: " + fileName, e);
-        }
-    }
-
-    private List<Map<String, Object>> parseIndex(String json) {
-        try {
-            return objectMapper.readValue(json, new TypeReference<>() {});
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to parse index JSON", e);
         }
     }
 

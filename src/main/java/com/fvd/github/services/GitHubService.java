@@ -1,11 +1,13 @@
 package com.fvd.github.services;
 
 import com.fvd.github.clients.GithubApiClient;
+import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.clients.GithubRepositoryClient;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
 import java.io.InputStream;
+import java.util.List;
 
 @ApplicationScoped
 public class GitHubService {
@@ -15,7 +17,7 @@ public class GitHubService {
     @RestClient
     GithubRepositoryClient githubRepositoryClient;
 
-    public String fetchIndex(String version) {
+    public List<GithubApiIndex> fetchIndex(String version) {
         return githubApiClient.fetchIndex(version);
     }
 
