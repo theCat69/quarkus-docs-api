@@ -35,7 +35,7 @@ This feature defines the filesystem cache layout for Quarkus documentation and s
 
 ## Tasks
 
-- [ ] Create cache directory layout on demand.
-- [ ] Implement read/write helpers for index, docs, keyword index.
-- [ ] Ensure safe atomic writes for JSON files.
-- [ ] Guard all reads/writes with version/path validation.
+- [x] Create cache directory layout on demand.
+- [x] Implement read/write helpers for index, docs, keyword index.
+- [x] Ensure safe atomic writes for JSON files.
+- [x] Guard all reads/writes with version/path validation.
