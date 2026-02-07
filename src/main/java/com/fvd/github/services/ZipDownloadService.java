@@ -4,6 +4,7 @@ import com.fvd.cache.services.CacheService;
 import com.fvd.common.validators.InputValidator;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.exceptions.UpstreamException;
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -98,13 +99,15 @@ public class ZipDownloadService {
         try {
             Files.walkFileTree(stagingDir, new SimpleFileVisitor<>() {
                 @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                @Nonnull
+                public FileVisitResult visitFile(@Nonnull Path file, @Nonnull BasicFileAttributes attrs) throws IOException {
                     Files.delete(file);
                     return FileVisitResult.CONTINUE;
                 }
 
                 @Override
-                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                @Nonnull
+                public FileVisitResult postVisitDirectory(@Nonnull Path dir, IOException exc) throws IOException {
                     Files.delete(dir);
                     return FileVisitResult.CONTINUE;
                 }
