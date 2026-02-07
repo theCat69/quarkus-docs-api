@@ -1,5 +1,6 @@
 package com.fvd.asciidocs.parser;
 
+import com.fvd.indexs.indexers.KeywordIndexer;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.*;
@@ -33,7 +34,9 @@ public class AsciidocParser {
         List<String> tokens = tokenize(cleaned);
         Map<String, Integer> counts = new HashMap<>();
         for (String token : tokens) {
-            counts.merge(token, 1, Integer::sum);
+            if(!KeywordIndexer.WORD_INDEX_BLACK_LIST.contains(token)) {
+                counts.merge(token, 1, Integer::sum);
+            }
         }
         return counts;
     }

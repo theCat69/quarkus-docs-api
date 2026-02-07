@@ -32,6 +32,7 @@ class KeywordIndexerTest {
         AsciidocParser parser = new AsciidocParser();
         ObjectMapper objectMapper = new ObjectMapper();
         indexer = new KeywordIndexer(docStore, keywordIndexStore, parser, objectMapper);
+        indexer.fileEntryKeywordMinimalScore = 2;
     }
 
     @Test
@@ -52,6 +53,7 @@ class KeywordIndexerTest {
         assertThat(index.files).hasSize(1);
         FileKeywordEntry entry = index.files.get(0);
         assertThat(entry.path).isEqualTo("security-overview.adoc");
+        //TODO assert values
         assertThat(entry.keywords).isNotEmpty();
 
         // "security" appears in text + filename boost (+10)

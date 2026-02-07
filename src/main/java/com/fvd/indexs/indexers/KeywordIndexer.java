@@ -6,12 +6,52 @@ import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.*;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class KeywordIndexer {
+
+    public static final Set<String> WORD_INDEX_BLACK_LIST = Set.of(
+            "a",
+            "an",
+            "and",
+            "the",
+            "how",
+            "does",
+            "do",
+            "is",
+            "are",
+            "was",
+            "were",
+            "what",
+            "which",
+            "who",
+            "when",
+            "where",
+            "why",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "with",
+            "from",
+            "by",
+            "of",
+            "about",
+            "explain",
+            "show",
+            "me",
+            "work",
+            "works",
+            "working",
+            "please",
+            "your"
+    );
 
     private static final int FILENAME_BOOST = 10;
     private static final int TITLE_BOOST = 5;
@@ -21,14 +61,8 @@ public class KeywordIndexer {
     private final AsciidocParser parser;
     private final ObjectMapper objectMapper;
 
-    @Inject
-    public KeywordIndexer(DocStore docStore, KeywordIndexStore keywordIndexStore,
-                          AsciidocParser parser, ObjectMapper objectMapper) {
-        this.docStore = docStore;
-        this.keywordIndexStore = keywordIndexStore;
-        this.parser = parser;
-        this.objectMapper = objectMapper;
-    }
+    @ConfigProperty(name = "keywords.file.minimal.score", defaultValue = "2")
+    Integer fileEntryKeywordMinimalScore;
 
     public KeywordIndex build(String version, List<String> filePaths) {
         List<FileKeywordEntry> fileEntries = new ArrayList<>();
@@ -47,11 +81,21 @@ public class KeywordIndexer {
         return index;
     }
 
+    private Map<String, Integer> filterFileEntries(Map<String, Integer> originalFileKeywords) {
+        Map<String, Integer> filteredFileKeywords = new HashMap<>();
+        for (Map.Entry<String, Integer> fileEntry : originalFileKeywords.entrySet()) {
+            if (fileEntry.getValue() >= fileEntryKeywordMinimalScore) {
+                filteredFileKeywords.put(fileEntry.getKey(), fileEntry.getValue());
+            }
+        }
+        return filteredFileKeywords;
+    }
+
     FileKeywordEntry buildFileEntry(String filePath, String content) {
         // File-level keywords with filename boost
         Map<String, Integer> fileKeywords = parser.extractKeywords(content);
         applyFilenameBoost(filePath, fileKeywords);
-        List<KeywordScore> fileScores = toSortedScores(fileKeywords);
+        List<KeywordScore> fileScores = toSortedScores(filterFileEntries(fileKeywords));
 
         // Section-level keywords with title boost
         List<AsciidocParser.Section> sections = parser.parseSections(content);
