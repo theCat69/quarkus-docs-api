@@ -47,7 +47,7 @@ class CacheRefreshJobTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        job = new CacheRefreshJob(cacheService, gitHubService, indexStore, docStore, keywordIndexer, objectMapper);
+        job = new CacheRefreshJob(cacheService, gitHubService, indexStore, docStore, keywordIndexer);
     }
 
     @Test

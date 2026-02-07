@@ -1,6 +1,5 @@
 package com.fvd.cache.jobs;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.clients.GithubApiFile;
@@ -28,7 +27,6 @@ public class CacheRefreshJob {
     private final IndexStore indexStore;
     private final DocStore docStore;
     private final KeywordIndexer keywordIndexer;
-    private final ObjectMapper objectMapper;
 
     @Scheduled(every = "${app.refresh.interval:6h}")
     public void refresh() {
