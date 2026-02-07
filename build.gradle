@@ -9,6 +9,8 @@ repositories {
 }
 
 dependencies {
+    compileOnly 'io.quarkiverse.wiremock:quarkus-wiremock:1.5.3'
+    testImplementation 'io.quarkiverse.wiremock:quarkus-wiremock-test:1.5.3'
     implementation enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
     implementation 'io.quarkus:quarkus-rest'
     implementation 'io.quarkus:quarkus-rest-client-jackson'

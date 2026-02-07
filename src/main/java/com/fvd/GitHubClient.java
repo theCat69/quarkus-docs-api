@@ -16,33 +16,38 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @ApplicationScoped
 public class GitHubClient {
 
-    private static final String GITHUB_API_BASE = "https://api.github.com/repos/quarkusio/quarkus/contents/";
-    private static final String GITHUB_ZIP_BASE = "https://github.com/quarkusio/quarkus/archive/refs/heads/";
-
     private final HttpClient httpClient;
     private final String githubToken;
+    private final String apiBase;
+    private final String zipBase;
 
     public GitHubClient(
-            @ConfigProperty(name = "app.github.token") Optional<String> githubToken) {
+            @ConfigProperty(name = "app.github.token") Optional<String> githubToken,
+            @ConfigProperty(name = "app.github.api-base",
+                    defaultValue = "https://api.github.com/repos/quarkusio/quarkus/contents/") String apiBase,
+            @ConfigProperty(name = "app.github.zip-base",
+                    defaultValue = "https://github.com/quarkusio/quarkus/archive/refs/heads/") String zipBase) {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(30))
                 .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
         this.githubToken = githubToken.orElse("");
+        this.apiBase = apiBase;
+        this.zipBase = zipBase;
     }
 
     public String fetchIndex(String version) {
-        String url = GITHUB_API_BASE + "docs/src/main/asciidoc?ref=" + version;
+        String url = apiBase + "docs/src/main/asciidoc?ref=" + version;
         return fetchString(url);
     }
 
     public String fetchFileContent(String filePath, String version) {
-        String url = GITHUB_API_BASE + filePath + "?ref=" + version;
+        String url = apiBase + filePath + "?ref=" + version;
         return fetchString(url);
     }
 
     public InputStream fetchZipStream(String version) {
-        String url = GITHUB_ZIP_BASE + version + ".zip";
+        String url = zipBase + version + ".zip";
         try {
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(url))

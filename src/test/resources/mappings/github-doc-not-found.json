@@ -1,0 +1,21 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/repos/quarkusio/quarkus/contents/docs/src/main/asciidoc/nonexistent.adoc",
+    "queryParameters": {
+      "ref": {
+        "equalTo": "3.21"
+      }
+    }
+  },
+  "response": {
+    "status": 404,
+    "jsonBody": {
+      "message": "Not Found",
+      "documentation_url": "https://docs.github.com/rest"
+    },
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    }
+  }
+}

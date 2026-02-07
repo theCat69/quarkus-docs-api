@@ -24,7 +24,9 @@ class DocServiceTest {
     void setUp() {
         CacheService cacheService = new CacheService(tempDir.toString());
         docStore = new DocStore(cacheService);
-        GitHubClient gitHubClient = new GitHubClient(Optional.empty());
+        GitHubClient gitHubClient = new GitHubClient(Optional.empty(),
+                "https://api.github.com/repos/quarkusio/quarkus/contents/",
+                "https://github.com/quarkusio/quarkus/archive/refs/heads/");
         docService = new DocService(docStore, gitHubClient, new ObjectMapper());
     }
 

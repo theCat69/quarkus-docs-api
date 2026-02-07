@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/repos/quarkusio/quarkus/contents/docs/src/main/asciidoc",
+    "queryParameters": {
+      "ref": {
+        "equalTo": "3.21"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "bodyFileName": "github-index-3.21.json",
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    }
+  }
+}

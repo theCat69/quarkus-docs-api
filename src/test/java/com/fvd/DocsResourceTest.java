@@ -1,16 +1,50 @@
 package com.fvd;
 
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+
+import com.github.tomakehurst.wiremock.WireMockServer;
+
+import io.quarkiverse.wiremock.devservice.ConnectWireMock;
 import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.emptyOrNullString;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
 
 @QuarkusTest
+@ConnectWireMock
 class DocsResourceTest {
+
+    WireMockServer wiremock;
+
+    @BeforeEach
+    void cleanTestCache() throws IOException {
+        Path testCache = Path.of("build/test-cache");
+        if (Files.exists(testCache)) {
+            Files.walkFileTree(testCache, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        }
+    }
 
     @Test
     void testHealthEndpoint() {
@@ -50,21 +84,22 @@ class DocsResourceTest {
     }
 
     @Test
-    void testIndexEndpointValidVersionReturnsSuccessOrUpstreamError() {
-        // The index endpoint now hits GitHub API. In CI without network it may return 502.
-        int statusCode = given()
+    void testIndexEndpointValidVersionReturnsIndex() {
+        given()
             .queryParam("version", "3.21")
             .when().get("/api/index")
             .then()
-                .extract().statusCode();
-        // Should be 200 (cached or fetched) or 502 (upstream not reachable)
-        assertThat(statusCode).isIn(200, 502);
+                .statusCode(200)
+                .body("[0].name", equalTo("security-overview.adoc"))
+                .body("[1].name", equalTo("config.adoc"))
+                .body("[2].name", equalTo("cdi.adoc"))
+                .body("size()", is(3));
     }
 
     @Test
     void testDocEndpointMissingVersion() {
         given()
-            .queryParam("path", "docs/src/main/asciidoc/security-oidc.adoc")
+            .queryParam("path", "docs/src/main/asciidoc/security-overview.adoc")
             .when().get("/api/doc")
             .then()
                 .statusCode(400);
@@ -90,15 +125,26 @@ class DocsResourceTest {
     }
 
     @Test
-    void testDocEndpointNotFoundOrUpstreamError() {
-        // Without cache, endpoint hits GitHub. May return 404 or 502.
-        int statusCode = given()
+    void testDocEndpointReturnsDecodedContent() {
+        given()
+            .queryParam("version", "3.21")
+            .queryParam("path", "docs/src/main/asciidoc/security-overview.adoc")
+            .when().get("/api/doc")
+            .then()
+                .statusCode(200)
+                .body("path", equalTo("docs/src/main/asciidoc/security-overview.adoc"))
+                .body("format", equalTo("asciidoc"))
+                .body("content", equalTo("= Quarkus Security overview\n\nQuarkus Security is a framework that provides the architecture."));
+    }
+
+    @Test
+    void testDocEndpointNotFound() {
+        given()
             .queryParam("version", "3.21")
             .queryParam("path", "docs/src/main/asciidoc/nonexistent.adoc")
             .when().get("/api/doc")
             .then()
-                .extract().statusCode();
-        assertThat(statusCode).isIn(404, 502);
+                .statusCode(404);
     }
 
     @Test
