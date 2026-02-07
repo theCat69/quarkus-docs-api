@@ -18,23 +18,20 @@ import java.util.Optional;
 public class GitHubClient {
 
     private final HttpClient httpClient;
-    private final String githubToken;
-    private final String apiBase;
-    private final String zipBase;
+    @ConfigProperty(name = "app.github.token")
+    Optional<String> githubToken;
+    @ConfigProperty(name = "app.github.api-base",
+            defaultValue = "https://api.github.com/repos/quarkusio/quarkus/contents/")
+    String apiBase;
+    @ConfigProperty(name = "app.github.zip-base",
+    defaultValue = "https://github.com/quarkusio/quarkus/archive/refs/heads/")
+    String zipBase;
 
-    public GitHubClient(
-            @ConfigProperty(name = "app.github.token") Optional<String> githubToken,
-            @ConfigProperty(name = "app.github.api-base",
-                    defaultValue = "https://api.github.com/repos/quarkusio/quarkus/contents/") String apiBase,
-            @ConfigProperty(name = "app.github.zip-base",
-                    defaultValue = "https://github.com/quarkusio/quarkus/archive/refs/heads/") String zipBase) {
+    public GitHubClient() {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(30))
                 .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
-        this.githubToken = githubToken.orElse("");
-        this.apiBase = apiBase;
-        this.zipBase = zipBase;
     }
 
     public String fetchIndex(String version) {
@@ -99,8 +96,6 @@ public class GitHubClient {
     }
 
     private void addAuthHeader(HttpRequest.Builder builder) {
-        if (githubToken != null && !githubToken.isBlank()) {
-            builder.header("Authorization", "Bearer " + githubToken);
-        }
+        githubToken.ifPresent(s -> builder.header("Authorization", "Bearer " + s));
     }
 }
