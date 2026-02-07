@@ -39,7 +39,7 @@ Upstream URL:
 
 ## Tasks
 
-- [ ] Fetch and store raw file index from GitHub contents API.
-- [ ] Fetch, decode, and cache a single asciidoc file.
-- [ ] Implement zip extraction for `docs/src/main/asciidoc`.
-- [ ] Ensure extracted docs are written under `.cache/<version>/docs`.
+- [x] Fetch and store raw file index from GitHub contents API.
+- [x] Fetch, decode, and cache a single asciidoc file.
+- [x] Implement zip extraction for `docs/src/main/asciidoc`.
+- [x] Ensure extracted docs are written under `.cache/<version>/docs`.

@@ -2,6 +2,7 @@ package com.fvd;
 
 import java.util.List;
 
+import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -12,11 +13,20 @@ import jakarta.ws.rs.core.MediaType;
 @Produces(MediaType.APPLICATION_JSON)
 public class DocsResource {
 
+    private final IndexService indexService;
+    private final DocService docService;
+
+    @Inject
+    public DocsResource(IndexService indexService, DocService docService) {
+        this.indexService = indexService;
+        this.docService = docService;
+    }
+
     @GET
     @Path("/index")
     public String getIndex(@QueryParam("version") String version) {
         InputValidator.validateVersion(version);
-        return "[]";
+        return indexService.getOrFetchIndex(version);
     }
 
     @GET
@@ -25,7 +35,8 @@ public class DocsResource {
                               @QueryParam("path") String path) {
         InputValidator.validateVersion(version);
         InputValidator.validatePath(path);
-        throw new DocNotFoundException("Document not found: " + path);
+        String content = docService.getOrFetchDoc(version, path);
+        return new DocResponse(path, content, "asciidoc");
     }
 
     @GET
