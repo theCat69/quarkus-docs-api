@@ -46,7 +46,7 @@ This feature builds a keyword index from cached asciidoc files. The index suppor
 
 ## Tasks
 
-- [ ] Implement asciidoc parser with code-block exclusion.
-- [ ] Build per-file keyword scores with filename boost.
-- [ ] Build section index with start/end lines and title boost.
-- [ ] Persist keyword index to `.cache/<version>/keyword_index.json`.
+- [x] Implement asciidoc parser with code-block exclusion.
+- [x] Build per-file keyword scores with filename boost.
+- [x] Build section index with start/end lines and title boost.
+- [x] Persist keyword index to `.cache/<version>/keyword_index.json`.
