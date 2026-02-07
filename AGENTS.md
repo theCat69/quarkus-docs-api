@@ -2,15 +2,77 @@
 
 This file guides agentic coding in this repository. Follow it exactly.
 
-## Project summary
-- Quarkus REST API using Gradle.
-- Java 25 source/target compatibility.
-- Tests are JUnit 5 with QuarkusTest and RestAssured.
+## Critical rules
+** CRITICAL RULES ** 
+Those RULES are CRITICAL you must follow them.
+- ALWAYS use the question tool to interact with the user 
+- NEVER return directly unless you can't use the question tool or if you are done with ALL tasks and features
+** END CRITICAL RULES **
 
-## Source layout
-- Main code: `src/main/java`
-- Test code: `src/test/java`
-- Config: `src/main/resources/application.properties`
+## Project summary
+- Quarkus REST API using Gradle (wrapper only).
+- Java 21 source/target compatibility.
+- Tests are JUnit 5 with QuarkusTest, RestAssured, AssertJ, Mockito.
+- Lombok is available; use it to reduce boilerplate when possible.
+
+## Repository rules
+- No Cursor rules found in `.cursor/rules/` or `.cursorrules`.
+- No Copilot rules found in `.github/copilot-instructions.md`.
+
+## File navigation
+Agent-friendly map of where to look first.
+
+- App entrypoints and resources live in `src/main/java`.
+- HTTP tests live in `src/test/java` and use `@QuarkusTest`.
+- WireMock stubs and test fixtures live in `src/test/resources`.
+- Quarkus config defaults live in `src/main/resources/application.properties`.
+- Dev scripts or helpers may exist under `bin/`.
+- Feature planning docs are under `features/`.
+
+## File structure (folder guide)
+Short descriptions of every folder at repo root and under `src/`.
+
+### Repo root
+- `bin`: build/test helper outputs (Gradle default output).
+- `build`: Gradle build outputs (generated, reports, classes).
+- `features`: planning notes; `done/` and `todo/` track work items.
+- `gradle`: Gradle wrapper files and supporting scripts.
+- `src`: application and test source sets.
+- `.cache`: local tooling cache.
+- `.gradle`: local Gradle cache/work state.
+- `.idea`: IntelliJ project config.
+- `.settings`: IDE/tooling settings.
+- `.tmp`: local scratch data.
+- `.git`: git metadata.
+
+### src/
+- `src/main/java`: production Java code (REST resources, services, DTOs).
+- `src/main/resources`: app config and resource files.
+- `src/main/docker`: container artifacts (if any).
+- `src/main/bin`: main runtime binaries/resources (if any).
+- `src/test/java`: JVM unit and Quarkus tests.
+- `src/test/resources`: test configs and fixtures.
+- `src/test/resources/mappings`: WireMock mappings.
+- `src/test/resources/__files`: WireMock response bodies.
+- `src/native-test/java`: native-image tests (avoid unless asked).
+
+### src/main/java package map
+- `src/main/java/com/fvd/asciidocs`: Asciidoc parsing utilities for tokenization and section extraction.
+- `src/main/java/com/fvd/cache`: Cache management and scheduled refresh jobs.
+- `src/main/java/com/fvd/common`: Shared exceptions, validators, and error response DTOs.
+- `src/main/java/com/fvd/docs`: Docs API resources, doc services, and doc storage.
+- `src/main/java/com/fvd/github`: GitHub API client, zip download, and upstream error mapping.
+- `src/main/java/com/fvd/indexs`: Indexing services, index stores, and keyword index models.
+- `src/main/java/com/fvd/search`: Search services and response DTOs for file/section searches.
+
+### Common subpackages (generic guide)
+- `.../resources`: JAX-RS endpoints and response DTOs.
+- `.../services`: Core business logic and orchestration.
+- `.../stores`: Persistence/IO layers (cache, filesystem, or external storage).
+- `.../clients`: External API clients.
+- `.../exceptions`: Domain exceptions and exception mappers.
+- `.../validators`: Input validation helpers.
+- `.../indexers`: Index builders and indexing helpers.
 
 ## Build, lint, and test commands
 Use the Gradle wrapper. Do not call system Gradle.
@@ -22,26 +84,31 @@ Use the Gradle wrapper. Do not call system Gradle.
 
 ### Tests (TDD workflow)
 This project is built using TDD. Prefer tight feedback loops.
-Make : 
-- unit tests with assertJ assertions 
-- integration tests with @QuarkusTest and rest-assured.
+Make:
+- unit tests with AssertJ assertions
+- integration tests with `@QuarkusTest` and RestAssured
 
 - All unit tests: `./gradlew test`
 - Single test class: `./gradlew test --tests "com.fvd.GreetingResourceTest"`
 - Single test method: `./gradlew test --tests "com.fvd.GreetingResourceTest.testHelloEndpoint"`
 
 ### Quarkus JVM tests
-Use @QuarkusTest for JVM integration-style tests only.
+Use `@QuarkusTest` for JVM integration-style tests only.
 
-- All @QuarkusTest tests (same as test task): `./gradlew test`
-- Single @QuarkusTest class: `./gradlew test --tests "com.fvd.GreetingResourceTest"`
+- All `@QuarkusTest` tests (same as test task): `./gradlew test`
+- Single `@QuarkusTest` class: `./gradlew test --tests "com.fvd.GreetingResourceTest"`
+
+### Native tests
+Do not run native tests unless explicitly requested.
+
+- Native tests: `./gradlew testNative`
 
 ### Lint/format
 No dedicated lint or formatter tasks are configured. Keep formatting
 consistent with existing code and Java conventions.
 
 ## Required testing scope
-- Unit tests and @QuarkusTest (JVM) only.
+- Unit tests and `@QuarkusTest` (JVM) only.
 - Do not add or run native tests unless explicitly requested.
 
 ## Code style guidelines
@@ -50,7 +117,8 @@ consistent.
 
 ### Imports
 - Use explicit imports; no wildcard imports.
-- Order imports by groups: static imports last.
+- Order imports by groups: Java, javax/jakarta, third-party, project.
+- Keep static imports last.
 - Keep static imports for test fluency (RestAssured, Hamcrest).
 
 ### Formatting
@@ -60,10 +128,18 @@ consistent.
 - Blank line between import groups and class definitions.
 - Avoid trailing whitespace.
 
+### Lombok
+- Use Lombok to reduce boilerplate where possible.
+- Prefer `@Value` or `@Data` for DTOs when appropriate.
+- Prefer `@Builder` for complex constructors.
+- Prefer `@RequiredArgsConstructor` for dependency injection.
+- Use `@Slf4j` for logging rather than manual logger fields.
+
 ### Types and APIs
 - Prefer interfaces for REST clients and use `@RegisterRestClient`.
 - Use `Set`/`List` over arrays for collections.
 - Use `String` for IDs unless a stronger type exists.
+- Favor immutable DTOs when possible.
 
 ### Naming
 - Packages are lowercase: `com.fvd`.
@@ -98,12 +174,11 @@ consistent.
 
 ## Dependencies of note
 - Quarkus REST, REST client, Jackson.
-- Quarkus Scheduler and SmallRye Health.
-- AssertJ and RestAssured for testing.
-
-## Repository rules
-- No Cursor rules found in `.cursor/rules/` or `.cursorrules`.
-- No Copilot rules found in `.github/copilot-instructions.md`.
+- Quarkus Scheduler, SmallRye Health, OpenAPI.
+- Quarkus ARC (CDI).
+- Lombok (io.freefair.lombok plugin).
+- WireMock (test support).
+- AssertJ, RestAssured, Mockito for testing.
 
 ## When adding new code
 - Keep the public API stable unless a change is requested.
@@ -117,6 +192,6 @@ consistent.
 
 ## Notes for agents
 - This is a Gradle project. Use `./gradlew` for all tasks.
-- Java 25 is required for compilation; avoid language features not
+- Java 21 is required for compilation; avoid language features not
   supported by the configured toolchain.
 - Keep file encodings UTF-8; source files should be ASCII where possible.
