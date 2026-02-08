@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 @Path("/api/doc")
@@ -46,8 +47,19 @@ public class DocsResource {
             description = "Upstream GitHub API error",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))
     )
-    public DocResponse getDoc(@QueryParam("version") String version,
-                              @QueryParam("path") String path) {
+    public DocResponse getDoc(
+            @Parameter(
+                    description = "Quarkus version branch or tag",
+                    required = true,
+                    example = "3.21"
+            )
+            @QueryParam("version") String version,
+            @Parameter(
+                    description = "Full file path in the GitHub repository (e.g. docs/src/main/asciidoc/security-overview.adoc)",
+                    required = true,
+                    example = "docs/src/main/asciidoc/security-overview.adoc"
+            )
+            @QueryParam("path") String path) {
         InputValidator.validateVersion(version);
         InputValidator.validatePath(path);
         String content = docService.getOrFetchDoc(version, path);

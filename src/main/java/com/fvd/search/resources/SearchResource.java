@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 import java.util.Arrays;
@@ -42,8 +43,11 @@ public class SearchResource {
             description = "Invalid input parameters (missing or malformed version/keywords)",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))
     )
-    public SearchResponse<FileSearchResult> searchFiles(@QueryParam("version") String version,
-                                                        @QueryParam("keywords") String keywords) {
+    public SearchResponse<FileSearchResult> searchFiles(
+            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.21")
+            @QueryParam("version") String version,
+            @Parameter(description = "Comma-separated list of search keywords", required = true, example = "security,oidc")
+            @QueryParam("keywords") String keywords) {
         InputValidator.validateVersion(version);
         InputValidator.validateKeywords(keywords);
         List<String> keywordList = Arrays.asList(keywords.split(","));
@@ -67,9 +71,13 @@ public class SearchResource {
             description = "Invalid input parameters (missing or malformed version/keywords/filePaths)",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))
     )
-    public SearchResponse<SectionSearchResult> searchSections(@QueryParam("version") String version,
-                                                              @QueryParam("keywords") String keywords,
-                                                              @QueryParam("filePaths") String filePaths) {
+    public SearchResponse<SectionSearchResult> searchSections(
+            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.21")
+            @QueryParam("version") String version,
+            @Parameter(description = "Comma-separated list of search keywords", required = true, example = "security,oidc")
+            @QueryParam("keywords") String keywords,
+            @Parameter(description = "Comma-separated list of file paths relative to the docs directory", required = true, example = "security-overview.adoc,config.adoc")
+            @QueryParam("filePaths") String filePaths) {
         InputValidator.validateVersion(version);
         InputValidator.validateKeywords(keywords);
         InputValidator.validateFilePaths(filePaths);
@@ -100,9 +108,13 @@ public class SearchResource {
             description = "Document or section not found",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))
     )
-    public SectionContentResult getSectionContent(@QueryParam("version") String version,
-                                                  @QueryParam("filePath") String filePath,
-                                                  @QueryParam("sectionTitle") String sectionTitle) {
+    public SectionContentResult getSectionContent(
+            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.21")
+            @QueryParam("version") String version,
+            @Parameter(description = "File path relative to the docs directory", required = true, example = "security-overview.adoc")
+            @QueryParam("filePath") String filePath,
+            @Parameter(description = "Title of the section to retrieve", required = true, example = "Getting Started")
+            @QueryParam("sectionTitle") String sectionTitle) {
         InputValidator.validateVersion(version);
         InputValidator.validatePath(filePath);
         InputValidator.validateSectionTitle(sectionTitle);

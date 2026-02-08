@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 import java.util.List;
@@ -43,7 +44,13 @@ public class IndexResource {
             description = "Upstream GitHub API error",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))
     )
-    public List<GithubApiIndex> getIndex(@QueryParam("version") String version) {
+    public List<GithubApiIndex> getIndex(
+            @Parameter(
+                    description = "Quarkus version branch or tag",
+                    required = true,
+                    example = "3.21"
+            )
+            @QueryParam("version") String version) {
         InputValidator.validateVersion(version);
         return indexService.getOrFetchIndex(version);
     }
