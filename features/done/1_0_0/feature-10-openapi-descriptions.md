@@ -10,7 +10,7 @@ Add/complete descriptive text in the existing SmallRye OpenAPI setup to make end
 
 ## Tasks
 
-- [ ] Inventory all REST resources and endpoints.
-- [ ] Add missing `@Operation` summaries/descriptions.
-- [ ] Add/complete `@APIResponse` descriptions for existing responses.
-- [ ] Review generated OpenAPI to ensure descriptions appear.
+- [x] Inventory all REST resources and endpoints.
+- [x] Add missing `@Operation` summaries/descriptions.
+- [x] Add/complete `@APIResponse` descriptions for existing responses.
+- [x] Review generated OpenAPI to ensure descriptions appear.

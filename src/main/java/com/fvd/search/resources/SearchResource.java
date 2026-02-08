@@ -28,6 +28,20 @@ public class SearchResource {
 
     @GET
     @Path("/files")
+    @Operation(
+            summary = "Search files by keywords",
+            description = "Searches the keyword index for files matching the given keywords. Returns files ranked by relevance score."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Search results returned successfully",
+            content = @Content(schema = @Schema(implementation = SearchResponse.class))
+    )
+    @APIResponse(
+            responseCode = "400",
+            description = "Invalid input parameters (missing or malformed version/keywords)",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
     public SearchResponse<FileSearchResult> searchFiles(@QueryParam("version") String version,
                                                         @QueryParam("keywords") String keywords) {
         InputValidator.validateVersion(version);
@@ -39,6 +53,20 @@ public class SearchResource {
 
     @GET
     @Path("/sections")
+    @Operation(
+            summary = "Search sections by keywords",
+            description = "Searches within specific files for sections matching the given keywords. Returns sections ranked by relevance score."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Section search results returned successfully",
+            content = @Content(schema = @Schema(implementation = SearchResponse.class))
+    )
+    @APIResponse(
+            responseCode = "400",
+            description = "Invalid input parameters (missing or malformed version/keywords/filePaths)",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
     public SearchResponse<SectionSearchResult> searchSections(@QueryParam("version") String version,
                                                               @QueryParam("keywords") String keywords,
                                                               @QueryParam("filePaths") String filePaths) {
