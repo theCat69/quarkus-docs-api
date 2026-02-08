@@ -209,6 +209,58 @@ public class SearchService {
         return paginate(results, limit, offset);
     }
 
+    public PaginatedResult<ContentSearchResult> searchContent(String version, List<String> keywords,
+                                                               int limit, int offset) {
+        List<String> files = docStore.listDocFiles(version);
+        if (files.isEmpty()) {
+            return new PaginatedResult<>(List.of(), 0);
+        }
+
+        Set<String> keywordSet = new HashSet<>(keywords.stream()
+                .map(String::toLowerCase).toList());
+
+        List<ContentSearchResult> results = new ArrayList<>();
+
+        for (String filePath : files) {
+            Optional<String> content = docStore.read(version, filePath);
+            if (content.isEmpty()) {
+                continue;
+            }
+            String text = content.get();
+            String lowerText = text.toLowerCase();
+            String[] lines = text.split("\n", -1);
+
+            double fileScore = 0;
+            int firstMatchOffset = -1;
+            int firstMatchLine = -1;
+
+            for (String keyword : keywordSet) {
+                int idx = 0;
+                int matchCount = 0;
+                while ((idx = lowerText.indexOf(keyword, idx)) >= 0) {
+                    matchCount++;
+                    if (firstMatchOffset < 0 || idx < firstMatchOffset) {
+                        firstMatchOffset = idx;
+                    }
+                    idx += keyword.length();
+                }
+                fileScore += matchCount;
+            }
+
+            if (fileScore > 0 && firstMatchOffset >= 0) {
+                if (keywordSet.size() > 1) {
+                    fileScore *= MULTI_KEYWORD_BOOST;
+                }
+                firstMatchLine = computeLineNumber(text, firstMatchOffset);
+                String snippet = generateSnippet(text, firstMatchOffset);
+                results.add(new ContentSearchResult(filePath, snippet, firstMatchOffset, firstMatchLine, fileScore));
+            }
+        }
+
+        results.sort(Comparator.comparingDouble((ContentSearchResult r) -> r.score).reversed());
+        return paginate(results, limit, offset);
+    }
+
     /**
      * Invalidates the in-memory cache for a specific version.
      * Should be called after the keyword index is rebuilt (e.g., during cache refresh).
@@ -225,6 +277,31 @@ public class SearchService {
         }
         int end = Math.min(offset + limit, total);
         return new PaginatedResult<>(all.subList(offset, end), total);
+    }
+
+    private static final int SNIPPET_CONTEXT = 100;
+
+    static int computeLineNumber(String text, int charOffset) {
+        int line = 1;
+        for (int i = 0; i < charOffset && i < text.length(); i++) {
+            if (text.charAt(i) == '\n') {
+                line++;
+            }
+        }
+        return line;
+    }
+
+    static String generateSnippet(String text, int matchOffset) {
+        int start = Math.max(0, matchOffset - SNIPPET_CONTEXT);
+        int end = Math.min(text.length(), matchOffset + SNIPPET_CONTEXT);
+        String snippet = text.substring(start, end).replaceAll("\\s+", " ").trim();
+        if (start > 0) {
+            snippet = "..." + snippet;
+        }
+        if (end < text.length()) {
+            snippet = snippet + "...";
+        }
+        return snippet;
     }
 
     private KeywordIndex getOrBuildIndex(String version) {

@@ -391,6 +391,91 @@ class SearchResourceTest {
                 .body("matchScore", lessThan(1.0f));
     }
 
+    // --- Content search endpoint tests ---
+
+    @Test
+    void testSearchContentEndpointMissingVersion() {
+        given()
+                .queryParam("keywords", "security")
+                .when().get("/api/search/content")
+                .then()
+                .statusCode(400);
+    }
+
+    @Test
+    void testSearchContentEndpointMissingKeywords() {
+        given()
+                .queryParam("version", "3.27")
+                .when().get("/api/search/content")
+                .then()
+                .statusCode(400);
+    }
+
+    @Test
+    void testSearchContentEndpointNoDocsReturnsEmpty() {
+        given()
+                .queryParam("version", "3.99")
+                .queryParam("keywords", "nonexistent")
+                .when().get("/api/search/content")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(0))
+                .body("total", is(0));
+    }
+
+    @Test
+    void testSearchContentEndpointReturnsResults() {
+        seedDocFile();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .when().get("/api/search/content")
+                .then()
+                .statusCode(200)
+                .body("results.size()", greaterThan(0))
+                .body("results[0].path", equalTo("security.adoc"))
+                .body("results[0].snippet", notNullValue())
+                .body("results[0].matchOffset", greaterThanOrEqualTo(0))
+                .body("results[0].matchLine", greaterThanOrEqualTo(1))
+                .body("results[0].score", greaterThan(0.0f));
+    }
+
+    @Test
+    void testSearchContentEndpointWithPagination() {
+        seedDocFile();
+        docStore.write("3.27", "config.adoc", "= Config Guide\nSecurity config for quarkus.\n");
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("limit", 1)
+                .queryParam("offset", 0)
+                .when().get("/api/search/content")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(1))
+                .body("total", is(2))
+                .body("limit", is(1))
+                .body("offset", is(0));
+    }
+
+    @Test
+    void testSearchContentEndpointWithPaginationOffset() {
+        seedDocFile();
+        docStore.write("3.27", "config.adoc", "= Config Guide\nSecurity config for quarkus.\n");
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("limit", 1)
+                .queryParam("offset", 1)
+                .when().get("/api/search/content")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(1))
+                .body("total", is(2))
+                .body("limit", is(1))
+                .body("offset", is(1));
+    }
+
     // --- Versions endpoint tests ---
 
     @Test

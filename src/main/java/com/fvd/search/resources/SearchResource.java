@@ -205,4 +205,41 @@ public class SearchResource {
                 version, keywordList, filePath, sectionTitle, validLimit, validOffset);
         return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset);
     }
+
+    @GET
+    @Path("/content")
+    @Operation(
+            summary = "Full-text search in document content",
+            description = "Searches within the body of all documentation files for the given keywords. "
+                    + "Returns matching files with context snippets around the first match, "
+                    + "match offset, line number, and a relevance score based on keyword frequency."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Content search results returned successfully",
+            content = @Content(schema = @Schema(implementation = SearchResponse.class))
+    )
+    @APIResponse(
+            responseCode = "400",
+            description = "Invalid input parameters (missing or malformed version/keywords)",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
+    public SearchResponse<ContentSearchResult> searchContent(
+            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.27")
+            @QueryParam("version") String version,
+            @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in document body)", required = true, example = "security,oidc")
+            @QueryParam("keywords") String keywords,
+            @Parameter(description = "Maximum number of results to return (default 10, max 100)", example = "10")
+            @QueryParam("limit") Integer limit,
+            @Parameter(description = "Number of results to skip (default 0)", example = "0")
+            @QueryParam("offset") Integer offset) {
+        InputValidator.validateVersion(version);
+        InputValidator.validateKeywords(keywords);
+        int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
+        int validOffset = InputValidator.validateOffset(offset);
+        List<String> keywordList = Arrays.asList(keywords.split(","));
+        PaginatedResult<ContentSearchResult> result = searchService.searchContent(
+                version, keywordList, validLimit, validOffset);
+        return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset);
+    }
 }
