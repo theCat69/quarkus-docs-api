@@ -195,3 +195,164 @@ consistent.
 - Java 21 is required for compilation; avoid language features not
   supported by the configured toolchain.
 - Keep file encodings UTF-8; source files should be ASCII where possible.
+
+## Code examples (from this codebase)
+
+Use these examples as reference for structure, imports, and Lombok usage.
+
+### POJO/DTO example
+
+```java
+package com.fvd.search.resources;
+
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+
+@NoArgsConstructor
+@AllArgsConstructor
+public class SearchResponse<T> {
+
+    public List<T> results;
+
+}
+```
+
+### Store example
+
+```java
+package com.fvd.docs.stores;
+
+import com.fvd.cache.services.CacheService;
+import com.fvd.common.validators.InputValidator;
+import jakarta.enterprise.context.ApplicationScoped;
+import lombok.RequiredArgsConstructor;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
+
+@ApplicationScoped
+@RequiredArgsConstructor
+public class DocStore {
+
+    private final CacheService cacheService;
+
+    public Optional<String> read(String version, String filePath) {
+        InputValidator.validateVersion(version);
+        InputValidator.validatePath(filePath);
+        Path docFile = cacheService.versionDir(version).resolve("docs").resolve(filePath);
+        if (!Files.exists(docFile)) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(Files.readString(docFile));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read doc: " + filePath, e);
+        }
+    }
+}
+```
+
+### Service example
+
+```java
+package com.fvd.search.services;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fvd.docs.stores.DocStore;
+import com.fvd.github.services.ZipDownloadService;
+import com.fvd.indexs.indexers.KeywordIndex;
+import com.fvd.indexs.indexers.KeywordIndexer;
+import com.fvd.indexs.stores.KeywordIndexStore;
+import jakarta.enterprise.context.ApplicationScoped;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
+import java.util.Optional;
+
+@Slf4j
+@ApplicationScoped
+@RequiredArgsConstructor
+public class SearchService {
+
+    private final KeywordIndexStore keywordIndexStore;
+    private final ObjectMapper objectMapper;
+    private final ZipDownloadService zipDownloadService;
+    private final KeywordIndexer keywordIndexer;
+    private final DocStore docStore;
+
+    public List<FileSearchResult> searchFiles(String version, List<String> keywords) {
+        ensureIndex(version);
+        KeywordIndex index = loadIndex(version);
+        if (index == null) {
+            return List.of();
+        }
+        return List.of();
+    }
+
+    private void ensureIndex(String version) {
+        Optional<String> existing = keywordIndexStore.read(version);
+        if (existing.isPresent()) {
+            return;
+        }
+        if (zipDownloadService == null || keywordIndexer == null || docStore == null) {
+            return;
+        }
+    }
+
+    private KeywordIndex loadIndex(String version) {
+        Optional<String> json = keywordIndexStore.read(version);
+        if (json.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(json.get(), KeywordIndex.class);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse keyword index for version: " + version, e);
+        }
+    }
+}
+```
+
+### Resource example
+
+```java
+package com.fvd.search.resources;
+
+import com.fvd.common.validators.InputValidator;
+import com.fvd.search.services.FileSearchResult;
+import com.fvd.search.services.SearchService;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.MediaType;
+import lombok.RequiredArgsConstructor;
+
+import java.util.Arrays;
+import java.util.List;
+
+@Path("/api/search")
+@Produces(MediaType.APPLICATION_JSON)
+@RequiredArgsConstructor
+public class SearchResource {
+    private final SearchService searchService;
+
+    @GET
+    @Path("/files")
+    public SearchResponse<FileSearchResult> searchFiles(@QueryParam("version") String version,
+                                                        @QueryParam("keywords") String keywords) {
+        InputValidator.validateVersion(version);
+        InputValidator.validateKeywords(keywords);
+        List<String> keywordList = Arrays.asList(keywords.split(","));
+        List<FileSearchResult> results = searchService.searchFiles(version, keywordList);
+        return new SearchResponse<>(results);
+    }
+}
+```
