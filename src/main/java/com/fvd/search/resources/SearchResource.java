@@ -25,6 +25,21 @@ public class SearchResource {
     private final SearchService searchService;
 
     @GET
+    @Path("/versions")
+    @Operation(
+            summary = "List available versions",
+            description = "Returns a list of all cached versions that are available for searching."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "List of available versions returned successfully",
+            content = @Content(schema = @Schema(implementation = SearchResponse.class))
+    )
+    public SearchResponse<String> listVersions() {
+        return new SearchResponse<>(searchService.listVersions());
+    }
+
+    @GET
     @Path("/files")
     @Operation(
             summary = "Search files by keywords",
@@ -43,7 +58,7 @@ public class SearchResource {
     public SearchResponse<FileSearchResult> searchFiles(
             @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.21")
             @QueryParam("version") String version,
-            @Parameter(description = "Comma-separated list of search keywords", required = true, example = "security,oidc")
+            @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in lowercase)", required = true, example = "security,oidc")
             @QueryParam("keywords") String keywords) {
         InputValidator.validateVersion(version);
         InputValidator.validateKeywords(keywords);
@@ -56,7 +71,8 @@ public class SearchResource {
     @Path("/sections")
     @Operation(
             summary = "Search sections by keywords",
-            description = "Searches within specific files for sections matching the given keywords. Returns sections ranked by relevance score."
+            description = "Searches for sections matching the given keywords. "
+                    + "Optionally filter by file paths. When filePaths is omitted, all files are searched."
     )
     @APIResponse(
             responseCode = "200",
@@ -71,15 +87,18 @@ public class SearchResource {
     public SearchResponse<SectionSearchResult> searchSections(
             @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.21")
             @QueryParam("version") String version,
-            @Parameter(description = "Comma-separated list of search keywords", required = true, example = "security,oidc")
+            @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in lowercase)", required = true, example = "security,oidc")
             @QueryParam("keywords") String keywords,
-            @Parameter(description = "Comma-separated list of file paths relative to the docs directory", required = true, example = "security-overview.adoc,config.adoc")
+            @Parameter(description = "Comma-separated list of file paths relative to the docs directory (optional)", example = "security-overview.adoc,config.adoc")
             @QueryParam("filePaths") String filePaths) {
         InputValidator.validateVersion(version);
         InputValidator.validateKeywords(keywords);
-        InputValidator.validateFilePaths(filePaths);
         List<String> keywordList = Arrays.asList(keywords.split(","));
-        List<String> filePathList = Arrays.asList(filePaths.split(","));
+        List<String> filePathList = null;
+        if (filePaths != null && !filePaths.isBlank()) {
+            InputValidator.validateFilePaths(filePaths);
+            filePathList = Arrays.asList(filePaths.split(","));
+        }
         List<SectionSearchResult> results = searchService.searchSections(version, keywordList, filePathList);
         return new SearchResponse<>(results);
     }
@@ -138,7 +157,7 @@ public class SearchResource {
     public SearchResponse<CodeSampleSearchResult> searchCodeSamples(
             @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.21")
             @QueryParam("version") String version,
-            @Parameter(description = "Comma-separated list of search keywords", required = true, example = "security,oidc")
+            @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in lowercase)", required = true, example = "security,oidc")
             @QueryParam("keywords") String keywords,
             @Parameter(description = "Optional file path to filter results", example = "security-overview.adoc")
             @QueryParam("filePath") String filePath,

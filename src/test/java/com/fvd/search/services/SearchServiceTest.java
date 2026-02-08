@@ -37,6 +37,7 @@ class SearchServiceTest {
     KeywordIndexStore keywordIndexStore;
     CodeSampleIndexStore codeSampleIndexStore;
     DocParser docParser;
+    CacheService cacheService;
 
     @BeforeEach
     void setUp() {
@@ -47,7 +48,8 @@ class SearchServiceTest {
         keywordIndexStore = new KeywordIndexStore(ds);
         codeSampleIndexStore = new CodeSampleIndexStore(ds);
         docParser = new AsciidocParser();
-        searchService = new SearchService(keywordIndexStore, codeSampleIndexStore, null, null, null, docParser);
+        cacheService = new CacheService(tempDir.toString());
+        searchService = new SearchService(keywordIndexStore, codeSampleIndexStore, null, null, null, docParser, cacheService);
     }
 
     private void seedIndex(String version, KeywordIndex index) {
@@ -238,6 +240,48 @@ class SearchServiceTest {
         assertThat(results).isEmpty();
     }
 
+    @Test
+    void searchSectionsSearchesAllFilesWhenFilePathsIsNull() {
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("security.adoc", List.of(), List.of(
+                        new SectionKeywordEntry("Auth", 1, 10,
+                                List.of(new KeywordScore("security", 8)))
+                )),
+                new FileKeywordEntry("config.adoc", List.of(), List.of(
+                        new SectionKeywordEntry("Settings", 1, 10,
+                                List.of(new KeywordScore("security", 5)))
+                ))
+        ));
+        seedIndex("3.21", index);
+
+        List<SectionSearchResult> results = searchService.searchSections(
+                "3.21", List.of("security"), null);
+
+        assertThat(results).hasSize(2);
+        assertThat(results.get(0).section).isEqualTo("Auth");
+        assertThat(results.get(1).section).isEqualTo("Settings");
+    }
+
+    @Test
+    void searchSectionsSearchesAllFilesWhenFilePathsIsEmpty() {
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("security.adoc", List.of(), List.of(
+                        new SectionKeywordEntry("Auth", 1, 10,
+                                List.of(new KeywordScore("security", 8)))
+                )),
+                new FileKeywordEntry("config.adoc", List.of(), List.of(
+                        new SectionKeywordEntry("Settings", 1, 10,
+                                List.of(new KeywordScore("security", 5)))
+                ))
+        ));
+        seedIndex("3.21", index);
+
+        List<SectionSearchResult> results = searchService.searchSections(
+                "3.21", List.of("security"), List.of());
+
+        assertThat(results).hasSize(2);
+    }
+
     // --- Section content tests ---
 
     @Nested
@@ -251,7 +295,7 @@ class SearchServiceTest {
             CacheService cacheService = new CacheService(tempDir.toString());
             realDocStore = new DocStore(cacheService);
             sectionSearchService = new SearchService(
-                    keywordIndexStore, codeSampleIndexStore, null, null, realDocStore, docParser);
+                    keywordIndexStore, codeSampleIndexStore, null, null, realDocStore, docParser, cacheService);
         }
 
         @Test
@@ -349,7 +393,7 @@ class SearchServiceTest {
             lazyKeywordIndexStore = new KeywordIndexStore(ds);
             CodeSampleIndexStore lazyCodeSampleIndexStore = new CodeSampleIndexStore(ds);
             lazySearchService = new SearchService(lazyKeywordIndexStore, lazyCodeSampleIndexStore,
-                    zipDownloadService, keywordIndexer, docStore, docParser);
+                    zipDownloadService, keywordIndexer, docStore, docParser, cacheService);
         }
 
         @Test

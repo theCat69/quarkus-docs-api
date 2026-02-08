@@ -123,12 +123,28 @@ class SearchResourceTest {
 
     @Test
     void testSearchSectionsEndpointMissingFilePaths() {
+        seedKeywordIndex();
         given()
                 .queryParam("version", "3.21")
-                .queryParam("keywords", "oidc")
+                .queryParam("keywords", "security")
                 .when().get("/api/search/sections")
                 .then()
-                .statusCode(400);
+                .statusCode(200)
+                .body("results.size()", greaterThan(0));
+    }
+
+    @Test
+    void testSearchSectionsEndpointWithFilePaths() {
+        seedKeywordIndex();
+        given()
+                .queryParam("version", "3.21")
+                .queryParam("keywords", "security")
+                .queryParam("filePaths", "security-overview.adoc")
+                .when().get("/api/search/sections")
+                .then()
+                .statusCode(200)
+                .body("results.size()", greaterThan(0))
+                .body("results[0].path", equalTo("security-overview.adoc"));
     }
 
     @Test
@@ -253,6 +269,31 @@ class SearchResourceTest {
                 .body("content", containsString("This is the overview section."))
                 .body("startLine", greaterThan(0))
                 .body("endLine", greaterThan(0));
+    }
+
+    // --- Versions endpoint tests ---
+
+    @Test
+    void testVersionsEndpointReturnsEmptyWhenNoVersionsCached() {
+        given()
+                .when().get("/api/search/versions")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(0));
+    }
+
+    @Test
+    void testVersionsEndpointReturnsCachedVersions() {
+        // Seed a doc file to create a cached version directory
+        docStore.write("3.21", "security.adoc", "= Guide\nContent.");
+        docStore.write("3.17", "config.adoc", "= Config\nContent.");
+
+        given()
+                .when().get("/api/search/versions")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(2))
+                .body("results", hasItems("3.21", "3.17"));
     }
 
     // --- Code sample search endpoint tests ---

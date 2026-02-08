@@ -1,5 +1,6 @@
 package com.fvd.search.services;
 
+import com.fvd.cache.services.CacheService;
 import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
@@ -31,9 +32,14 @@ public class SearchService {
     private final KeywordIndexer keywordIndexer;
     private final DocStore docStore;
     private final DocParser docParser;
+    private final CacheService cacheService;
 
     private final Map<String, KeywordIndex> indexCache = new ConcurrentHashMap<>();
     private final Map<String, CodeSampleIndex> codeSampleIndexCache = new ConcurrentHashMap<>();
+
+    public List<String> listVersions() {
+        return cacheService.listCachedVersions();
+    }
 
     public List<FileSearchResult> searchFiles(String version, List<String> keywords) {
         KeywordIndex index = getOrBuildIndex(version);
@@ -84,11 +90,12 @@ public class SearchService {
 
         Set<String> keywordSet = new HashSet<>(keywords.stream()
                 .map(String::toLowerCase).toList());
-        Set<String> filePathSet = new HashSet<>(filePaths);
+        Set<String> filePathSet = (filePaths == null || filePaths.isEmpty())
+                ? null : new HashSet<>(filePaths);
         List<SectionSearchResult> results = new ArrayList<>();
 
         for (FileKeywordEntry file : index.files) {
-            if (!filePathSet.contains(file.path)) {
+            if (filePathSet != null && !filePathSet.contains(file.path)) {
                 continue;
             }
             for (SectionKeywordEntry section : file.sections) {
