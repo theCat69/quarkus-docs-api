@@ -8,6 +8,7 @@ import com.fvd.github.clients.GithubApiFile;
 import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.exceptions.UpstreamException;
 import com.fvd.github.services.GitHubService;
+import com.fvd.indexs.indexers.CodeSampleIndexer;
 import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.stores.IndexStore;
@@ -44,6 +45,9 @@ class CacheRefreshJobTest {
     private KeywordIndexer keywordIndexer;
 
     @Mock
+    private CodeSampleIndexer codeSampleIndexer;
+
+    @Mock
     private SearchService searchService;
 
     private final DocParser docParser = new AsciidocParser();
@@ -52,7 +56,7 @@ class CacheRefreshJobTest {
 
     @BeforeEach
     void setUp() {
-        job = new CacheRefreshJob(cacheService, gitHubService, indexStore, docStore, keywordIndexer, searchService, docParser);
+        job = new CacheRefreshJob(cacheService, gitHubService, indexStore, docStore, keywordIndexer, codeSampleIndexer, searchService, docParser);
     }
 
     @Test
@@ -121,6 +125,7 @@ class CacheRefreshJobTest {
         job.refresh();
 
         verify(keywordIndexer).build(eq("3.21"), eq(List.of("docs/src/main/asciidoc/security-overview.adoc", "docs/src/main/asciidoc/config.adoc")));
+        verify(codeSampleIndexer).build(eq("3.21"), eq(List.of("docs/src/main/asciidoc/security-overview.adoc", "docs/src/main/asciidoc/config.adoc")));
         verify(searchService).invalidateCache("3.21");
     }
 
@@ -197,6 +202,7 @@ class CacheRefreshJobTest {
         // Should NOT modify the existing index or keyword index
         verify(indexStore, never()).write(anyString(), anyList());
         verify(keywordIndexer, never()).build(anyString(), any());
+        verify(codeSampleIndexer, never()).build(anyString(), any());
     }
 
     @Test

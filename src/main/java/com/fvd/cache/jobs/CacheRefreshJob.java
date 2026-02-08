@@ -6,6 +6,7 @@ import com.fvd.docs.stores.DocStore;
 import com.fvd.github.clients.GithubApiFile;
 import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.services.GitHubService;
+import com.fvd.indexs.indexers.CodeSampleIndexer;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.stores.IndexStore;
 import com.fvd.search.services.SearchService;
@@ -29,6 +30,7 @@ public class CacheRefreshJob {
     private final IndexStore indexStore;
     private final DocStore docStore;
     private final KeywordIndexer keywordIndexer;
+    private final CodeSampleIndexer codeSampleIndexer;
     private final SearchService searchService;
     private final DocParser docParser;
 
@@ -82,6 +84,9 @@ public class CacheRefreshJob {
                     .map(e -> e.path)
                     .toList();
             keywordIndexer.build(version, allFilePaths);
+
+            // Rebuild code sample index with all files
+            codeSampleIndexer.build(version, allFilePaths);
 
             // Invalidate in-memory cache so next search picks up fresh data
             searchService.invalidateCache(version);

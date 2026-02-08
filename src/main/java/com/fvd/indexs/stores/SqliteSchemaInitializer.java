@@ -97,6 +97,29 @@ public class SqliteSchemaInitializer {
                     )
                     """);
 
+            stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS code_samples (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        version TEXT NOT NULL,
+                        file_path TEXT NOT NULL,
+                        section_title TEXT NOT NULL,
+                        language TEXT NOT NULL,
+                        content TEXT NOT NULL,
+                        start_line INTEGER NOT NULL,
+                        end_line INTEGER NOT NULL
+                    )
+                    """);
+
+            stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS code_sample_keywords (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        sample_id INTEGER NOT NULL,
+                        word TEXT NOT NULL,
+                        score INTEGER NOT NULL,
+                        FOREIGN KEY (sample_id) REFERENCES code_samples(id) ON DELETE CASCADE
+                    )
+                    """);
+
             // Create indexes for efficient lookups
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_files_version ON files(version)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_keywords_file_id ON file_keywords(file_id)");
@@ -105,6 +128,9 @@ public class SqliteSchemaInitializer {
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_section_keywords_section_id ON section_keywords(section_id)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_section_keywords_word ON section_keywords(word)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_github_index_version ON github_index(version)");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_code_samples_version ON code_samples(version)");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_code_sample_keywords_sample_id ON code_sample_keywords(sample_id)");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_code_sample_keywords_word ON code_sample_keywords(word)");
 
             log.info("SQLite schema initialized successfully");
         } catch (SQLException e) {

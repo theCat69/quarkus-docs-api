@@ -220,4 +220,157 @@ class AsciidocParserTest {
         List<DocParser.Section> sections = parser.parseSections("");
         assertThat(sections).isEmpty();
     }
+
+    @Test
+    void parseCodeBlocksExtractsSingleBlock() {
+        String text = """
+                = Title
+                
+                == My Section
+                
+                Some text.
+                
+                [source,java]
+                ----
+                import jakarta.ws.rs.GET;
+                
+                public class MyResource {
+                }
+                ----
+                """;
+        List<DocParser.CodeBlock> blocks = parser.parseCodeBlocks(text);
+        assertThat(blocks).hasSize(1);
+        assertThat(blocks.get(0).language()).isEqualTo("java");
+        assertThat(blocks.get(0).content()).contains("import jakarta.ws.rs.GET");
+        assertThat(blocks.get(0).content()).contains("public class MyResource");
+        assertThat(blocks.get(0).sectionTitle()).isEqualTo("My Section");
+        assertThat(blocks.get(0).startLine()).isEqualTo(8);
+        assertThat(blocks.get(0).endLine()).isEqualTo(13);
+    }
+
+    @Test
+    void parseCodeBlocksExtractsMultipleBlocks() {
+        String text = """
+                = Title
+                
+                == First
+                
+                [source,java]
+                ----
+                code one
+                ----
+                
+                == Second
+                
+                [source,xml]
+                ----
+                code two
+                ----
+                """;
+        List<DocParser.CodeBlock> blocks = parser.parseCodeBlocks(text);
+        assertThat(blocks).hasSize(2);
+        assertThat(blocks.get(0).language()).isEqualTo("java");
+        assertThat(blocks.get(0).content()).isEqualTo("code one");
+        assertThat(blocks.get(0).sectionTitle()).isEqualTo("First");
+        assertThat(blocks.get(1).language()).isEqualTo("xml");
+        assertThat(blocks.get(1).content()).isEqualTo("code two");
+        assertThat(blocks.get(1).sectionTitle()).isEqualTo("Second");
+    }
+
+    @Test
+    void parseCodeBlocksHandlesBlockWithoutSourceAttribute() {
+        String text = """
+                = Title
+                
+                ----
+                some code without language
+                ----
+                """;
+        List<DocParser.CodeBlock> blocks = parser.parseCodeBlocks(text);
+        assertThat(blocks).hasSize(1);
+        assertThat(blocks.get(0).language()).isEmpty();
+        assertThat(blocks.get(0).content()).isEqualTo("some code without language");
+        assertThat(blocks.get(0).sectionTitle()).isEqualTo("Title");
+    }
+
+    @Test
+    void parseCodeBlocksHandlesSourceWithoutLanguage() {
+        String text = """
+                = Title
+                
+                [source]
+                ----
+                generic code
+                ----
+                """;
+        List<DocParser.CodeBlock> blocks = parser.parseCodeBlocks(text);
+        assertThat(blocks).hasSize(1);
+        assertThat(blocks.get(0).language()).isEqualTo("");
+    }
+
+    @Test
+    void parseCodeBlocksTracksCorrectSectionAcrossHeaders() {
+        String text = """
+                = Title
+                
+                Intro text.
+                
+                == Section A
+                
+                [source,java]
+                ----
+                code in A
+                ----
+                
+                == Section B
+                
+                No code here.
+                
+                == Section C
+                
+                [source,properties]
+                ----
+                key=value
+                ----
+                """;
+        List<DocParser.CodeBlock> blocks = parser.parseCodeBlocks(text);
+        assertThat(blocks).hasSize(2);
+        assertThat(blocks.get(0).sectionTitle()).isEqualTo("Section A");
+        assertThat(blocks.get(1).sectionTitle()).isEqualTo("Section C");
+        assertThat(blocks.get(1).language()).isEqualTo("properties");
+    }
+
+    @Test
+    void parseCodeBlocksReturnsEmptyForNoCodeBlocks() {
+        String text = """
+                = Title
+                
+                Just text, no code.
+                """;
+        List<DocParser.CodeBlock> blocks = parser.parseCodeBlocks(text);
+        assertThat(blocks).isEmpty();
+    }
+
+    @Test
+    void parseCodeBlocksReturnsEmptyForBlankInput() {
+        assertThat(parser.parseCodeBlocks("")).isEmpty();
+        assertThat(parser.parseCodeBlocks(null)).isEmpty();
+    }
+
+    @Test
+    void parseCodeBlocksPreservesMultiLineContent() {
+        String text = """
+                = Title
+                
+                [source,java]
+                ----
+                line one
+                line two
+                line three
+                ----
+                """;
+        List<DocParser.CodeBlock> blocks = parser.parseCodeBlocks(text);
+        assertThat(blocks).hasSize(1);
+        assertThat(blocks.get(0).content()).isEqualTo("line one\nline two\nline three");
+    }
 }

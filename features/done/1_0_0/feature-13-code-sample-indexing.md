@@ -10,8 +10,8 @@ Extract all code samples when caching a new version and index them with section 
 
 ## Tasks
 
-- [ ] Identify parsing points for code blocks in Asciidoc parser.
-- [ ] Define code sample model and storage location.
-- [ ] Add extraction during cache build/refresh.
-- [ ] Build code-sample index with keyword and import boosts.
-- [ ] Add tests for extraction and indexing behavior.
+- [x] Identify parsing points for code blocks in Asciidoc parser.
+- [x] Define code sample model and storage location.
+- [x] Add extraction during cache build/refresh.
+- [x] Build code-sample index with keyword and import boosts.
+- [x] Add tests for extraction and indexing behavior.

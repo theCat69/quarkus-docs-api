@@ -5,6 +5,7 @@ import com.fvd.indexs.indexers.KeywordIndexer;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @ApplicationScoped
@@ -15,6 +16,7 @@ public class AsciidocParser implements DocParser {
     private static final int MIN_TOKEN_LENGTH = 3;
     private static final Pattern SECTION_HEADER = Pattern.compile("^(={1,5})\\s+(.+)$");
     private static final Pattern CODE_BLOCK_DELIMITER = Pattern.compile("^-{4,}$");
+    private static final Pattern SOURCE_ATTRIBUTE = Pattern.compile("^\\[source(?:,\\s*([^\\]]+))?\\]$");
     private static final Pattern NON_WORD = Pattern.compile("[^a-zA-Z0-9-]");
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
@@ -123,6 +125,72 @@ public class AsciidocParser implements DocParser {
             }
         }
         return result.toString();
+    }
+
+    @Override
+    public List<CodeBlock> parseCodeBlocks(String text) {
+        if (text == null || text.isBlank()) {
+            return List.of();
+        }
+        String[] lines = text.split("\n", -1);
+        List<CodeBlock> codeBlocks = new ArrayList<>();
+        String currentSection = "";
+        String pendingLanguage = null;
+        boolean inCodeBlock = false;
+        int codeBlockStart = -1;
+        List<String> codeLines = new ArrayList<>();
+
+        for (int i = 0; i < lines.length; i++) {
+            String trimmed = lines[i].trim();
+
+            // Track section headers (outside code blocks)
+            if (!inCodeBlock) {
+                Matcher sectionMatcher = SECTION_HEADER.matcher(trimmed);
+                if (sectionMatcher.matches()) {
+                    currentSection = sectionMatcher.group(2).trim();
+                    continue;
+                }
+
+                // Detect [source,language] attribute
+                Matcher sourceMatcher = SOURCE_ATTRIBUTE.matcher(trimmed);
+                if (sourceMatcher.matches()) {
+                    pendingLanguage = sourceMatcher.group(1);
+                    if (pendingLanguage != null) {
+                        pendingLanguage = pendingLanguage.trim();
+                    }
+                    continue;
+                }
+            }
+
+            // Toggle code block on delimiter
+            if (CODE_BLOCK_DELIMITER.matcher(trimmed).matches()) {
+                if (!inCodeBlock) {
+                    inCodeBlock = true;
+                    codeBlockStart = i + 1; // 1-based
+                    codeLines = new ArrayList<>();
+                } else {
+                    // End of code block - flush
+                    int codeBlockEnd = i + 1; // 1-based, inclusive of the delimiter line
+                    String content = String.join("\n", codeLines);
+                    String language = pendingLanguage != null ? pendingLanguage : "";
+                    codeBlocks.add(new CodeBlock(language, content, currentSection, codeBlockStart, codeBlockEnd));
+                    inCodeBlock = false;
+                    pendingLanguage = null;
+                }
+                continue;
+            }
+
+            if (inCodeBlock) {
+                codeLines.add(lines[i]);
+            } else {
+                // Reset pending language if we see a non-source, non-blank line outside code blocks
+                if (!trimmed.isEmpty() && pendingLanguage != null) {
+                    pendingLanguage = null;
+                }
+            }
+        }
+
+        return codeBlocks;
     }
 
     @Override

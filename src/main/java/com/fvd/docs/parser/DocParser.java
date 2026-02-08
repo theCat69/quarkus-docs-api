@@ -16,6 +16,12 @@ public interface DocParser {
     }
 
     /**
+     * A code block extracted from a document with its language, content, containing section, and line range.
+     */
+    record CodeBlock(String language, String content, String sectionTitle, int startLine, int endLine) {
+    }
+
+    /**
      * Splits raw text into lowercase tokens suitable for indexing.
      */
     List<String> tokenize(String text);
@@ -40,4 +46,10 @@ public interface DocParser {
      * Returns the file suffix for this document type (e.g. ".adoc" for AsciiDoc).
      */
     String fileSuffix();
+
+    /**
+     * Extracts code blocks from the document content with their language, content,
+     * containing section title, and line range.
+     */
+    List<CodeBlock> parseCodeBlocks(String text);
 }
