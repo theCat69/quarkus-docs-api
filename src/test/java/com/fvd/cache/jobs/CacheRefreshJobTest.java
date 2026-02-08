@@ -1,6 +1,8 @@
 package com.fvd.cache.jobs;
 
+import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.cache.services.CacheService;
+import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.clients.GithubApiFile;
 import com.fvd.github.clients.GithubApiIndex;
@@ -44,11 +46,13 @@ class CacheRefreshJobTest {
     @Mock
     private SearchService searchService;
 
+    private final DocParser docParser = new AsciidocParser();
+
     private CacheRefreshJob job;
 
     @BeforeEach
     void setUp() {
-        job = new CacheRefreshJob(cacheService, gitHubService, indexStore, docStore, keywordIndexer, searchService);
+        job = new CacheRefreshJob(cacheService, gitHubService, indexStore, docStore, keywordIndexer, searchService, docParser);
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.fvd.indexs.indexers;
 
 import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.cache.services.CacheService;
+import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.indexs.stores.SqliteSchemaInitializer;
@@ -34,7 +35,7 @@ class KeywordIndexerTest {
         SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
         initializer.initSchema();
         keywordIndexStore = new KeywordIndexStore(ds);
-        AsciidocParser parser = new AsciidocParser();
+        DocParser parser = new AsciidocParser();
         indexer = new KeywordIndexer(docStore, keywordIndexStore, parser);
         indexer.fileEntryKeywordMinimalScore = 2;
     }

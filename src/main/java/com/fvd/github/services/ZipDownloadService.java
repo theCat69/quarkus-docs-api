@@ -2,6 +2,7 @@ package com.fvd.github.services;
 
 import com.fvd.cache.services.CacheService;
 import com.fvd.common.validators.InputValidator;
+import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.exceptions.UpstreamException;
 import jakarta.annotation.Nonnull;
@@ -21,9 +22,6 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import static com.fvd.common.utils.AsciiDocConstants.ASCIIDOC_PREFIX;
-import static com.fvd.common.utils.AsciiDocConstants.ASCIIDOC_SUFFIX;
-
 @Slf4j
 @ApplicationScoped
 @RequiredArgsConstructor
@@ -32,6 +30,7 @@ public class ZipDownloadService {
     private final GitHubService gitHubService;
     private final DocStore docStore;
     private final CacheService cacheService;
+    private final DocParser docParser;
 
     /**
      * Streams the zip archive for the given version, extracts asciidoc files
@@ -67,7 +66,7 @@ public class ZipDownloadService {
              ZipInputStream zis = new ZipInputStream(zipStream)) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
-                if (entry.isDirectory() || !entry.getName().endsWith(ASCIIDOC_SUFFIX)) {
+                if (entry.isDirectory() || !entry.getName().endsWith(docParser.fileSuffix())) {
                     continue;
                 }
                 String entryName = entry.getName();
@@ -127,11 +126,12 @@ public class ZipDownloadService {
     }
 
     String extractRelativePath(String entryName) {
-        int asciidocIdx = entryName.indexOf(ASCIIDOC_PREFIX);
-        if (asciidocIdx < 0) {
+        String prefix = docParser.docsPrefix();
+        int prefixIdx = entryName.indexOf(prefix);
+        if (prefixIdx < 0) {
             return null;
         }
-        String relativePath = entryName.substring(asciidocIdx + ASCIIDOC_PREFIX.length());
+        String relativePath = entryName.substring(prefixIdx + prefix.length());
         if (relativePath.isEmpty()) {
             return null;
         }

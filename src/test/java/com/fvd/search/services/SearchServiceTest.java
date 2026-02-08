@@ -3,6 +3,7 @@ package com.fvd.search.services;
 import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.exceptions.DocNotFoundException;
+import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.*;
@@ -33,7 +34,7 @@ class SearchServiceTest {
 
     SearchService searchService;
     KeywordIndexStore keywordIndexStore;
-    AsciidocParser asciidocParser;
+    DocParser docParser;
 
     @BeforeEach
     void setUp() {
@@ -42,8 +43,8 @@ class SearchServiceTest {
         SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
         initializer.initSchema();
         keywordIndexStore = new KeywordIndexStore(ds);
-        asciidocParser = new AsciidocParser();
-        searchService = new SearchService(keywordIndexStore, null, null, null, asciidocParser);
+        docParser = new AsciidocParser();
+        searchService = new SearchService(keywordIndexStore, null, null, null, docParser);
     }
 
     private void seedIndex(String version, KeywordIndex index) {
@@ -247,7 +248,7 @@ class SearchServiceTest {
             CacheService cacheService = new CacheService(tempDir.toString());
             realDocStore = new DocStore(cacheService);
             sectionSearchService = new SearchService(
-                    keywordIndexStore, null, null, realDocStore, asciidocParser);
+                    keywordIndexStore, null, null, realDocStore, docParser);
         }
 
         @Test
@@ -344,7 +345,7 @@ class SearchServiceTest {
             initializer.initSchema();
             lazyKeywordIndexStore = new KeywordIndexStore(ds);
             lazySearchService = new SearchService(lazyKeywordIndexStore,
-                    zipDownloadService, keywordIndexer, docStore, asciidocParser);
+                    zipDownloadService, keywordIndexer, docStore, docParser);
         }
 
         @Test

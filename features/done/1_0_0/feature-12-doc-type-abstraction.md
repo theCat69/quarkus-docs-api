@@ -10,8 +10,8 @@ Introduce an abstraction around doc parsing and storage so the system can suppor
 
 ## Tasks
 
-- [ ] Identify current Asciidoc-specific entry points (parsing, keyword extraction, storage).
-- [ ] Define interfaces for doc parsing, section extraction, and content access.
-- [ ] Refactor existing Asciidoc implementation behind the interface.
-- [ ] Update services to depend on the abstraction.
-- [ ] Add tests for Asciidoc implementation via the new interfaces.
+- [x] Identify current Asciidoc-specific entry points (parsing, keyword extraction, storage).
+- [x] Define interfaces for doc parsing, section extraction, and content access.
+- [x] Refactor existing Asciidoc implementation behind the interface.
+- [x] Update services to depend on the abstraction.
+- [x] Add tests for Asciidoc implementation via the new interfaces.

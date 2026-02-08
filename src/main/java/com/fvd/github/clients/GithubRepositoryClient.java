@@ -4,6 +4,7 @@ import com.fvd.github.exceptions.UpstreamException;
 import io.quarkus.rest.client.reactive.ClientExceptionMapper;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
@@ -14,8 +15,10 @@ import java.io.InputStream;
 public interface GithubRepositoryClient {
 
     @GET
-    @Path("archive/refs/heads/{version}.zip")
-    InputStream fetchZipStream(String version);
+    @Path("{owner}/{repo}/archive/refs/heads/{version}.zip")
+    InputStream fetchZipStream(@PathParam("owner") String owner,
+                               @PathParam("repo") String repo,
+                               @PathParam("version") String version);
 
     @ClientExceptionMapper
     static RuntimeException toException(Response response) {

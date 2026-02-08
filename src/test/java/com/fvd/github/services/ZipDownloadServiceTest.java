@@ -1,6 +1,8 @@
 package com.fvd.github.services;
 
+import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.cache.services.CacheService;
+import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.exceptions.UpstreamException;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +35,7 @@ class ZipDownloadServiceTest {
     private DocStore docStore;
     private CacheService cacheService;
     private ZipDownloadService service;
+    private final DocParser docParser = new AsciidocParser();
 
     @TempDir
     Path tempDir;
@@ -41,7 +44,7 @@ class ZipDownloadServiceTest {
     void setUp() {
         cacheService = new CacheService(tempDir.toString());
         docStore = new DocStore(cacheService);
-        service = new ZipDownloadService(gitHubService, docStore, cacheService);
+        service = new ZipDownloadService(gitHubService, docStore, cacheService, docParser);
     }
 
     // -- extractRelativePath tests (existing) --

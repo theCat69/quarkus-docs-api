@@ -1,5 +1,6 @@
 package com.fvd.asciidocs.parser;
 
+import com.fvd.docs.parser.DocParser;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -106,7 +107,7 @@ class AsciidocParserTest {
                 
                 Second section content about oidc.
                 """;
-        List<AsciidocParser.Section> sections = parser.parseSections(text);
+        List<DocParser.Section> sections = parser.parseSections(text);
         assertThat(sections).hasSize(3);
 
         // Title section (everything before first ==)
@@ -142,7 +143,7 @@ class AsciidocParserTest {
                 
                 Content two.
                 """;
-        List<AsciidocParser.Section> sections = parser.parseSections(text);
+        List<DocParser.Section> sections = parser.parseSections(text);
         assertThat(sections).hasSize(4);
         assertThat(sections.get(0).title()).isEqualTo("Title");
         assertThat(sections.get(1).title()).isEqualTo("Section One");
@@ -161,7 +162,7 @@ class AsciidocParserTest {
                 
                 Configure oidc provider settings.
                 """;
-        List<AsciidocParser.Section> sections = parser.parseSections(text);
+        List<DocParser.Section> sections = parser.parseSections(text);
         assertThat(sections).hasSize(2);
 
         Map<String, Integer> titleKeywords = sections.get(0).keywords();
@@ -193,8 +194,8 @@ class AsciidocParserTest {
                 
                 More real content.
                 """;
-        List<AsciidocParser.Section> sections = parser.parseSections(text);
-        AsciidocParser.Section configSection = sections.get(1);
+        List<DocParser.Section> sections = parser.parseSections(text);
+        DocParser.Section configSection = sections.get(1);
         assertThat(configSection.keywords()).containsKeys("real", "content");
         assertThat(configSection.keywords()).doesNotContainKey("class");
         assertThat(configSection.keywords()).doesNotContainKey("ignored");
@@ -207,7 +208,7 @@ class AsciidocParserTest {
                 Just some plain text.
                 No section headers at all.
                 """;
-        List<AsciidocParser.Section> sections = parser.parseSections(text);
+        List<DocParser.Section> sections = parser.parseSections(text);
         assertThat(sections).hasSize(1);
         assertThat(sections.get(0).title()).isEmpty();
         assertThat(sections.get(0).startLine()).isEqualTo(1);
@@ -216,7 +217,7 @@ class AsciidocParserTest {
 
     @Test
     void parseSectionsHandlesEmptyDocument() {
-        List<AsciidocParser.Section> sections = parser.parseSections("");
+        List<DocParser.Section> sections = parser.parseSections("");
         assertThat(sections).isEmpty();
     }
 }

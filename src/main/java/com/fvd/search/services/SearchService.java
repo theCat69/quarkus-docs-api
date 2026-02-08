@@ -1,7 +1,7 @@
 package com.fvd.search.services;
 
-import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.docs.exceptions.DocNotFoundException;
+import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.*;
@@ -27,7 +27,7 @@ public class SearchService {
     private final ZipDownloadService zipDownloadService;
     private final KeywordIndexer keywordIndexer;
     private final DocStore docStore;
-    private final AsciidocParser asciidocParser;
+    private final DocParser docParser;
 
     private final Map<String, KeywordIndex> indexCache = new ConcurrentHashMap<>();
 
@@ -115,10 +115,10 @@ public class SearchService {
         }
 
         String content = docContent.get();
-        List<AsciidocParser.Section> sections = asciidocParser.parseSections(content);
+        List<DocParser.Section> sections = docParser.parseSections(content);
         String[] lines = content.split("\n", -1);
 
-        for (AsciidocParser.Section section : sections) {
+        for (DocParser.Section section : sections) {
             if (section.title().equalsIgnoreCase(sectionTitle)) {
                 int startIdx = Math.max(0, section.startLine() - 1);
                 int endIdx = Math.min(lines.length, section.endLine());

@@ -1,6 +1,7 @@
 package com.fvd.cache.jobs;
 
 import com.fvd.cache.services.CacheService;
+import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.clients.GithubApiFile;
 import com.fvd.github.clients.GithubApiIndex;
@@ -18,8 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.fvd.common.utils.AsciiDocConstants.ASCIIDOC_SUFFIX;
-
 @Slf4j
 @ApplicationScoped
 @RequiredArgsConstructor
@@ -31,6 +30,7 @@ public class CacheRefreshJob {
     private final DocStore docStore;
     private final KeywordIndexer keywordIndexer;
     private final SearchService searchService;
+    private final DocParser docParser;
 
     @Scheduled(every = "${app.refresh.interval:6h}", delayed = "10m")
     public void refresh() {
@@ -99,7 +99,7 @@ public class CacheRefreshJob {
     private Map<String, String> buildShaMap(List<GithubApiIndex> entries) {
         Map<String, String> shaByPath = new HashMap<>();
         for (GithubApiIndex entry : entries) {
-            if (entry.path != null && entry.sha != null && entry.name.endsWith(ASCIIDOC_SUFFIX)) {
+            if (entry.path != null && entry.sha != null && entry.name.endsWith(docParser.fileSuffix())) {
                 shaByPath.put(entry.path, entry.sha);
             }
         }

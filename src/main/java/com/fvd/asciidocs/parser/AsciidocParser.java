@@ -1,5 +1,6 @@
 package com.fvd.asciidocs.parser;
 
+import com.fvd.docs.parser.DocParser;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -7,17 +8,17 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 @ApplicationScoped
-public class AsciidocParser {
+public class AsciidocParser implements DocParser {
 
+    private static final String DOCS_PREFIX = "docs/src/main/asciidoc/";
+    private static final String FILE_SUFFIX = ".adoc";
     private static final int MIN_TOKEN_LENGTH = 3;
     private static final Pattern SECTION_HEADER = Pattern.compile("^(={1,5})\\s+(.+)$");
     private static final Pattern CODE_BLOCK_DELIMITER = Pattern.compile("^-{4,}$");
     private static final Pattern NON_WORD = Pattern.compile("[^a-zA-Z0-9-]");
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
-    public record Section(String title, int startLine, int endLine, Map<String, Integer> keywords) {
-    }
-
+    @Override
     public List<String> tokenize(String text) {
         if (text == null || text.isBlank()) {
             return List.of();
@@ -29,6 +30,7 @@ public class AsciidocParser {
                 .toList();
     }
 
+    @Override
     public Map<String, Integer> extractKeywords(String text) {
         String cleaned = stripCodeBlocks(text);
         List<String> tokens = tokenize(cleaned);
@@ -41,6 +43,7 @@ public class AsciidocParser {
         return counts;
     }
 
+    @Override
     public List<Section> parseSections(String text) {
         if (text == null || text.isBlank()) {
             return List.of();
@@ -120,5 +123,15 @@ public class AsciidocParser {
             }
         }
         return result.toString();
+    }
+
+    @Override
+    public String docsPrefix() {
+        return DOCS_PREFIX;
+    }
+
+    @Override
+    public String fileSuffix() {
+        return FILE_SUFFIX;
     }
 }

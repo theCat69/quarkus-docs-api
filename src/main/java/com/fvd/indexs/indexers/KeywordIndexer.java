@@ -1,6 +1,6 @@
 package com.fvd.indexs.indexers;
 
-import com.fvd.asciidocs.parser.AsciidocParser;
+import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -56,7 +56,7 @@ public class KeywordIndexer {
 
     private final DocStore docStore;
     private final KeywordIndexStore keywordIndexStore;
-    private final AsciidocParser parser;
+    private final DocParser parser;
 
     @ConfigProperty(name = "keywords.file.minimal.score", defaultValue = "2")
     Integer fileEntryKeywordMinimalScore;
@@ -95,9 +95,9 @@ public class KeywordIndexer {
         List<KeywordScore> fileScores = toSortedScores(filterFileEntries(fileKeywords));
 
         // Section-level keywords with title boost
-        List<AsciidocParser.Section> sections = parser.parseSections(content);
+        List<DocParser.Section> sections = parser.parseSections(content);
         List<SectionKeywordEntry> sectionEntries = new ArrayList<>();
-        for (AsciidocParser.Section section : sections) {
+        for (DocParser.Section section : sections) {
             Map<String, Integer> sectionKeywords = new HashMap<>(section.keywords());
             applyTitleBoost(section.title(), sectionKeywords);
             List<KeywordScore> sectionScores = toSortedScores(sectionKeywords);
@@ -114,9 +114,9 @@ public class KeywordIndexer {
         if (lastSlash >= 0) {
             filename = filePath.substring(lastSlash + 1);
         }
-        // Remove .adoc extension
-        if (filename.endsWith(".adoc")) {
-            filename = filename.substring(0, filename.length() - 5);
+        // Remove file extension
+        if (filename.endsWith(parser.fileSuffix())) {
+            filename = filename.substring(0, filename.length() - parser.fileSuffix().length());
         }
         List<String> filenameTokens = parser.tokenize(filename.replace("-", " ").replace("_", " "));
         for (String token : filenameTokens) {
