@@ -3,6 +3,7 @@ package com.fvd.common.validators;
 import com.fvd.common.exceptions.InvalidInputException;
 import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -110,5 +111,67 @@ class InputValidatorTest {
     void validateFilePathsAcceptsValid() {
         assertThatCode(() -> InputValidator.validateFilePaths("path1,path2"))
                 .doesNotThrowAnyException();
+    }
+
+    // --- Limit validation tests ---
+
+    @Test
+    void validateLimitReturnsDefaultWhenNull() {
+        assertThat(InputValidator.validateLimit(null, 10, 100)).isEqualTo(10);
+    }
+
+    @Test
+    void validateLimitReturnsValueWhenValid() {
+        assertThat(InputValidator.validateLimit(5, 10, 100)).isEqualTo(5);
+    }
+
+    @Test
+    void validateLimitRejectsZero() {
+        assertThatThrownBy(() -> InputValidator.validateLimit(0, 10, 100))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("limit must be at least 1");
+    }
+
+    @Test
+    void validateLimitRejectsNegative() {
+        assertThatThrownBy(() -> InputValidator.validateLimit(-1, 10, 100))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("limit must be at least 1");
+    }
+
+    @Test
+    void validateLimitRejectsExceedingMax() {
+        assertThatThrownBy(() -> InputValidator.validateLimit(101, 10, 100))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("limit must not exceed 100");
+    }
+
+    @Test
+    void validateLimitAcceptsMaxValue() {
+        assertThat(InputValidator.validateLimit(100, 10, 100)).isEqualTo(100);
+    }
+
+    // --- Offset validation tests ---
+
+    @Test
+    void validateOffsetReturnsZeroWhenNull() {
+        assertThat(InputValidator.validateOffset(null)).isEqualTo(0);
+    }
+
+    @Test
+    void validateOffsetReturnsValueWhenValid() {
+        assertThat(InputValidator.validateOffset(5)).isEqualTo(5);
+    }
+
+    @Test
+    void validateOffsetAcceptsZero() {
+        assertThat(InputValidator.validateOffset(0)).isEqualTo(0);
+    }
+
+    @Test
+    void validateOffsetRejectsNegative() {
+        assertThatThrownBy(() -> InputValidator.validateOffset(-1))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("offset must not be negative");
     }
 }

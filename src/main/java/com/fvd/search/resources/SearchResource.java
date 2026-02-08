@@ -22,6 +22,10 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 @RequiredArgsConstructor
 public class SearchResource {
+
+    private static final int DEFAULT_LIMIT = 10;
+    private static final int MAX_LIMIT = 100;
+
     private final SearchService searchService;
 
     @GET
@@ -59,12 +63,19 @@ public class SearchResource {
             @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.27")
             @QueryParam("version") String version,
             @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in lowercase)", required = true, example = "security,oidc")
-            @QueryParam("keywords") String keywords) {
+            @QueryParam("keywords") String keywords,
+            @Parameter(description = "Maximum number of results to return (default 10, max 100)", example = "10")
+            @QueryParam("limit") Integer limit,
+            @Parameter(description = "Number of results to skip (default 0)", example = "0")
+            @QueryParam("offset") Integer offset) {
         InputValidator.validateVersion(version);
         InputValidator.validateKeywords(keywords);
+        int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
+        int validOffset = InputValidator.validateOffset(offset);
         List<String> keywordList = Arrays.asList(keywords.split(","));
-        List<FileSearchResult> results = searchService.searchFiles(version, keywordList);
-        return new SearchResponse<>(results);
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles(version, keywordList,
+                validLimit, validOffset);
+        return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset);
     }
 
     @GET
@@ -90,17 +101,24 @@ public class SearchResource {
             @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in lowercase)", required = true, example = "security,oidc")
             @QueryParam("keywords") String keywords,
             @Parameter(description = "Comma-separated list of file paths relative to the docs directory (optional)", example = "security-overview.adoc,config.adoc")
-            @QueryParam("filePaths") String filePaths) {
+            @QueryParam("filePaths") String filePaths,
+            @Parameter(description = "Maximum number of results to return (default 10, max 100)", example = "10")
+            @QueryParam("limit") Integer limit,
+            @Parameter(description = "Number of results to skip (default 0)", example = "0")
+            @QueryParam("offset") Integer offset) {
         InputValidator.validateVersion(version);
         InputValidator.validateKeywords(keywords);
+        int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
+        int validOffset = InputValidator.validateOffset(offset);
         List<String> keywordList = Arrays.asList(keywords.split(","));
         List<String> filePathList = null;
         if (filePaths != null && !filePaths.isBlank()) {
             InputValidator.validateFilePaths(filePaths);
             filePathList = Arrays.asList(filePaths.split(","));
         }
-        List<SectionSearchResult> results = searchService.searchSections(version, keywordList, filePathList);
-        return new SearchResponse<>(results);
+        PaginatedResult<SectionSearchResult> result = searchService.searchSections(version, keywordList,
+                filePathList, validLimit, validOffset);
+        return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset);
     }
 
     @GET
@@ -162,9 +180,15 @@ public class SearchResource {
             @Parameter(description = "Optional file path to filter results", example = "security-overview.adoc")
             @QueryParam("filePath") String filePath,
             @Parameter(description = "Optional section title to filter results", example = "Authentication")
-            @QueryParam("sectionTitle") String sectionTitle) {
+            @QueryParam("sectionTitle") String sectionTitle,
+            @Parameter(description = "Maximum number of results to return (default 10, max 100)", example = "10")
+            @QueryParam("limit") Integer limit,
+            @Parameter(description = "Number of results to skip (default 0)", example = "0")
+            @QueryParam("offset") Integer offset) {
         InputValidator.validateVersion(version);
         InputValidator.validateKeywords(keywords);
+        int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
+        int validOffset = InputValidator.validateOffset(offset);
         if (filePath != null && !filePath.isBlank()) {
             InputValidator.validatePath(filePath);
         }
@@ -172,8 +196,8 @@ public class SearchResource {
             InputValidator.validateSectionTitle(sectionTitle);
         }
         List<String> keywordList = Arrays.asList(keywords.split(","));
-        List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
-                version, keywordList, filePath, sectionTitle);
-        return new SearchResponse<>(results);
+        PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
+                version, keywordList, filePath, sectionTitle, validLimit, validOffset);
+        return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset);
     }
 }

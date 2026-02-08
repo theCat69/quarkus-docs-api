@@ -21,9 +21,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class SearchService {
 
-    private static final int MAX_FILE_RESULTS = 10;
-    private static final int MAX_SECTION_RESULTS = 5;
-    private static final int MAX_CODE_SAMPLE_RESULTS = 10;
     private static final double MULTI_KEYWORD_BOOST = 1.5;
 
     private final KeywordIndexStore keywordIndexStore;
@@ -41,21 +38,23 @@ public class SearchService {
         return cacheService.listCachedVersions();
     }
 
-    public List<FileSearchResult> searchFiles(String version, List<String> keywords) {
+    public PaginatedResult<FileSearchResult> searchFiles(String version, List<String> keywords,
+                                                         int limit, int offset) {
         KeywordIndex index = getOrBuildIndex(version);
         if (index == null) {
-            return List.of();
+            return new PaginatedResult<>(List.of(), 0);
         }
 
         Set<String> keywordSet = new HashSet<>(keywords.stream()
                 .map(String::toLowerCase).toList());
         Map<String, Double> scores = getScores(index, keywordSet);
 
-        return scores.entrySet().stream()
+        List<FileSearchResult> all = scores.entrySet().stream()
                 .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
-                .limit(MAX_FILE_RESULTS)
                 .map(e -> new FileSearchResult(e.getKey(), e.getValue()))
                 .toList();
+
+        return paginate(all, limit, offset);
     }
 
     @Nonnull
@@ -81,11 +80,11 @@ public class SearchService {
         return scores;
     }
 
-    public List<SectionSearchResult> searchSections(String version, List<String> keywords,
-                                                    List<String> filePaths) {
+    public PaginatedResult<SectionSearchResult> searchSections(String version, List<String> keywords,
+                                                    List<String> filePaths, int limit, int offset) {
         KeywordIndex index = getOrBuildIndex(version);
         if (index == null) {
-            return List.of();
+            return new PaginatedResult<>(List.of(), 0);
         }
 
         Set<String> keywordSet = new HashSet<>(keywords.stream()
@@ -113,10 +112,7 @@ public class SearchService {
         }
 
         results.sort(Comparator.comparingDouble((SectionSearchResult r) -> r.score).reversed());
-        if (results.size() > MAX_SECTION_RESULTS) {
-            return results.subList(0, MAX_SECTION_RESULTS);
-        }
-        return results;
+        return paginate(results, limit, offset);
     }
 
     public SectionContentResult getSectionContent(String version, String filePath, String sectionTitle) {
@@ -144,11 +140,12 @@ public class SearchService {
                 "Section not found: '" + sectionTitle + "' in " + filePath + " for version: " + version);
     }
 
-    public List<CodeSampleSearchResult> searchCodeSamples(String version, List<String> keywords,
-                                                          String filePath, String sectionTitle) {
+    public PaginatedResult<CodeSampleSearchResult> searchCodeSamples(String version, List<String> keywords,
+                                                          String filePath, String sectionTitle,
+                                                          int limit, int offset) {
         CodeSampleIndex index = getOrLoadCodeSampleIndex(version);
         if (index == null) {
-            return List.of();
+            return new PaginatedResult<>(List.of(), 0);
         }
 
         Set<String> keywordSet = new HashSet<>(keywords.stream()
@@ -183,10 +180,7 @@ public class SearchService {
         }
 
         results.sort(Comparator.comparingDouble((CodeSampleSearchResult r) -> r.score).reversed());
-        if (results.size() > MAX_CODE_SAMPLE_RESULTS) {
-            return results.subList(0, MAX_CODE_SAMPLE_RESULTS);
-        }
-        return results;
+        return paginate(results, limit, offset);
     }
 
     /**
@@ -196,6 +190,15 @@ public class SearchService {
     public void invalidateCache(String version) {
         indexCache.remove(version);
         codeSampleIndexCache.remove(version);
+    }
+
+    private <T> PaginatedResult<T> paginate(List<T> all, int limit, int offset) {
+        int total = all.size();
+        if (offset >= total) {
+            return new PaginatedResult<>(List.of(), total);
+        }
+        int end = Math.min(offset + limit, total);
+        return new PaginatedResult<>(all.subList(offset, end), total);
     }
 
     private KeywordIndex getOrBuildIndex(String version) {

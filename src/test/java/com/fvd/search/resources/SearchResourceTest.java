@@ -76,7 +76,8 @@ class SearchResourceTest {
                 .when().get("/api/search/files")
                 .then()
                 .statusCode(200)
-                .body("results.size()", is(0));
+                .body("results.size()", is(0))
+                .body("total", is(0));
     }
 
     @Test
@@ -90,7 +91,10 @@ class SearchResourceTest {
                 .statusCode(200)
                 .body("results.size()", greaterThan(0))
                 .body("results[0].path", equalTo("security-overview.adoc"))
-                .body("results[0].score", greaterThan(0f));
+                .body("results[0].score", greaterThan(0f))
+                .body("total", greaterThan(0))
+                .body("limit", is(10))
+                .body("offset", is(0));
     }
 
     @Test
@@ -105,6 +109,62 @@ class SearchResourceTest {
                 .body("results.size()", greaterThan(0))
                 .body("results[0].path", equalTo("security-overview.adoc"))
                 .body("results[0].score", greaterThan(0f));
+    }
+
+    @Test
+    void testSearchFilesEndpointWithPagination() {
+        seedKeywordIndex();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "quarkus")
+                .queryParam("limit", 1)
+                .queryParam("offset", 0)
+                .when().get("/api/search/files")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(1))
+                .body("total", is(2))
+                .body("limit", is(1))
+                .body("offset", is(0));
+    }
+
+    @Test
+    void testSearchFilesEndpointWithPaginationOffset() {
+        seedKeywordIndex();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "quarkus")
+                .queryParam("limit", 1)
+                .queryParam("offset", 1)
+                .when().get("/api/search/files")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(1))
+                .body("total", is(2))
+                .body("limit", is(1))
+                .body("offset", is(1));
+    }
+
+    @Test
+    void testSearchFilesEndpointInvalidLimit() {
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("limit", 0)
+                .when().get("/api/search/files")
+                .then()
+                .statusCode(400);
+    }
+
+    @Test
+    void testSearchFilesEndpointInvalidOffset() {
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("offset", -1)
+                .when().get("/api/search/files")
+                .then()
+                .statusCode(400);
     }
 
     @Test
@@ -189,6 +249,24 @@ class SearchResourceTest {
                 .body("results.size()", greaterThan(0))
                 .body("results[0].path", equalTo("security-overview.adoc"))
                 .body("results[0].score", greaterThan(0f));
+    }
+
+    @Test
+    void testSearchSectionsEndpointWithPagination() {
+        seedKeywordIndex();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("filePaths", "security-overview.adoc")
+                .queryParam("limit", 1)
+                .queryParam("offset", 0)
+                .when().get("/api/search/sections")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(1))
+                .body("total", greaterThanOrEqualTo(1))
+                .body("limit", is(1))
+                .body("offset", is(0));
     }
 
     // --- Section content endpoint tests ---
@@ -290,7 +368,6 @@ class SearchResourceTest {
 
     @Test
     void testVersionsEndpointReturnsCachedVersions() {
-        // Seed a doc file to create a cached version directory
         docStore.write("3.27", "security.adoc", "= Guide\nContent.");
         docStore.write("3.17", "config.adoc", "= Config\nContent.");
 
@@ -387,6 +464,40 @@ class SearchResourceTest {
                 .when().get("/api/search/code-samples")
                 .then()
                 .statusCode(400);
+    }
+
+    @Test
+    void testSearchCodeSamplesEndpointWithPagination() {
+        seedCodeSampleIndex();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("limit", 1)
+                .queryParam("offset", 0)
+                .when().get("/api/search/code-samples")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(1))
+                .body("total", is(2))
+                .body("limit", is(1))
+                .body("offset", is(0));
+    }
+
+    @Test
+    void testSearchCodeSamplesEndpointWithPaginationOffset() {
+        seedCodeSampleIndex();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("limit", 1)
+                .queryParam("offset", 1)
+                .when().get("/api/search/code-samples")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(1))
+                .body("total", is(2))
+                .body("limit", is(1))
+                .body("offset", is(1));
     }
 
     private void seedDocFile() {

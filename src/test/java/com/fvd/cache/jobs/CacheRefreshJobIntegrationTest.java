@@ -154,16 +154,16 @@ class CacheRefreshJobIntegrationTest {
 
         // Verify search works before refresh
         var resultsBeforeRefresh = searchService.searchCodeSamples(
-                "3.27", List.of("security", "inject"), null, null);
-        assertThat(resultsBeforeRefresh).isNotEmpty();
+                "3.27", List.of("security", "inject"), null, null, 10, 0);
+        assertThat(resultsBeforeRefresh.items()).isNotEmpty();
 
         // Step 2: Simulate refresh
         cacheRefreshJob.refreshVersion("3.27");
 
         // Step 3: Verify search still works after refresh
         var resultsAfterRefresh = searchService.searchCodeSamples(
-                "3.27", List.of("security", "inject"), null, null);
-        assertThat(resultsAfterRefresh)
+                "3.27", List.of("security", "inject"), null, null, 10, 0);
+        assertThat(resultsAfterRefresh.items())
                 .as("Code sample search should return results after refresh")
                 .isNotEmpty();
     }

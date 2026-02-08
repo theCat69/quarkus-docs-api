@@ -46,4 +46,27 @@ public class InputValidator {
     public static void validateSectionTitle(String sectionTitle) {
         requireNonEmpty(sectionTitle, "sectionTitle");
     }
+
+    public static int validateLimit(Integer limit, int defaultLimit, int maxLimit) {
+        if (limit == null) {
+            return defaultLimit;
+        }
+        if (limit < 1) {
+            throw new InvalidInputException("limit must be at least 1");
+        }
+        if (limit > maxLimit) {
+            throw new InvalidInputException("limit must not exceed " + maxLimit);
+        }
+        return limit;
+    }
+
+    public static int validateOffset(Integer offset) {
+        if (offset == null) {
+            return 0;
+        }
+        if (offset < 0) {
+            throw new InvalidInputException("offset must not be negative");
+        }
+        return offset;
+    }
 }

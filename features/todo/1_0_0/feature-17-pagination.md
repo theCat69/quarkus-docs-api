@@ -17,7 +17,7 @@ Introduce `limit` and `offset` parameters across search endpoints to keep large 
 
 ## Tasks checklist
 
-- [ ] Identify all search endpoints returning lists (files/sections/code samples).
-- [ ] Add optional `limit`/`offset` parameters with validation and defaults.
-- [ ] Apply pagination in search services and response DTOs.
-- [ ] Add tests for pagination behavior, boundaries, and empty pages.
+- [x] Identify all search endpoints returning lists (files/sections/code samples).
+- [x] Add optional `limit`/`offset` parameters with validation and defaults.
+- [x] Apply pagination in search services and response DTOs.
+- [x] Add tests for pagination behavior, boundaries, and empty pages.
