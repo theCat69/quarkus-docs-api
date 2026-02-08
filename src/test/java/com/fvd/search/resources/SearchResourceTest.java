@@ -64,7 +64,7 @@ class SearchResourceTest {
     @Test
     void testSearchFilesEndpointNoIndexReturnsEmpty() {
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.99")
                 .queryParam("keywords", "oidc,security")
                 .when().get("/api/search/files")
                 .then()
@@ -144,7 +144,7 @@ class SearchResourceTest {
     @Test
     void testSearchSectionsEndpointNoIndexReturnsEmpty() {
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.99")
                 .queryParam("keywords", "oidc")
                 .queryParam("filePaths", "docs/src/main/asciidoc/security-oidc.adoc")
                 .when().get("/api/search/sections")
