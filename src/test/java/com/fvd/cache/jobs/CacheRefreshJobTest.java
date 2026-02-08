@@ -1,6 +1,5 @@
 package com.fvd.cache.jobs;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.clients.GithubApiFile;
@@ -10,6 +9,7 @@ import com.fvd.github.services.GitHubService;
 import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.stores.IndexStore;
+import com.fvd.search.services.SearchService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,13 +41,14 @@ class CacheRefreshJobTest {
     @Mock
     private KeywordIndexer keywordIndexer;
 
-    private ObjectMapper objectMapper;
+    @Mock
+    private SearchService searchService;
+
     private CacheRefreshJob job;
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
-        job = new CacheRefreshJob(cacheService, gitHubService, indexStore, docStore, keywordIndexer);
+        job = new CacheRefreshJob(cacheService, gitHubService, indexStore, docStore, keywordIndexer, searchService);
     }
 
     @Test
@@ -116,6 +117,7 @@ class CacheRefreshJobTest {
         job.refresh();
 
         verify(keywordIndexer).build(eq("3.21"), eq(List.of("docs/src/main/asciidoc/security-overview.adoc", "docs/src/main/asciidoc/config.adoc")));
+        verify(searchService).invalidateCache("3.21");
     }
 
     @Test

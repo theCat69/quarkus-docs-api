@@ -1,6 +1,5 @@
 package com.fvd.search.services;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.docs.stores.DocStore;
@@ -13,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @ApplicationScoped
@@ -24,15 +24,15 @@ public class SearchService {
     private static final double MULTI_KEYWORD_BOOST = 1.5;
 
     private final KeywordIndexStore keywordIndexStore;
-    private final ObjectMapper objectMapper;
     private final ZipDownloadService zipDownloadService;
     private final KeywordIndexer keywordIndexer;
     private final DocStore docStore;
     private final AsciidocParser asciidocParser;
 
+    private final Map<String, KeywordIndex> indexCache = new ConcurrentHashMap<>();
+
     public List<FileSearchResult> searchFiles(String version, List<String> keywords) {
-        ensureIndex(version);
-        KeywordIndex index = loadIndex(version);
+        KeywordIndex index = getOrBuildIndex(version);
         if (index == null) {
             return List.of();
         }
@@ -73,8 +73,7 @@ public class SearchService {
 
     public List<SectionSearchResult> searchSections(String version, List<String> keywords,
                                                     List<String> filePaths) {
-        ensureIndex(version);
-        KeywordIndex index = loadIndex(version);
+        KeywordIndex index = getOrBuildIndex(version);
         if (index == null) {
             return List.of();
         }
@@ -134,11 +133,35 @@ public class SearchService {
                 "Section not found: '" + sectionTitle + "' in " + filePath + " for version: " + version);
     }
 
-    private void ensureIndex(String version) {
-        Optional<String> existing = keywordIndexStore.read(version);
-        if (existing.isPresent()) {
-            return;
+    /**
+     * Invalidates the in-memory cache for a specific version.
+     * Should be called after the keyword index is rebuilt (e.g., during cache refresh).
+     */
+    public void invalidateCache(String version) {
+        indexCache.remove(version);
+    }
+
+    private KeywordIndex getOrBuildIndex(String version) {
+        KeywordIndex cached = indexCache.get(version);
+        if (cached != null) {
+            return cached;
         }
+
+        // Check if index exists in SQLite without loading it fully
+        if (!keywordIndexStore.exists(version)) {
+            buildIndex(version);
+        }
+
+        // Load from SQLite and cache
+        Optional<KeywordIndex> index = keywordIndexStore.read(version);
+        if (index.isPresent()) {
+            indexCache.put(version, index.get());
+            return index.get();
+        }
+        return null;
+    }
+
+    private void buildIndex(String version) {
         if (zipDownloadService == null || keywordIndexer == null || docStore == null) {
             return;
         }
@@ -152,18 +175,6 @@ public class SearchService {
             keywordIndexer.build(version, files);
         } catch (Exception e) {
             log.warn("Failed to lazily build keyword index for version {}", version, e);
-        }
-    }
-
-    private KeywordIndex loadIndex(String version) {
-        Optional<String> json = keywordIndexStore.read(version);
-        if (json.isEmpty()) {
-            return null;
-        }
-        try {
-            return objectMapper.readValue(json.get(), KeywordIndex.class);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to parse keyword index for version: " + version, e);
         }
     }
 }

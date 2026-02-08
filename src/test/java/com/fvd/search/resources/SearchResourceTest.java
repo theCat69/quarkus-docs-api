@@ -1,7 +1,12 @@
 package com.fvd.search.resources;
 
 import com.fvd.docs.stores.DocStore;
+import com.fvd.indexs.indexers.FileKeywordEntry;
+import com.fvd.indexs.indexers.KeywordIndex;
+import com.fvd.indexs.indexers.KeywordScore;
+import com.fvd.indexs.indexers.SectionKeywordEntry;
 import com.fvd.indexs.stores.KeywordIndexStore;
+import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.apache.commons.io.FileUtils;
@@ -10,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
@@ -24,12 +30,17 @@ class SearchResourceTest {
     @Inject
     DocStore docStore;
 
+    @Inject
+    SqliteSchemaInitializer schemaInitializer;
+
     @BeforeEach
     void cleanTestCache() throws IOException {
         var cachePath = Path.of("build/test-cache").toFile();
-        if(cachePath.exists()) {
+        if (cachePath.exists()) {
             FileUtils.cleanDirectory(cachePath);
         }
+        // Re-initialize schema after cleaning (DB file was deleted)
+        schemaInitializer.initSchema();
     }
 
     @Test
@@ -259,38 +270,15 @@ class SearchResourceTest {
     }
 
     private void seedKeywordIndex() {
-        String keywordIndexJson = """
-                {
-                  "files": [
-                    {
-                      "path": "security-overview.adoc",
-                      "keywords": [
-                        {"word": "security", "score": 15},
-                        {"word": "quarkus", "score": 8}
-                      ],
-                      "sections": [
-                        {
-                          "title": "Security Overview",
-                          "start": 1,
-                          "end": 10,
-                          "keywords": [
-                            {"word": "security", "score": 12},
-                            {"word": "overview", "score": 5}
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "path": "config.adoc",
-                      "keywords": [
-                        {"word": "config", "score": 10},
-                        {"word": "quarkus", "score": 5}
-                      ],
-                      "sections": []
-                    }
-                  ]
-                }
-                """;
-        keywordIndexStore.write("3.21", keywordIndexJson);
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("security-overview.adoc",
+                        List.of(new KeywordScore("security", 15), new KeywordScore("quarkus", 8)),
+                        List.of(new SectionKeywordEntry("Security Overview", 1, 10,
+                                List.of(new KeywordScore("security", 12), new KeywordScore("overview", 5))))),
+                new FileKeywordEntry("config.adoc",
+                        List.of(new KeywordScore("config", 10), new KeywordScore("quarkus", 5)),
+                        List.of())
+        ));
+        keywordIndexStore.write("3.21", index);
     }
 }

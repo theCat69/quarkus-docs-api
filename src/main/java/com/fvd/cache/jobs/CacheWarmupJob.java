@@ -5,6 +5,7 @@ import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.services.IndexService;
 import io.quarkus.runtime.StartupEvent;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,7 @@ public class CacheWarmupJob {
     @ConfigProperty(name = "app.versions")
     Optional<List<String>> configuredVersions;
 
-    void onStartup(@Observes StartupEvent event) {
+    void onStartup(@Observes @Priority(200) StartupEvent event) {
         if (configuredVersions.isEmpty() || configuredVersions.get().isEmpty()) {
             log.info("No versions configured for warmup (app.versions is empty)");
             return;

@@ -10,9 +10,9 @@ Replace file-based indexes with SQLite-backed indexes to improve retrieval and s
 
 ## Tasks
 
-- [ ] Inventory current index file formats and access patterns.
-- [ ] Design SQLite schema for keyword and section indexes.
-- [ ] Implement index writer/reader with SQLite.
-- [ ] Update services to use SQLite store.
-- [ ] Add migration/rebuild logic during cache refresh.
-- [ ] Add tests for index read/write and search correctness.
+- [x] Inventory current index file formats and access patterns.
+- [x] Design SQLite schema for keyword and section indexes.
+- [x] Implement index writer/reader with SQLite.
+- [x] Update services to use SQLite store.
+- [x] Add migration/rebuild logic during cache refresh.
+- [x] Add tests for index read/write and search correctness.

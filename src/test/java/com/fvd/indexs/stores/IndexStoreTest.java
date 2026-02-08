@@ -1,12 +1,11 @@
 package com.fvd.indexs.stores;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fvd.cache.services.CacheService;
 import com.fvd.common.exceptions.InvalidInputException;
 import com.fvd.github.clients.GithubApiIndex;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.sqlite.SQLiteDataSource;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -24,8 +23,11 @@ class IndexStoreTest {
 
     @BeforeEach
     void setUp() {
-        CacheService cacheService = new CacheService(tempDir.toString());
-        indexStore = new IndexStore(cacheService, new ObjectMapper());
+        SQLiteDataSource ds = new SQLiteDataSource();
+        ds.setUrl("jdbc:sqlite:" + tempDir.resolve("test.db"));
+        SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
+        initializer.initSchema();
+        indexStore = new IndexStore(ds);
     }
 
     @Test

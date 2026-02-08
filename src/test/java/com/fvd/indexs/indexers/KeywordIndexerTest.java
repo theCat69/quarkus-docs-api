@@ -1,13 +1,14 @@
 package com.fvd.indexs.indexers;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
+import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.sqlite.SQLiteDataSource;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -28,10 +29,13 @@ class KeywordIndexerTest {
     void setUp() {
         CacheService cacheService = new CacheService(tempDir.toString());
         docStore = new DocStore(cacheService);
-        keywordIndexStore = new KeywordIndexStore(cacheService);
+        SQLiteDataSource ds = new SQLiteDataSource();
+        ds.setUrl("jdbc:sqlite:" + tempDir.resolve("test.db"));
+        SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
+        initializer.initSchema();
+        keywordIndexStore = new KeywordIndexStore(ds);
         AsciidocParser parser = new AsciidocParser();
-        ObjectMapper objectMapper = new ObjectMapper();
-        indexer = new KeywordIndexer(docStore, keywordIndexStore, parser, objectMapper);
+        indexer = new KeywordIndexer(docStore, keywordIndexStore, parser);
         indexer.fileEntryKeywordMinimalScore = 2;
     }
 
@@ -53,7 +57,6 @@ class KeywordIndexerTest {
         assertThat(index.files).hasSize(1);
         FileKeywordEntry entry = index.files.get(0);
         assertThat(entry.path).isEqualTo("security-overview.adoc");
-        //TODO assert values
         assertThat(entry.keywords).isNotEmpty();
 
         // "security" appears in text + filename boost (+10)
@@ -143,10 +146,10 @@ class KeywordIndexerTest {
 
         indexer.build("3.21", List.of("test.adoc"));
 
-        Optional<String> stored = keywordIndexStore.read("3.21");
+        Optional<KeywordIndex> stored = keywordIndexStore.read("3.21");
         assertThat(stored).isPresent();
-        assertThat(stored.get()).contains("test.adoc");
-        assertThat(stored.get()).contains("keywords");
+        assertThat(stored.get().files).isNotEmpty();
+        assertThat(stored.get().files.get(0).path).isEqualTo("test.adoc");
     }
 
     @Test

@@ -1,7 +1,5 @@
 package com.fvd.indexs.indexers;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
@@ -59,7 +57,6 @@ public class KeywordIndexer {
     private final DocStore docStore;
     private final KeywordIndexStore keywordIndexStore;
     private final AsciidocParser parser;
-    private final ObjectMapper objectMapper;
 
     @ConfigProperty(name = "keywords.file.minimal.score", defaultValue = "2")
     Integer fileEntryKeywordMinimalScore;
@@ -145,11 +142,6 @@ public class KeywordIndexer {
     }
 
     private void persist(String version, KeywordIndex index) {
-        try {
-            String json = objectMapper.writeValueAsString(index);
-            keywordIndexStore.write(version, json);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize keyword index", e);
-        }
+        keywordIndexStore.write(version, index);
     }
 }

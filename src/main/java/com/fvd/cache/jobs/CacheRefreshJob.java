@@ -7,6 +7,7 @@ import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.services.GitHubService;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.stores.IndexStore;
+import com.fvd.search.services.SearchService;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class CacheRefreshJob {
     private final IndexStore indexStore;
     private final DocStore docStore;
     private final KeywordIndexer keywordIndexer;
+    private final SearchService searchService;
 
     @Scheduled(every = "${app.refresh.interval:6h}", delayed = "10m")
     public void refresh() {
@@ -80,6 +82,9 @@ public class CacheRefreshJob {
                     .map(e -> e.path)
                     .toList();
             keywordIndexer.build(version, allFilePaths);
+
+            // Invalidate in-memory cache so next search picks up fresh data
+            searchService.invalidateCache(version);
 
         }
         log.info("Cache refresh completed for version {}", version);

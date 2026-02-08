@@ -1,16 +1,16 @@
 package com.fvd.indexs.services;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fvd.cache.services.CacheService;
 import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.services.GitHubService;
 import com.fvd.indexs.stores.IndexStore;
+import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.sqlite.SQLiteDataSource;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -32,8 +32,11 @@ class IndexServiceTest {
 
     @BeforeEach
     void setUp() {
-        CacheService cacheService = new CacheService(tempDir.toString());
-        indexStore = new IndexStore(cacheService, new ObjectMapper());
+        SQLiteDataSource ds = new SQLiteDataSource();
+        ds.setUrl("jdbc:sqlite:" + tempDir.resolve("test.db"));
+        SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
+        initializer.initSchema();
+        indexStore = new IndexStore(ds);
         indexService = new IndexService(indexStore, gitHubService);
     }
 

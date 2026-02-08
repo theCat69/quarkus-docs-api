@@ -1,6 +1,5 @@
 package com.fvd.search.services;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.exceptions.DocNotFoundException;
@@ -8,6 +7,7 @@ import com.fvd.docs.stores.DocStore;
 import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.*;
 import com.fvd.indexs.stores.KeywordIndexStore;
+import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.sqlite.SQLiteDataSource;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -32,27 +33,27 @@ class SearchServiceTest {
 
     SearchService searchService;
     KeywordIndexStore keywordIndexStore;
-    ObjectMapper objectMapper;
     AsciidocParser asciidocParser;
 
     @BeforeEach
     void setUp() {
-        CacheService cacheService = new CacheService(tempDir.toString());
-        keywordIndexStore = new KeywordIndexStore(cacheService);
-        objectMapper = new ObjectMapper();
+        SQLiteDataSource ds = new SQLiteDataSource();
+        ds.setUrl("jdbc:sqlite:" + tempDir.resolve("test.db"));
+        SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
+        initializer.initSchema();
+        keywordIndexStore = new KeywordIndexStore(ds);
         asciidocParser = new AsciidocParser();
-        searchService = new SearchService(keywordIndexStore, objectMapper, null, null, null, asciidocParser);
+        searchService = new SearchService(keywordIndexStore, null, null, null, asciidocParser);
     }
 
-    private void seedIndex(String version, KeywordIndex index) throws Exception {
-        String json = objectMapper.writeValueAsString(index);
-        keywordIndexStore.write(version, json);
+    private void seedIndex(String version, KeywordIndex index) {
+        keywordIndexStore.write(version, index);
     }
 
     // --- File search tests ---
 
     @Test
-    void searchFilesReturnsSortedByDescendingScore() throws Exception {
+    void searchFilesReturnsSortedByDescendingScore() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("low.adoc",
                         List.of(new KeywordScore("security", 5)), List.of()),
@@ -73,7 +74,7 @@ class SearchServiceTest {
     }
 
     @Test
-    void searchFilesAggregatesScoresAcrossKeywords() throws Exception {
+    void searchFilesAggregatesScoresAcrossKeywords() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("both.adoc",
                         List.of(new KeywordScore("security", 10), new KeywordScore("oidc", 8)), List.of()),
@@ -92,7 +93,7 @@ class SearchServiceTest {
     }
 
     @Test
-    void searchFilesMultiKeywordBoostIncreasesScore() throws Exception {
+    void searchFilesMultiKeywordBoostIncreasesScore() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("multi.adoc",
                         List.of(new KeywordScore("security", 5), new KeywordScore("oidc", 5)), List.of()),
@@ -111,7 +112,7 @@ class SearchServiceTest {
     }
 
     @Test
-    void searchFilesLimitsResultsToTen() throws Exception {
+    void searchFilesLimitsResultsToTen() {
         List<FileKeywordEntry> files = new java.util.ArrayList<>();
         for (int i = 0; i < 15; i++) {
             files.add(new FileKeywordEntry("file" + i + ".adoc",
@@ -127,7 +128,7 @@ class SearchServiceTest {
     }
 
     @Test
-    void searchFilesReturnsEmptyForUnknownKeyword() throws Exception {
+    void searchFilesReturnsEmptyForUnknownKeyword() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("test.adoc",
                         List.of(new KeywordScore("security", 10)), List.of())
@@ -149,7 +150,7 @@ class SearchServiceTest {
     // --- Section search tests ---
 
     @Test
-    void searchSectionsReturnsMatchingSections() throws Exception {
+    void searchSectionsReturnsMatchingSections() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("security.adoc", List.of(), List.of(
                         new SectionKeywordEntry("Overview", 1, 10,
@@ -170,7 +171,7 @@ class SearchServiceTest {
     }
 
     @Test
-    void searchSectionsFiltersToProvidedFilePaths() throws Exception {
+    void searchSectionsFiltersToProvidedFilePaths() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("included.adoc", List.of(), List.of(
                         new SectionKeywordEntry("Included", 1, 10,
@@ -191,7 +192,7 @@ class SearchServiceTest {
     }
 
     @Test
-    void searchSectionsLimitsResultsToFive() throws Exception {
+    void searchSectionsLimitsResultsToFive() {
         List<SectionKeywordEntry> sections = new java.util.ArrayList<>();
         for (int i = 0; i < 8; i++) {
             sections.add(new SectionKeywordEntry("Section " + i, i * 10 + 1, (i + 1) * 10,
@@ -210,7 +211,7 @@ class SearchServiceTest {
     }
 
     @Test
-    void searchSectionsReturnsEmptyForUnmatchedKeyword() throws Exception {
+    void searchSectionsReturnsEmptyForUnmatchedKeyword() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("test.adoc", List.of(), List.of(
                         new SectionKeywordEntry("Section", 1, 10,
@@ -233,7 +234,7 @@ class SearchServiceTest {
         assertThat(results).isEmpty();
     }
 
-    // --- Lazy initialization tests ---
+    // --- Section content tests ---
 
     @Nested
     class SectionContentTests {
@@ -246,7 +247,7 @@ class SearchServiceTest {
             CacheService cacheService = new CacheService(tempDir.toString());
             realDocStore = new DocStore(cacheService);
             sectionSearchService = new SearchService(
-                    keywordIndexStore, objectMapper, null, null, realDocStore, asciidocParser);
+                    keywordIndexStore, null, null, realDocStore, asciidocParser);
         }
 
         @Test
@@ -337,9 +338,12 @@ class SearchServiceTest {
 
         @BeforeEach
         void setUpLazy() {
-            CacheService cacheService = new CacheService(tempDir.toString());
-            lazyKeywordIndexStore = new KeywordIndexStore(cacheService);
-            lazySearchService = new SearchService(lazyKeywordIndexStore, objectMapper,
+            SQLiteDataSource ds = new SQLiteDataSource();
+            ds.setUrl("jdbc:sqlite:" + tempDir.resolve("lazy-test.db"));
+            SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
+            initializer.initSchema();
+            lazyKeywordIndexStore = new KeywordIndexStore(ds);
+            lazySearchService = new SearchService(lazyKeywordIndexStore,
                     zipDownloadService, keywordIndexer, docStore, asciidocParser);
         }
 
@@ -372,14 +376,13 @@ class SearchServiceTest {
         }
 
         @Test
-        void searchFilesDoesNotTriggerDownloadWhenIndexExists() throws Exception {
+        void searchFilesDoesNotTriggerDownloadWhenIndexExists() {
             // Pre-seed a keyword index so lazy init is not needed
             KeywordIndex index = new KeywordIndex(List.of(
                     new FileKeywordEntry("test.adoc",
                             List.of(new KeywordScore("security", 10)), List.of())
             ));
-            String json = objectMapper.writeValueAsString(index);
-            lazyKeywordIndexStore.write("3.21", json);
+            lazyKeywordIndexStore.write("3.21", index);
 
             List<FileSearchResult> results = lazySearchService.searchFiles("3.21", List.of("security"));
 
@@ -406,15 +409,14 @@ class SearchServiceTest {
         }
 
         @Test
-        void searchSectionsDoesNotTriggerDownloadWhenIndexExists() throws Exception {
+        void searchSectionsDoesNotTriggerDownloadWhenIndexExists() {
             KeywordIndex index = new KeywordIndex(List.of(
                     new FileKeywordEntry("test.adoc", List.of(), List.of(
                             new SectionKeywordEntry("Section 1", 1, 10,
                                     List.of(new KeywordScore("security", 5)))
                     ))
             ));
-            String json = objectMapper.writeValueAsString(index);
-            lazyKeywordIndexStore.write("3.21", json);
+            lazyKeywordIndexStore.write("3.21", index);
 
             List<SectionSearchResult> results = lazySearchService.searchSections(
                     "3.21", List.of("security"), List.of("test.adoc"));

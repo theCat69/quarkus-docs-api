@@ -1,6 +1,8 @@
 package com.fvd.docs.resources;
 
+import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,12 +16,17 @@ import static org.hamcrest.Matchers.equalTo;
 @QuarkusTest
 class DocsResourceTest {
 
+    @Inject
+    SqliteSchemaInitializer schemaInitializer;
+
     @BeforeEach
     void cleanTestCache() throws IOException {
         var cachePath = Path.of("build/test-cache").toFile();
-        if(cachePath.exists()) {
+        if (cachePath.exists()) {
             FileUtils.cleanDirectory(cachePath);
         }
+        // Re-initialize schema after cleaning (DB file was deleted)
+        schemaInitializer.initSchema();
     }
 
     @Test
