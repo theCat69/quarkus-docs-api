@@ -376,6 +376,9 @@ class SearchServiceTest {
             assertThat(result.content).contains("It has multiple lines.");
             assertThat(result.startLine).isGreaterThan(0);
             assertThat(result.endLine).isGreaterThanOrEqualTo(result.startLine);
+            assertThat(result.matchedTitle).isEqualTo("Overview");
+            assertThat(result.matchScore).isEqualTo(1.0);
+            assertThat(result.matchType).isEqualTo("exact");
         }
 
         @Test
@@ -394,6 +397,9 @@ class SearchServiceTest {
 
             assertThat(result.title).isEqualTo("Security Overview");
             assertThat(result.content).contains("Content here.");
+            assertThat(result.matchedTitle).isEqualTo("Security Overview");
+            assertThat(result.matchScore).isEqualTo(1.0);
+            assertThat(result.matchType).isEqualTo("exact");
         }
 
         @Test
@@ -416,9 +422,101 @@ class SearchServiceTest {
             realDocStore.write("3.27", "security.adoc", docContent);
 
             assertThatThrownBy(() ->
-                    sectionSearchService.getSectionContent("3.27", "security.adoc", "Nonexistent Section"))
+                    sectionSearchService.getSectionContent("3.27", "security.adoc", "Completely Unrelated XYZ123"))
                     .isInstanceOf(DocNotFoundException.class)
                     .hasMessageContaining("Section not found");
+        }
+
+        @Test
+        void getSectionContentFuzzyMatchPartialTitle() {
+            String docContent = """
+                    = Main Title
+                    Intro.
+                    
+                    == Security Overview
+                    Security overview content.
+                    
+                    == Configuration Guide
+                    Config content.
+                    """;
+            realDocStore.write("3.27", "security.adoc", docContent);
+
+            SectionContentResult result = sectionSearchService.getSectionContent(
+                    "3.27", "security.adoc", "Security");
+
+            assertThat(result.title).isEqualTo("Security Overview");
+            assertThat(result.content).contains("Security overview content.");
+            assertThat(result.matchedTitle).isEqualTo("Security Overview");
+            assertThat(result.matchScore).isGreaterThan(0.0).isLessThan(1.0);
+            assertThat(result.matchType).isNotEqualTo("exact");
+        }
+
+        @Test
+        void getSectionContentFuzzyMatchTypo() {
+            String docContent = """
+                    = Main Title
+                    Intro.
+                    
+                    == Overview
+                    Overview content.
+                    
+                    == Configuration
+                    Config content.
+                    """;
+            realDocStore.write("3.27", "security.adoc", docContent);
+
+            SectionContentResult result = sectionSearchService.getSectionContent(
+                    "3.27", "security.adoc", "Overvew");
+
+            assertThat(result.title).isEqualTo("Overview");
+            assertThat(result.content).contains("Overview content.");
+            assertThat(result.matchedTitle).isEqualTo("Overview");
+            assertThat(result.matchScore).isGreaterThan(0.0).isLessThan(1.0);
+        }
+
+        @Test
+        void getSectionContentFuzzyMatchKeywordOverlap() {
+            String docContent = """
+                    = Main Title
+                    Intro.
+                    
+                    == Authentication Methods
+                    Auth content.
+                    
+                    == Authorization and Roles
+                    Authz content.
+                    """;
+            realDocStore.write("3.27", "security.adoc", docContent);
+
+            SectionContentResult result = sectionSearchService.getSectionContent(
+                    "3.27", "security.adoc", "authentication");
+
+            assertThat(result.title).isEqualTo("Authentication Methods");
+            assertThat(result.content).contains("Auth content.");
+            assertThat(result.matchedTitle).isEqualTo("Authentication Methods");
+        }
+
+        @Test
+        void getSectionContentExactMatchTakesPriorityOverFuzzy() {
+            String docContent = """
+                    = Main Title
+                    Intro.
+                    
+                    == Security
+                    Exact match content.
+                    
+                    == Security Overview
+                    Fuzzy match content.
+                    """;
+            realDocStore.write("3.27", "security.adoc", docContent);
+
+            SectionContentResult result = sectionSearchService.getSectionContent(
+                    "3.27", "security.adoc", "Security");
+
+            assertThat(result.title).isEqualTo("Security");
+            assertThat(result.content).contains("Exact match content.");
+            assertThat(result.matchScore).isEqualTo(1.0);
+            assertThat(result.matchType).isEqualTo("exact");
         }
     }
 

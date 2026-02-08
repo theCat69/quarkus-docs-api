@@ -125,11 +125,15 @@ public class SearchResource {
     @Path("/section-content")
     @Operation(
             summary = "Get section content",
-            description = "Returns the raw AsciiDoc content and metadata for a specific section in a document."
+            description = "Returns the raw AsciiDoc content and metadata for a specific section in a document. "
+                    + "Supports fuzzy matching: if no exact title match is found, the best fuzzy match is returned "
+                    + "based on Levenshtein similarity, substring containment, and word overlap. "
+                    + "The response includes matchedTitle, matchScore (0.0-1.0), and matchType (exact/partial/keyword) "
+                    + "to indicate how the section was matched."
     )
     @APIResponse(
             responseCode = "200",
-            description = "Section content retrieved successfully",
+            description = "Section content retrieved successfully. Check matchType to see if match was exact or fuzzy.",
             content = @Content(schema = @Schema(implementation = SectionContentResult.class))
     )
     @APIResponse(
@@ -139,7 +143,7 @@ public class SearchResource {
     )
     @APIResponse(
             responseCode = "404",
-            description = "Document or section not found",
+            description = "Document not found, or no section matched above the similarity threshold",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))
     )
     public SectionContentResult getSectionContent(
@@ -147,7 +151,8 @@ public class SearchResource {
             @QueryParam("version") String version,
             @Parameter(description = "File path relative to the docs directory", required = true, example = "security-overview.adoc")
             @QueryParam("filePath") String filePath,
-            @Parameter(description = "Title of the section to retrieve", required = true, example = "Getting Started")
+            @Parameter(description = "Title of the section to retrieve. Supports fuzzy matching: partial titles, "
+                    + "keywords, and minor misspellings will be matched to the closest section.", required = true, example = "Getting Started")
             @QueryParam("sectionTitle") String sectionTitle) {
         InputValidator.validateVersion(version);
         InputValidator.validatePath(filePath);

@@ -330,7 +330,7 @@ class SearchResourceTest {
         given()
                 .queryParam("version", "3.27")
                 .queryParam("filePath", "security.adoc")
-                .queryParam("sectionTitle", "Nonexistent Section")
+                .queryParam("sectionTitle", "XYZ Completely Unrelated 12345")
                 .when().get("/api/search/section-content")
                 .then()
                 .statusCode(404)
@@ -352,7 +352,43 @@ class SearchResourceTest {
                 .body("content", notNullValue())
                 .body("content", containsString("This is the overview section."))
                 .body("startLine", greaterThan(0))
-                .body("endLine", greaterThan(0));
+                .body("endLine", greaterThan(0))
+                .body("matchedTitle", equalTo("Overview"))
+                .body("matchScore", is(1.0f))
+                .body("matchType", equalTo("exact"));
+    }
+
+    @Test
+    void testSectionContentEndpointFuzzyMatchPartialTitle() {
+        seedDocFile();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("filePath", "security.adoc")
+                .queryParam("sectionTitle", "Over")
+                .when().get("/api/search/section-content")
+                .then()
+                .statusCode(200)
+                .body("title", equalTo("Overview"))
+                .body("matchedTitle", equalTo("Overview"))
+                .body("matchScore", greaterThan(0.0f))
+                .body("matchScore", lessThan(1.0f))
+                .body("content", containsString("This is the overview section."));
+    }
+
+    @Test
+    void testSectionContentEndpointFuzzyMatchTypo() {
+        seedDocFile();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("filePath", "security.adoc")
+                .queryParam("sectionTitle", "Overvew")
+                .when().get("/api/search/section-content")
+                .then()
+                .statusCode(200)
+                .body("title", equalTo("Overview"))
+                .body("matchedTitle", equalTo("Overview"))
+                .body("matchScore", greaterThan(0.0f))
+                .body("matchScore", lessThan(1.0f));
     }
 
     // --- Versions endpoint tests ---

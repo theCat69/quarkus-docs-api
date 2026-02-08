@@ -1,6 +1,7 @@
 package com.fvd.search.services;
 
 import com.fvd.cache.services.CacheService;
+import com.fvd.common.matchers.FuzzyMatcher;
 import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
@@ -125,19 +126,44 @@ public class SearchService {
         List<DocParser.Section> sections = docParser.parseSections(content);
         String[] lines = content.split("\n", -1);
 
+        // Try exact match first (case-insensitive)
         for (DocParser.Section section : sections) {
             if (section.title().equalsIgnoreCase(sectionTitle)) {
-                int startIdx = Math.max(0, section.startLine() - 1);
-                int endIdx = Math.min(lines.length, section.endLine());
-                String sectionContent = String.join("\n",
-                        Arrays.copyOfRange(lines, startIdx, endIdx));
-                return new SectionContentResult(
-                        filePath, section.title(), section.startLine(), section.endLine(), sectionContent);
+                return buildSectionResult(filePath, section, lines, section.title(), 1.0, "exact");
+            }
+        }
+
+        // Fall back to fuzzy matching
+        List<String> titles = sections.stream()
+                .map(DocParser.Section::title)
+                .filter(t -> !t.isEmpty())
+                .toList();
+
+        Optional<FuzzyMatcher.MatchResult> fuzzyMatch = FuzzyMatcher.bestMatch(sectionTitle, titles);
+        if (fuzzyMatch.isPresent()) {
+            FuzzyMatcher.MatchResult match = fuzzyMatch.get();
+            for (DocParser.Section section : sections) {
+                if (section.title().equals(match.value())) {
+                    return buildSectionResult(filePath, section, lines,
+                            match.value(), match.score(), match.matchType());
+                }
             }
         }
 
         throw new DocNotFoundException(
                 "Section not found: '" + sectionTitle + "' in " + filePath + " for version: " + version);
+    }
+
+    private SectionContentResult buildSectionResult(String filePath, DocParser.Section section,
+                                                     String[] lines, String matchedTitle,
+                                                     double matchScore, String matchType) {
+        int startIdx = Math.max(0, section.startLine() - 1);
+        int endIdx = Math.min(lines.length, section.endLine());
+        String sectionContent = String.join("\n",
+                Arrays.copyOfRange(lines, startIdx, endIdx));
+        return new SectionContentResult(
+                filePath, section.title(), section.startLine(), section.endLine(),
+                sectionContent, matchedTitle, matchScore, matchType);
     }
 
     public PaginatedResult<CodeSampleSearchResult> searchCodeSamples(String version, List<String> keywords,
