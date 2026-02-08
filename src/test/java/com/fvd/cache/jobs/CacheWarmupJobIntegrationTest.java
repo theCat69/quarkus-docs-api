@@ -62,7 +62,7 @@ class CacheWarmupJobIntegrationTest {
     @Test
     void warmupExtractsDocsFromZipAndBuildsIndexes() {
         // Step 1: Download zip and extract docs (WireMock serves the zip)
-        List<String> extractedFiles = zipDownloadService.streamAndExtract("3.21");
+        List<String> extractedFiles = zipDownloadService.streamAndExtract("3.27");
 
         // Verify files were extracted
         assertThat(extractedFiles).containsExactlyInAnyOrder(
@@ -71,30 +71,30 @@ class CacheWarmupJobIntegrationTest {
         );
 
         // Step 2: Verify docs are readable from the cache
-        Optional<String> securityDoc = docStore.read("3.21", "security-overview.adoc");
+        Optional<String> securityDoc = docStore.read("3.27", "security-overview.adoc");
         assertThat(securityDoc).isPresent();
         assertThat(securityDoc.get()).contains("Quarkus Security overview");
         assertThat(securityDoc.get()).contains("SecurityIdentity");
 
-        Optional<String> configDoc = docStore.read("3.21", "config.adoc");
+        Optional<String> configDoc = docStore.read("3.27", "config.adoc");
         assertThat(configDoc).isPresent();
         assertThat(configDoc.get()).contains("Configuration Guide");
 
         // Step 3: Fetch the index from GitHub API (WireMock serves the index)
-        var index = indexService.getOrFetchIndex("3.21");
+        var index = indexService.getOrFetchIndex("3.27");
         assertThat(index).isNotEmpty();
         assertThat(index).extracting("name")
                 .contains("security-overview.adoc", "config.adoc");
 
         // Step 4: Build keyword index from extracted files
-        KeywordIndex keywordIndex = keywordIndexer.build("3.21", extractedFiles);
+        KeywordIndex keywordIndex = keywordIndexer.build("3.27", extractedFiles);
         assertThat(keywordIndex.files).isNotEmpty();
 
         // Verify keyword index was persisted
-        assertThat(keywordIndexStore.exists("3.21")).isTrue();
+        assertThat(keywordIndexStore.exists("3.27")).isTrue();
 
         // Verify keywords were extracted from doc content
-        Optional<KeywordIndex> storedKeywordIndex = keywordIndexStore.read("3.21");
+        Optional<KeywordIndex> storedKeywordIndex = keywordIndexStore.read("3.27");
         assertThat(storedKeywordIndex).isPresent();
         assertThat(storedKeywordIndex.get().files).isNotEmpty();
 
@@ -104,13 +104,13 @@ class CacheWarmupJobIntegrationTest {
                         && entry.keywords.stream().anyMatch(k -> k.word.equals("security")));
 
         // Step 5: Build code sample index from extracted files
-        CodeSampleIndex codeSampleIndex = codeSampleIndexer.build("3.21", extractedFiles);
+        CodeSampleIndex codeSampleIndex = codeSampleIndexer.build("3.27", extractedFiles);
         assertThat(codeSampleIndex.samples).isNotEmpty();
 
         // Verify code sample index was persisted
-        assertThat(codeSampleIndexStore.exists("3.21")).isTrue();
+        assertThat(codeSampleIndexStore.exists("3.27")).isTrue();
 
-        Optional<CodeSampleIndex> storedCodeSampleIndex = codeSampleIndexStore.read("3.21");
+        Optional<CodeSampleIndex> storedCodeSampleIndex = codeSampleIndexStore.read("3.27");
         assertThat(storedCodeSampleIndex).isPresent();
         assertThat(storedCodeSampleIndex.get().samples).isNotEmpty();
 
@@ -128,11 +128,11 @@ class CacheWarmupJobIntegrationTest {
 
     @Test
     void warmupExtractsCodeBlocksWithCorrectSectionAssociation() {
-        List<String> extractedFiles = zipDownloadService.streamAndExtract("3.21");
+        List<String> extractedFiles = zipDownloadService.streamAndExtract("3.27");
 
-        codeSampleIndexer.build("3.21", extractedFiles);
+        codeSampleIndexer.build("3.27", extractedFiles);
 
-        Optional<CodeSampleIndex> index = codeSampleIndexStore.read("3.21");
+        Optional<CodeSampleIndex> index = codeSampleIndexStore.read("3.27");
         assertThat(index).isPresent();
 
         // Security doc has 2 code blocks: one in Authentication, one in Authorization
@@ -159,11 +159,11 @@ class CacheWarmupJobIntegrationTest {
 
     @Test
     void warmupKeywordIndexContainsSectionKeywords() {
-        List<String> extractedFiles = zipDownloadService.streamAndExtract("3.21");
+        List<String> extractedFiles = zipDownloadService.streamAndExtract("3.27");
 
-        keywordIndexer.build("3.21", extractedFiles);
+        keywordIndexer.build("3.27", extractedFiles);
 
-        Optional<KeywordIndex> index = keywordIndexStore.read("3.21");
+        Optional<KeywordIndex> index = keywordIndexStore.read("3.27");
         assertThat(index).isPresent();
 
         // security-overview.adoc should have sections with keywords

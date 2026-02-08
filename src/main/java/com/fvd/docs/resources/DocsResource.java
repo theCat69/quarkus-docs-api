@@ -51,7 +51,7 @@ public class DocsResource {
             @Parameter(
                     description = "Quarkus version branch or tag",
                     required = true,
-                    example = "3.21"
+                    example = "3.27"
             )
             @QueryParam("version") String version,
             @Parameter(

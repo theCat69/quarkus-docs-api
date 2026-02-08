@@ -68,9 +68,9 @@ class SearchServiceTest {
                 new FileKeywordEntry("mid.adoc",
                         List.of(new KeywordScore("security", 12)), List.of())
         ));
-        seedIndex("3.21", index);
+        seedIndex("3.27", index);
 
-        List<FileSearchResult> results = searchService.searchFiles("3.21", List.of("security"));
+        List<FileSearchResult> results = searchService.searchFiles("3.27", List.of("security"));
 
         assertThat(results).hasSize(3);
         assertThat(results.get(0).path).isEqualTo("high.adoc");
@@ -87,9 +87,9 @@ class SearchServiceTest {
                 new FileKeywordEntry("one.adoc",
                         List.of(new KeywordScore("security", 15)), List.of())
         ));
-        seedIndex("3.21", index);
+        seedIndex("3.27", index);
 
-        List<FileSearchResult> results = searchService.searchFiles("3.21", List.of("security", "oidc"));
+        List<FileSearchResult> results = searchService.searchFiles("3.27", List.of("security", "oidc"));
 
         // "both.adoc" matches both keywords: 10 + 8 + multi-keyword boost
         // "one.adoc" matches one keyword: 15
@@ -106,9 +106,9 @@ class SearchServiceTest {
                 new FileKeywordEntry("single.adoc",
                         List.of(new KeywordScore("security", 10)), List.of())
         ));
-        seedIndex("3.21", index);
+        seedIndex("3.27", index);
 
-        List<FileSearchResult> results = searchService.searchFiles("3.21", List.of("security", "oidc"));
+        List<FileSearchResult> results = searchService.searchFiles("3.27", List.of("security", "oidc"));
 
         FileSearchResult multiResult = results.stream()
                 .filter(r -> r.path.equals("multi.adoc")).findFirst().orElseThrow();
@@ -124,9 +124,9 @@ class SearchServiceTest {
             files.add(new FileKeywordEntry("file" + i + ".adoc",
                     List.of(new KeywordScore("test", 15 - i)), List.of()));
         }
-        seedIndex("3.21", new KeywordIndex(files));
+        seedIndex("3.27", new KeywordIndex(files));
 
-        List<FileSearchResult> results = searchService.searchFiles("3.21", List.of("test"));
+        List<FileSearchResult> results = searchService.searchFiles("3.27", List.of("test"));
 
         assertThat(results).hasSize(10);
         assertThat(results.get(0).path).isEqualTo("file0.adoc");
@@ -139,16 +139,16 @@ class SearchServiceTest {
                 new FileKeywordEntry("test.adoc",
                         List.of(new KeywordScore("security", 10)), List.of())
         ));
-        seedIndex("3.21", index);
+        seedIndex("3.27", index);
 
-        List<FileSearchResult> results = searchService.searchFiles("3.21", List.of("nonexistent"));
+        List<FileSearchResult> results = searchService.searchFiles("3.27", List.of("nonexistent"));
 
         assertThat(results).isEmpty();
     }
 
     @Test
     void searchFilesReturnsEmptyWhenNoIndexAndNoDeps() {
-        List<FileSearchResult> results = searchService.searchFiles("3.21", List.of("security"));
+        List<FileSearchResult> results = searchService.searchFiles("3.27", List.of("security"));
 
         assertThat(results).isEmpty();
     }
@@ -165,10 +165,10 @@ class SearchServiceTest {
                                 List.of(new KeywordScore("oidc", 12), new KeywordScore("security", 3)))
                 ))
         ));
-        seedIndex("3.21", index);
+        seedIndex("3.27", index);
 
         List<SectionSearchResult> results = searchService.searchSections(
-                "3.21", List.of("security"), List.of("security.adoc"));
+                "3.27", List.of("security"), List.of("security.adoc"));
 
         assertThat(results).isNotEmpty();
         assertThat(results.get(0).section).isEqualTo("Overview"); // score 8 > 3
@@ -188,10 +188,10 @@ class SearchServiceTest {
                                 List.of(new KeywordScore("security", 20)))
                 ))
         ));
-        seedIndex("3.21", index);
+        seedIndex("3.27", index);
 
         List<SectionSearchResult> results = searchService.searchSections(
-                "3.21", List.of("security"), List.of("included.adoc"));
+                "3.27", List.of("security"), List.of("included.adoc"));
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).path).isEqualTo("included.adoc");
@@ -207,10 +207,10 @@ class SearchServiceTest {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("big.adoc", List.of(), sections)
         ));
-        seedIndex("3.21", index);
+        seedIndex("3.27", index);
 
         List<SectionSearchResult> results = searchService.searchSections(
-                "3.21", List.of("test"), List.of("big.adoc"));
+                "3.27", List.of("test"), List.of("big.adoc"));
 
         assertThat(results).hasSize(5);
         assertThat(results.get(0).section).isEqualTo("Section 0"); // highest score
@@ -224,10 +224,10 @@ class SearchServiceTest {
                                 List.of(new KeywordScore("security", 5)))
                 ))
         ));
-        seedIndex("3.21", index);
+        seedIndex("3.27", index);
 
         List<SectionSearchResult> results = searchService.searchSections(
-                "3.21", List.of("nonexistent"), List.of("test.adoc"));
+                "3.27", List.of("nonexistent"), List.of("test.adoc"));
 
         assertThat(results).isEmpty();
     }
@@ -235,7 +235,7 @@ class SearchServiceTest {
     @Test
     void searchSectionsReturnsEmptyWhenNoIndexAndNoDeps() {
         List<SectionSearchResult> results = searchService.searchSections(
-                "3.21", List.of("security"), List.of("test.adoc"));
+                "3.27", List.of("security"), List.of("test.adoc"));
 
         assertThat(results).isEmpty();
     }
@@ -252,10 +252,10 @@ class SearchServiceTest {
                                 List.of(new KeywordScore("security", 5)))
                 ))
         ));
-        seedIndex("3.21", index);
+        seedIndex("3.27", index);
 
         List<SectionSearchResult> results = searchService.searchSections(
-                "3.21", List.of("security"), null);
+                "3.27", List.of("security"), null);
 
         assertThat(results).hasSize(2);
         assertThat(results.get(0).section).isEqualTo("Auth");
@@ -274,10 +274,10 @@ class SearchServiceTest {
                                 List.of(new KeywordScore("security", 5)))
                 ))
         ));
-        seedIndex("3.21", index);
+        seedIndex("3.27", index);
 
         List<SectionSearchResult> results = searchService.searchSections(
-                "3.21", List.of("security"), List.of());
+                "3.27", List.of("security"), List.of());
 
         assertThat(results).hasSize(2);
     }
@@ -311,10 +311,10 @@ class SearchServiceTest {
                     == Configuration
                     Config details here.
                     """;
-            realDocStore.write("3.21", "security.adoc", docContent);
+            realDocStore.write("3.27", "security.adoc", docContent);
 
             SectionContentResult result = sectionSearchService.getSectionContent(
-                    "3.21", "security.adoc", "Overview");
+                    "3.27", "security.adoc", "Overview");
 
             assertThat(result.path).isEqualTo("security.adoc");
             assertThat(result.title).isEqualTo("Overview");
@@ -333,10 +333,10 @@ class SearchServiceTest {
                     == Security Overview
                     Content here.
                     """;
-            realDocStore.write("3.21", "security.adoc", docContent);
+            realDocStore.write("3.27", "security.adoc", docContent);
 
             SectionContentResult result = sectionSearchService.getSectionContent(
-                    "3.21", "security.adoc", "security overview");
+                    "3.27", "security.adoc", "security overview");
 
             assertThat(result.title).isEqualTo("Security Overview");
             assertThat(result.content).contains("Content here.");
@@ -345,7 +345,7 @@ class SearchServiceTest {
         @Test
         void getSectionContentThrowsWhenDocNotFound() {
             assertThatThrownBy(() ->
-                    sectionSearchService.getSectionContent("3.21", "nonexistent.adoc", "Overview"))
+                    sectionSearchService.getSectionContent("3.27", "nonexistent.adoc", "Overview"))
                     .isInstanceOf(DocNotFoundException.class)
                     .hasMessageContaining("Document not found");
         }
@@ -359,10 +359,10 @@ class SearchServiceTest {
                     == Overview
                     Content here.
                     """;
-            realDocStore.write("3.21", "security.adoc", docContent);
+            realDocStore.write("3.27", "security.adoc", docContent);
 
             assertThatThrownBy(() ->
-                    sectionSearchService.getSectionContent("3.21", "security.adoc", "Nonexistent Section"))
+                    sectionSearchService.getSectionContent("3.27", "security.adoc", "Nonexistent Section"))
                     .isInstanceOf(DocNotFoundException.class)
                     .hasMessageContaining("Section not found");
         }
@@ -398,30 +398,30 @@ class SearchServiceTest {
 
         @Test
         void searchFilesTriggersDownloadWhenNoIndexAndNoCache() {
-            when(docStore.docsExist("3.21")).thenReturn(false);
-            when(zipDownloadService.streamAndExtract("3.21"))
+            when(docStore.docsExist("3.27")).thenReturn(false);
+            when(zipDownloadService.streamAndExtract("3.27"))
                     .thenReturn(List.of("security.adoc", "config.adoc"));
-            when(keywordIndexer.build(eq("3.21"), eq(List.of("security.adoc", "config.adoc"))))
+            when(keywordIndexer.build(eq("3.27"), eq(List.of("security.adoc", "config.adoc"))))
                     .thenReturn(new KeywordIndex(List.of()));
 
-            List<FileSearchResult> results = lazySearchService.searchFiles("3.21", List.of("security"));
+            List<FileSearchResult> results = lazySearchService.searchFiles("3.27", List.of("security"));
 
-            verify(zipDownloadService).streamAndExtract("3.21");
-            verify(keywordIndexer).build("3.21", List.of("security.adoc", "config.adoc"));
+            verify(zipDownloadService).streamAndExtract("3.27");
+            verify(keywordIndexer).build("3.27", List.of("security.adoc", "config.adoc"));
             assertThat(results).isEmpty(); // no matching keywords in the empty index
         }
 
         @Test
         void searchFilesBuildsIndexFromExistingDocsWithoutDownload() {
-            when(docStore.docsExist("3.21")).thenReturn(true);
-            when(docStore.listDocFiles("3.21")).thenReturn(List.of("security.adoc"));
-            when(keywordIndexer.build(eq("3.21"), eq(List.of("security.adoc"))))
+            when(docStore.docsExist("3.27")).thenReturn(true);
+            when(docStore.listDocFiles("3.27")).thenReturn(List.of("security.adoc"));
+            when(keywordIndexer.build(eq("3.27"), eq(List.of("security.adoc"))))
                     .thenReturn(new KeywordIndex(List.of()));
 
-            lazySearchService.searchFiles("3.21", List.of("security"));
+            lazySearchService.searchFiles("3.27", List.of("security"));
 
-            verify(zipDownloadService, never()).streamAndExtract("3.21");
-            verify(keywordIndexer).build("3.21", List.of("security.adoc"));
+            verify(zipDownloadService, never()).streamAndExtract("3.27");
+            verify(keywordIndexer).build("3.27", List.of("security.adoc"));
         }
 
         @Test
@@ -431,11 +431,11 @@ class SearchServiceTest {
                     new FileKeywordEntry("test.adoc",
                             List.of(new KeywordScore("security", 10)), List.of())
             ));
-            lazyKeywordIndexStore.write("3.21", index);
+            lazyKeywordIndexStore.write("3.27", index);
 
-            List<FileSearchResult> results = lazySearchService.searchFiles("3.21", List.of("security"));
+            List<FileSearchResult> results = lazySearchService.searchFiles("3.27", List.of("security"));
 
-            verify(zipDownloadService, never()).streamAndExtract("3.21");
+            verify(zipDownloadService, never()).streamAndExtract("3.27");
             verify(keywordIndexer, never()).build(any(), any());
             assertThat(results).hasSize(1);
             assertThat(results.get(0).path).isEqualTo("test.adoc");
@@ -443,17 +443,17 @@ class SearchServiceTest {
 
         @Test
         void searchSectionsTriggersDownloadWhenNoIndexAndNoCache() {
-            when(docStore.docsExist("3.21")).thenReturn(false);
-            when(zipDownloadService.streamAndExtract("3.21"))
+            when(docStore.docsExist("3.27")).thenReturn(false);
+            when(zipDownloadService.streamAndExtract("3.27"))
                     .thenReturn(List.of("security.adoc"));
-            when(keywordIndexer.build(eq("3.21"), eq(List.of("security.adoc"))))
+            when(keywordIndexer.build(eq("3.27"), eq(List.of("security.adoc"))))
                     .thenReturn(new KeywordIndex(List.of()));
 
             List<SectionSearchResult> results = lazySearchService.searchSections(
-                    "3.21", List.of("security"), List.of("security.adoc"));
+                    "3.27", List.of("security"), List.of("security.adoc"));
 
-            verify(zipDownloadService).streamAndExtract("3.21");
-            verify(keywordIndexer).build("3.21", List.of("security.adoc"));
+            verify(zipDownloadService).streamAndExtract("3.27");
+            verify(keywordIndexer).build("3.27", List.of("security.adoc"));
             assertThat(results).isEmpty();
         }
 
@@ -465,12 +465,12 @@ class SearchServiceTest {
                                     List.of(new KeywordScore("security", 5)))
                     ))
             ));
-            lazyKeywordIndexStore.write("3.21", index);
+            lazyKeywordIndexStore.write("3.27", index);
 
             List<SectionSearchResult> results = lazySearchService.searchSections(
-                    "3.21", List.of("security"), List.of("test.adoc"));
+                    "3.27", List.of("security"), List.of("test.adoc"));
 
-            verify(zipDownloadService, never()).streamAndExtract("3.21");
+            verify(zipDownloadService, never()).streamAndExtract("3.27");
             verify(keywordIndexer, never()).build(any(), any());
             assertThat(results).hasSize(1);
         }
@@ -491,10 +491,10 @@ class SearchServiceTest {
                     new CodeSampleEntry("mid.adoc", "Section C", "java", "code3", 20, 25,
                             List.of(new KeywordScore("security", 10)))
             ));
-            codeSampleIndexStore.write("3.21", index);
+            codeSampleIndexStore.write("3.27", index);
 
             List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
-                    "3.21", List.of("security"), null, null);
+                    "3.27", List.of("security"), null, null);
 
             assertThat(results).hasSize(3);
             assertThat(results.get(0).path).isEqualTo("high.adoc");
@@ -511,10 +511,10 @@ class SearchServiceTest {
                     new CodeSampleEntry("single.adoc", "Section B", "java", "code2", 10, 15,
                             List.of(new KeywordScore("security", 10)))
             ));
-            codeSampleIndexStore.write("3.21", index);
+            codeSampleIndexStore.write("3.27", index);
 
             List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
-                    "3.21", List.of("security", "oidc"), null, null);
+                    "3.27", List.of("security", "oidc"), null, null);
 
             CodeSampleSearchResult multiResult = results.stream()
                     .filter(r -> r.path.equals("multi.adoc")).findFirst().orElseThrow();
@@ -532,10 +532,10 @@ class SearchServiceTest {
                     new CodeSampleEntry("excluded.adoc", "Section B", "java", "code2", 10, 15,
                             List.of(new KeywordScore("security", 20)))
             ));
-            codeSampleIndexStore.write("3.21", index);
+            codeSampleIndexStore.write("3.27", index);
 
             List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
-                    "3.21", List.of("security"), "included.adoc", null);
+                    "3.27", List.of("security"), "included.adoc", null);
 
             assertThat(results).hasSize(1);
             assertThat(results.get(0).path).isEqualTo("included.adoc");
@@ -549,10 +549,10 @@ class SearchServiceTest {
                     new CodeSampleEntry("test.adoc", "Authorization", "java", "code2", 10, 15,
                             List.of(new KeywordScore("security", 8)))
             ));
-            codeSampleIndexStore.write("3.21", index);
+            codeSampleIndexStore.write("3.27", index);
 
             List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
-                    "3.21", List.of("security"), null, "Authentication");
+                    "3.27", List.of("security"), null, "Authentication");
 
             assertThat(results).hasSize(1);
             assertThat(results.get(0).sectionTitle).isEqualTo("Authentication");
@@ -568,10 +568,10 @@ class SearchServiceTest {
                     new CodeSampleEntry("b.adoc", "Overview", "java", "code3", 1, 5,
                             List.of(new KeywordScore("security", 12)))
             ));
-            codeSampleIndexStore.write("3.21", index);
+            codeSampleIndexStore.write("3.27", index);
 
             List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
-                    "3.21", List.of("security"), "a.adoc", "Overview");
+                    "3.27", List.of("security"), "a.adoc", "Overview");
 
             assertThat(results).hasSize(1);
             assertThat(results.get(0).path).isEqualTo("a.adoc");
@@ -584,10 +584,10 @@ class SearchServiceTest {
                     new CodeSampleEntry("test.adoc", "Section A", "java", "code1", 1, 5,
                             List.of(new KeywordScore("security", 10)))
             ));
-            codeSampleIndexStore.write("3.21", index);
+            codeSampleIndexStore.write("3.27", index);
 
             List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
-                    "3.21", List.of("nonexistent"), null, null);
+                    "3.27", List.of("nonexistent"), null, null);
 
             assertThat(results).isEmpty();
         }
@@ -595,7 +595,7 @@ class SearchServiceTest {
         @Test
         void searchCodeSamplesReturnsEmptyWhenNoIndex() {
             List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
-                    "3.21", List.of("security"), null, null);
+                    "3.27", List.of("security"), null, null);
 
             assertThat(results).isEmpty();
         }
@@ -608,10 +608,10 @@ class SearchServiceTest {
                         "code" + i, i * 5 + 1, (i + 1) * 5,
                         List.of(new KeywordScore("test", 15 - i))));
             }
-            codeSampleIndexStore.write("3.21", new CodeSampleIndex(samples));
+            codeSampleIndexStore.write("3.27", new CodeSampleIndex(samples));
 
             List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
-                    "3.21", List.of("test"), null, null);
+                    "3.27", List.of("test"), null, null);
 
             assertThat(results).hasSize(10);
             assertThat(results.get(0).path).isEqualTo("file0.adoc");
@@ -624,10 +624,10 @@ class SearchServiceTest {
                             "import io.quarkus.Security;", 5, 10,
                             List.of(new KeywordScore("security", 15)))
             ));
-            codeSampleIndexStore.write("3.21", index);
+            codeSampleIndexStore.write("3.27", index);
 
             List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
-                    "3.21", List.of("security"), null, null);
+                    "3.27", List.of("security"), null, null);
 
             assertThat(results).hasSize(1);
             CodeSampleSearchResult result = results.get(0);
@@ -646,10 +646,10 @@ class SearchServiceTest {
                     new CodeSampleEntry("test.adoc", "Authentication", "java", "code1", 1, 5,
                             List.of(new KeywordScore("security", 5)))
             ));
-            codeSampleIndexStore.write("3.21", index);
+            codeSampleIndexStore.write("3.27", index);
 
             List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
-                    "3.21", List.of("security"), null, "authentication");
+                    "3.27", List.of("security"), null, "authentication");
 
             assertThat(results).hasSize(1);
             assertThat(results.get(0).sectionTitle).isEqualTo("Authentication");

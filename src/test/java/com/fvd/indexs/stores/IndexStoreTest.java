@@ -32,7 +32,7 @@ class IndexStoreTest {
 
     @Test
     void readReturnsEmptyWhenMissing() {
-        Optional<List<GithubApiIndex>> result = indexStore.read("3.21");
+        Optional<List<GithubApiIndex>> result = indexStore.read("3.27");
         assertThat(result).isEmpty();
     }
 
@@ -40,8 +40,8 @@ class IndexStoreTest {
     void writeAndReadRoundTrip() {
         List<GithubApiIndex> index = List.of(
                 new GithubApiIndex("test.adoc", "path/test.adoc", "sha1"));
-        indexStore.write("3.21", index);
-        Optional<List<GithubApiIndex>> result = indexStore.read("3.21");
+        indexStore.write("3.27", index);
+        Optional<List<GithubApiIndex>> result = indexStore.read("3.27");
         assertThat(result).isPresent();
         assertThat(result.get()).hasSize(1);
         assertThat(result.get().get(0).name).isEqualTo("test.adoc");
@@ -54,9 +54,9 @@ class IndexStoreTest {
                 new GithubApiIndex("old.adoc", "path/old.adoc", "old-sha"));
         List<GithubApiIndex> newIndex = List.of(
                 new GithubApiIndex("new.adoc", "path/new.adoc", "new-sha"));
-        indexStore.write("3.21", oldIndex);
-        indexStore.write("3.21", newIndex);
-        Optional<List<GithubApiIndex>> result = indexStore.read("3.21");
+        indexStore.write("3.27", oldIndex);
+        indexStore.write("3.27", newIndex);
+        Optional<List<GithubApiIndex>> result = indexStore.read("3.27");
         assertThat(result).isPresent();
         assertThat(result.get()).hasSize(1);
         assertThat(result.get().get(0).name).isEqualTo("new.adoc");

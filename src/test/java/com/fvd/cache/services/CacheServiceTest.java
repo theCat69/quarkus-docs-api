@@ -25,26 +25,26 @@ class CacheServiceTest {
 
     @Test
     void ensureVersionDirCreatesDirectoryStructure() {
-        Path dir = cacheService.ensureVersionDir("3.21");
+        Path dir = cacheService.ensureVersionDir("3.27");
         assertThat(dir).isDirectory();
         assertThat(dir.resolve("docs")).isDirectory();
     }
 
     @Test
     void versionDirReturnsCorrectPath() {
-        Path dir = cacheService.versionDir("3.21");
-        assertThat(dir).isEqualTo(tempDir.resolve("3.21"));
+        Path dir = cacheService.versionDir("3.27");
+        assertThat(dir).isEqualTo(tempDir.resolve("3.27"));
     }
 
     @Test
     void versionExistsReturnsFalseWhenMissing() {
-        assertThat(cacheService.versionExists("3.21")).isFalse();
+        assertThat(cacheService.versionExists("3.27")).isFalse();
     }
 
     @Test
     void versionExistsReturnsTrueWhenPresent() {
-        cacheService.ensureVersionDir("3.21");
-        assertThat(cacheService.versionExists("3.21")).isTrue();
+        cacheService.ensureVersionDir("3.27");
+        assertThat(cacheService.versionExists("3.27")).isTrue();
     }
 
     @Test
@@ -54,10 +54,10 @@ class CacheServiceTest {
 
     @Test
     void listCachedVersionsReturnsCreatedVersions() {
-        cacheService.ensureVersionDir("3.21");
+        cacheService.ensureVersionDir("3.27");
         cacheService.ensureVersionDir("3.22");
         List<String> versions = cacheService.listCachedVersions();
-        assertThat(versions).containsExactlyInAnyOrder("3.21", "3.22");
+        assertThat(versions).containsExactlyInAnyOrder("3.27", "3.22");
     }
 
     @Test

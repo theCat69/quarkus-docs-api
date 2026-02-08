@@ -22,7 +22,7 @@ public class DocStore {
         InputValidator.validateVersion(version);
         InputValidator.validatePath(filePath);
         Path docFile = cacheService.versionDir(version).resolve("docs").resolve(filePath);
-        if (!Files.exists(docFile)) {
+        if (!Files.exists(docFile) || Files.isDirectory(docFile)) {
             return Optional.empty();
         }
         try {

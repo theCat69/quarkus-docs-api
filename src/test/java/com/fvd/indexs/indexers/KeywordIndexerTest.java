@@ -51,9 +51,9 @@ class KeywordIndexerTest {
                 
                 Configure the OIDC provider for your application.
                 """;
-        docStore.write("3.21", "security-overview.adoc", doc);
+        docStore.write("3.27", "security-overview.adoc", doc);
 
-        KeywordIndex index = indexer.build("3.21", List.of("security-overview.adoc"));
+        KeywordIndex index = indexer.build("3.27", List.of("security-overview.adoc"));
 
         assertThat(index.files).hasSize(1);
         FileKeywordEntry entry = index.files.get(0);
@@ -73,18 +73,18 @@ class KeywordIndexerTest {
 
     @Test
     void buildIndexForMultipleFiles() {
-        docStore.write("3.21", "security-oidc.adoc", """
+        docStore.write("3.27", "security-oidc.adoc", """
                 = OIDC Guide
                 
                 OpenID Connect configuration for Quarkus.
                 """);
-        docStore.write("3.21", "config.adoc", """
+        docStore.write("3.27", "config.adoc", """
                 = Configuration Reference
                 
                 All configuration properties explained.
                 """);
 
-        KeywordIndex index = indexer.build("3.21", List.of("security-oidc.adoc", "config.adoc"));
+        KeywordIndex index = indexer.build("3.27", List.of("security-oidc.adoc", "config.adoc"));
 
         assertThat(index.files).hasSize(2);
         assertThat(index.files.stream().map(f -> f.path))
@@ -93,13 +93,13 @@ class KeywordIndexerTest {
 
     @Test
     void filenameBoostAddsToScore() {
-        docStore.write("3.21", "oidc-guide.adoc", """
+        docStore.write("3.27", "oidc-guide.adoc", """
                 = OIDC Authentication
                 
                 Some content about oidc authentication.
                 """);
 
-        KeywordIndex index = indexer.build("3.21", List.of("oidc-guide.adoc"));
+        KeywordIndex index = indexer.build("3.27", List.of("oidc-guide.adoc"));
         FileKeywordEntry entry = index.files.get(0);
 
         // "oidc" is in filename (boost +10) and in text (at least 1 occurrence)
@@ -117,7 +117,7 @@ class KeywordIndexerTest {
 
     @Test
     void sectionTitleKeywordsAreBoosted() {
-        docStore.write("3.21", "test.adoc", """
+        docStore.write("3.27", "test.adoc", """
                 = Title
                 
                 == Security Configuration
@@ -125,7 +125,7 @@ class KeywordIndexerTest {
                 This section explains security configuration details.
                 """);
 
-        KeywordIndex index = indexer.build("3.21", List.of("test.adoc"));
+        KeywordIndex index = indexer.build("3.27", List.of("test.adoc"));
         FileKeywordEntry entry = index.files.get(0);
 
         // Find the "Security Configuration" section
@@ -143,11 +143,11 @@ class KeywordIndexerTest {
 
     @Test
     void buildPersistsToKeywordIndexStore() {
-        docStore.write("3.21", "test.adoc", "= Simple Doc\n\nSome content.");
+        docStore.write("3.27", "test.adoc", "= Simple Doc\n\nSome content.");
 
-        indexer.build("3.21", List.of("test.adoc"));
+        indexer.build("3.27", List.of("test.adoc"));
 
-        Optional<KeywordIndex> stored = keywordIndexStore.read("3.21");
+        Optional<KeywordIndex> stored = keywordIndexStore.read("3.27");
         assertThat(stored).isPresent();
         assertThat(stored.get().files).isNotEmpty();
         assertThat(stored.get().files.get(0).path).isEqualTo("test.adoc");
@@ -155,7 +155,7 @@ class KeywordIndexerTest {
 
     @Test
     void buildReturnsEmptyIndexForNoFiles() {
-        KeywordIndex index = indexer.build("3.21", List.of());
+        KeywordIndex index = indexer.build("3.27", List.of());
 
         assertThat(index.files).isEmpty();
     }
@@ -163,14 +163,14 @@ class KeywordIndexerTest {
     @Test
     void buildSkipsFilesNotInCache() {
         // "missing.adoc" is not written to docStore
-        KeywordIndex index = indexer.build("3.21", List.of("missing.adoc"));
+        KeywordIndex index = indexer.build("3.27", List.of("missing.adoc"));
 
         assertThat(index.files).isEmpty();
     }
 
     @Test
     void codeBlocksAreExcludedFromKeywords() {
-        docStore.write("3.21", "test.adoc", """
+        docStore.write("3.27", "test.adoc", """
                 = Guide
                 
                 Real content here.
@@ -185,7 +185,7 @@ class KeywordIndexerTest {
                 More real content.
                 """);
 
-        KeywordIndex index = indexer.build("3.21", List.of("test.adoc"));
+        KeywordIndex index = indexer.build("3.27", List.of("test.adoc"));
         FileKeywordEntry entry = index.files.get(0);
 
         // "real" and "content" should be present

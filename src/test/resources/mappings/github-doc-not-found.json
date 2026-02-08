@@ -4,7 +4,7 @@
     "urlPath": "/repos/quarkusio/quarkus/contents/docs/src/main/asciidoc/nonexistent.adoc",
     "queryParameters": {
       "ref": {
-        "equalTo": "3.21"
+        "equalTo": "3.27"
       }
     }
   },

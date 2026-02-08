@@ -52,28 +52,28 @@ class ZipDownloadServiceTest {
     @Test
     void extractRelativePathFindsAsciidocFiles() {
         String result = service.extractRelativePath(
-                "quarkus-3.21/docs/src/main/asciidoc/security-oidc.adoc");
+                "quarkus-3.27/docs/src/main/asciidoc/security-oidc.adoc");
         assertThat(result).isEqualTo("security-oidc.adoc");
     }
 
     @Test
     void extractRelativePathHandlesNestedPaths() {
         String result = service.extractRelativePath(
-                "quarkus-3.21/docs/src/main/asciidoc/guides/subdir/test.adoc");
+                "quarkus-3.27/docs/src/main/asciidoc/guides/subdir/test.adoc");
         assertThat(result).isEqualTo("guides/subdir/test.adoc");
     }
 
     @Test
     void extractRelativePathReturnsNullForNonAsciidocFiles() {
         String result = service.extractRelativePath(
-                "quarkus-3.21/pom.xml");
+                "quarkus-3.27/pom.xml");
         assertThat(result).isNull();
     }
 
     @Test
     void extractRelativePathReturnsNullForDirectoryEntries() {
         String result = service.extractRelativePath(
-                "quarkus-3.21/docs/src/main/asciidoc/");
+                "quarkus-3.27/docs/src/main/asciidoc/");
         assertThat(result).isNull();
     }
 
@@ -82,28 +82,28 @@ class ZipDownloadServiceTest {
     @Test
     void streamAndExtractExtractsAsciidocFiles() throws IOException {
         byte[] zip = buildZip(
-                entry("quarkus-3.21/docs/src/main/asciidoc/security.adoc", "= Security"),
-                entry("quarkus-3.21/docs/src/main/asciidoc/config.adoc", "= Config"),
-                entry("quarkus-3.21/pom.xml", "<project/>")
+                entry("quarkus-3.27/docs/src/main/asciidoc/security.adoc", "= Security"),
+                entry("quarkus-3.27/docs/src/main/asciidoc/config.adoc", "= Config"),
+                entry("quarkus-3.27/pom.xml", "<project/>")
         );
-        when(gitHubService.fetchZipStream("3.21")).thenReturn(new ByteArrayInputStream(zip));
+        when(gitHubService.fetchZipStream("3.27")).thenReturn(new ByteArrayInputStream(zip));
 
-        List<String> extracted = service.streamAndExtract("3.21");
+        List<String> extracted = service.streamAndExtract("3.27");
 
         assertThat(extracted).containsExactlyInAnyOrder("security.adoc", "config.adoc");
-        assertThat(docStore.read("3.21", "security.adoc")).hasValue("= Security");
-        assertThat(docStore.read("3.21", "config.adoc")).hasValue("= Config");
+        assertThat(docStore.read("3.27", "security.adoc")).hasValue("= Security");
+        assertThat(docStore.read("3.27", "config.adoc")).hasValue("= Config");
     }
 
     @Test
     void streamAndExtractReturnsEmptyListWhenNoAsciidocFiles() throws IOException {
         byte[] zip = buildZip(
-                entry("quarkus-3.21/pom.xml", "<project/>"),
-                entry("quarkus-3.21/src/main/java/Foo.java", "class Foo {}")
+                entry("quarkus-3.27/pom.xml", "<project/>"),
+                entry("quarkus-3.27/src/main/java/Foo.java", "class Foo {}")
         );
-        when(gitHubService.fetchZipStream("3.21")).thenReturn(new ByteArrayInputStream(zip));
+        when(gitHubService.fetchZipStream("3.27")).thenReturn(new ByteArrayInputStream(zip));
 
-        List<String> extracted = service.streamAndExtract("3.21");
+        List<String> extracted = service.streamAndExtract("3.27");
 
         assertThat(extracted).isEmpty();
     }
@@ -111,20 +111,20 @@ class ZipDownloadServiceTest {
     @Test
     void streamAndExtractHandlesNestedAsciidocPaths() throws IOException {
         byte[] zip = buildZip(
-                entry("quarkus-3.21/docs/src/main/asciidoc/guides/sub/deep.adoc", "= Deep Guide")
+                entry("quarkus-3.27/docs/src/main/asciidoc/guides/sub/deep.adoc", "= Deep Guide")
         );
-        when(gitHubService.fetchZipStream("3.21")).thenReturn(new ByteArrayInputStream(zip));
+        when(gitHubService.fetchZipStream("3.27")).thenReturn(new ByteArrayInputStream(zip));
 
-        List<String> extracted = service.streamAndExtract("3.21");
+        List<String> extracted = service.streamAndExtract("3.27");
 
         assertThat(extracted).containsExactly("guides/sub/deep.adoc");
-        assertThat(docStore.read("3.21", "guides/sub/deep.adoc")).hasValue("= Deep Guide");
+        assertThat(docStore.read("3.27", "guides/sub/deep.adoc")).hasValue("= Deep Guide");
     }
 
     @Test
     void streamAndExtractDoesNotCorruptExistingCacheOnFailure() throws IOException {
         // Pre-populate cache with a valid file
-        docStore.write("3.21", "existing.adoc", "= Existing content");
+        docStore.write("3.27", "existing.adoc", "= Existing content");
 
         // Simulate a failure during zip streaming
         InputStream brokenStream = new InputStream() {
@@ -133,37 +133,37 @@ class ZipDownloadServiceTest {
                 throw new IOException("Simulated stream failure");
             }
         };
-        when(gitHubService.fetchZipStream("3.21")).thenReturn(brokenStream);
+        when(gitHubService.fetchZipStream("3.27")).thenReturn(brokenStream);
 
-        assertThatThrownBy(() -> service.streamAndExtract("3.21"))
+        assertThatThrownBy(() -> service.streamAndExtract("3.27"))
                 .isInstanceOf(UpstreamException.class);
 
         // Existing cache should be untouched
-        assertThat(docStore.read("3.21", "existing.adoc")).hasValue("= Existing content");
+        assertThat(docStore.read("3.27", "existing.adoc")).hasValue("= Existing content");
     }
 
     @Test
     void streamAndExtractWritesToCacheOnlyOnSuccess() throws IOException {
         byte[] zip = buildZip(
-                entry("quarkus-3.21/docs/src/main/asciidoc/new-file.adoc", "= New content")
+                entry("quarkus-3.27/docs/src/main/asciidoc/new-file.adoc", "= New content")
         );
-        when(gitHubService.fetchZipStream("3.21")).thenReturn(new ByteArrayInputStream(zip));
+        when(gitHubService.fetchZipStream("3.27")).thenReturn(new ByteArrayInputStream(zip));
 
-        service.streamAndExtract("3.21");
+        service.streamAndExtract("3.27");
 
-        assertThat(docStore.read("3.21", "new-file.adoc")).hasValue("= New content");
+        assertThat(docStore.read("3.27", "new-file.adoc")).hasValue("= New content");
         // Staging directory should be cleaned up
-        Path stagingDir = cacheService.versionDir("3.21").resolve("docs-staging");
+        Path stagingDir = cacheService.versionDir("3.27").resolve("docs-staging");
         assertThat(Files.exists(stagingDir)).isFalse();
     }
 
     @Test
     void streamAndExtractCleansStagingDirOnFailure() throws IOException {
         // Pre-populate cache with a valid file
-        docStore.write("3.21", "existing.adoc", "= Existing");
+        docStore.write("3.27", "existing.adoc", "= Existing");
 
         // Build a partial zip that will fail mid-stream by throwing during read
-        when(gitHubService.fetchZipStream("3.21")).thenReturn(new InputStream() {
+        when(gitHubService.fetchZipStream("3.27")).thenReturn(new InputStream() {
             private final byte[] corruptData = new byte[]{0x50, 0x4b, 0x03, 0x04}; // ZIP magic bytes
             private int pos = 0;
             @Override
@@ -175,14 +175,14 @@ class ZipDownloadServiceTest {
             }
         });
 
-        assertThatThrownBy(() -> service.streamAndExtract("3.21"))
+        assertThatThrownBy(() -> service.streamAndExtract("3.27"))
                 .isInstanceOf(UpstreamException.class);
 
         // Staging directory should be cleaned up even on failure
-        Path stagingDir = cacheService.versionDir("3.21").resolve("docs-staging");
+        Path stagingDir = cacheService.versionDir("3.27").resolve("docs-staging");
         assertThat(Files.exists(stagingDir)).isFalse();
         // Existing cache should be untouched
-        assertThat(docStore.read("3.21", "existing.adoc")).hasValue("= Existing");
+        assertThat(docStore.read("3.27", "existing.adoc")).hasValue("= Existing");
     }
 
     // -- Helpers --

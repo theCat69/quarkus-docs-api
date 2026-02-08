@@ -34,16 +34,16 @@ class InputValidatorTest {
 
     @Test
     void validateVersionRejectsSlash() {
-        assertThatThrownBy(() -> InputValidator.validateVersion("3.21/foo"))
+        assertThatThrownBy(() -> InputValidator.validateVersion("3.27/foo"))
                 .isInstanceOf(InvalidInputException.class);
     }
 
     @Test
     void validateVersionAcceptsValid() {
-        assertThatCode(() -> InputValidator.validateVersion("3.21")).doesNotThrowAnyException();
+        assertThatCode(() -> InputValidator.validateVersion("3.27")).doesNotThrowAnyException();
         assertThatCode(() -> InputValidator.validateVersion("main")).doesNotThrowAnyException();
-        assertThatCode(() -> InputValidator.validateVersion("3.21.0")).doesNotThrowAnyException();
-        assertThatCode(() -> InputValidator.validateVersion("3.21-SNAPSHOT")).doesNotThrowAnyException();
+        assertThatCode(() -> InputValidator.validateVersion("3.27.0")).doesNotThrowAnyException();
+        assertThatCode(() -> InputValidator.validateVersion("3.27-SNAPSHOT")).doesNotThrowAnyException();
     }
 
     @Test

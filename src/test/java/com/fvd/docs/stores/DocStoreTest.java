@@ -28,35 +28,35 @@ class DocStoreTest {
 
     @Test
     void readReturnsEmptyWhenMissing() {
-        Optional<String> result = docStore.read("3.21", "security-oidc.adoc");
+        Optional<String> result = docStore.read("3.27", "security-oidc.adoc");
         assertThat(result).isEmpty();
     }
 
     @Test
     void writeAndReadRoundTrip() {
         String content = "= Security OIDC\nSome content here.";
-        docStore.write("3.21", "security-oidc.adoc", content);
-        Optional<String> result = docStore.read("3.21", "security-oidc.adoc");
+        docStore.write("3.27", "security-oidc.adoc", content);
+        Optional<String> result = docStore.read("3.27", "security-oidc.adoc");
         assertThat(result).isPresent().contains(content);
     }
 
     @Test
     void writeCreatesNestedDirectories() {
         String content = "= Guide";
-        docStore.write("3.21", "guides/subdir/test.adoc", content);
-        Optional<String> result = docStore.read("3.21", "guides/subdir/test.adoc");
+        docStore.write("3.27", "guides/subdir/test.adoc", content);
+        Optional<String> result = docStore.read("3.27", "guides/subdir/test.adoc");
         assertThat(result).isPresent().contains(content);
     }
 
     @Test
     void docsExistReturnsFalseWhenEmpty() {
-        assertThat(docStore.docsExist("3.21")).isFalse();
+        assertThat(docStore.docsExist("3.27")).isFalse();
     }
 
     @Test
     void docsExistReturnsTrueWhenDocPresent() {
-        docStore.write("3.21", "test.adoc", "content");
-        assertThat(docStore.docsExist("3.21")).isTrue();
+        docStore.write("3.27", "test.adoc", "content");
+        assertThat(docStore.docsExist("3.27")).isTrue();
     }
 
     @Test
@@ -67,7 +67,7 @@ class DocStoreTest {
 
     @Test
     void readRejectsPathTraversal() {
-        assertThatThrownBy(() -> docStore.read("3.21", "../../etc/passwd"))
+        assertThatThrownBy(() -> docStore.read("3.27", "../../etc/passwd"))
                 .isInstanceOf(InvalidInputException.class);
     }
 
@@ -79,33 +79,33 @@ class DocStoreTest {
 
     @Test
     void writeRejectsPathTraversal() {
-        assertThatThrownBy(() -> docStore.write("3.21", "../../etc/passwd", "content"))
+        assertThatThrownBy(() -> docStore.write("3.27", "../../etc/passwd", "content"))
                 .isInstanceOf(InvalidInputException.class);
     }
 
     @Test
     void listDocFilesReturnsEmptyWhenNoDocsDir() {
-        List<String> result = docStore.listDocFiles("3.21");
+        List<String> result = docStore.listDocFiles("3.27");
         assertThat(result).isEmpty();
     }
 
     @Test
     void listDocFilesReturnsSortedRelativePaths() {
-        docStore.write("3.21", "config.adoc", "config content");
-        docStore.write("3.21", "security-overview.adoc", "security content");
-        docStore.write("3.21", "cdi.adoc", "cdi content");
+        docStore.write("3.27", "config.adoc", "config content");
+        docStore.write("3.27", "security-overview.adoc", "security content");
+        docStore.write("3.27", "cdi.adoc", "cdi content");
 
-        List<String> result = docStore.listDocFiles("3.21");
+        List<String> result = docStore.listDocFiles("3.27");
 
         assertThat(result).containsExactly("cdi.adoc", "config.adoc", "security-overview.adoc");
     }
 
     @Test
     void listDocFilesIncludesNestedFiles() {
-        docStore.write("3.21", "top.adoc", "top");
-        docStore.write("3.21", "guides/nested.adoc", "nested");
+        docStore.write("3.27", "top.adoc", "top");
+        docStore.write("3.27", "guides/nested.adoc", "nested");
 
-        List<String> result = docStore.listDocFiles("3.21");
+        List<String> result = docStore.listDocFiles("3.27");
 
         assertThat(result).containsExactly("guides/nested.adoc", "top.adoc");
     }

@@ -1,11 +1,11 @@
 {
   "request": {
     "method": "GET",
-    "urlPath": "/quarkusio/quarkus/archive/refs/heads/3.21.zip"
+    "urlPath": "/quarkusio/quarkus/archive/refs/heads/3.27.zip"
   },
   "response": {
     "status": 200,
-    "bodyFileName": "quarkus-3.21-zip.zip",
+    "bodyFileName": "quarkus-3.27-zip.zip",
     "headers": {
       "Content-Type": "application/zip"
     }

@@ -5,6 +5,7 @@ import com.fvd.indexs.indexers.*;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.indexs.stores.SqliteSchemaInitializer;
+import com.fvd.search.services.SearchService;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.apache.commons.io.FileUtils;
@@ -34,6 +35,9 @@ class SearchResourceTest {
     @Inject
     SqliteSchemaInitializer schemaInitializer;
 
+    @Inject
+    SearchService searchService;
+
     @BeforeEach
     void cleanTestCache() throws IOException {
         var cachePath = Path.of("build/test-cache").toFile();
@@ -42,6 +46,8 @@ class SearchResourceTest {
         }
         // Re-initialize schema after cleaning (DB file was deleted)
         schemaInitializer.initSchema();
+        // Invalidate in-memory caches to avoid cross-test pollution
+        searchService.invalidateCache("3.27");
     }
 
     @Test
@@ -56,7 +62,7 @@ class SearchResourceTest {
     @Test
     void testSearchFilesEndpointMissingKeywords() {
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .when().get("/api/search/files")
                 .then()
                 .statusCode(400);
@@ -77,7 +83,7 @@ class SearchResourceTest {
     void testSearchFilesEndpointReturnsResults() {
         seedKeywordIndex();
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
                 .when().get("/api/search/files")
                 .then()
@@ -91,7 +97,7 @@ class SearchResourceTest {
     void testSearchFilesEndpointReturnsResultsEvenIfOneKeywordDoesNotMatch() {
         seedKeywordIndex();
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("keywords", "oidc,security")
                 .when().get("/api/search/files")
                 .then()
@@ -114,7 +120,7 @@ class SearchResourceTest {
     @Test
     void testSearchSectionsEndpointMissingKeywords() {
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("filePaths", "docs/src/main/asciidoc/security-oidc.adoc")
                 .when().get("/api/search/sections")
                 .then()
@@ -125,7 +131,7 @@ class SearchResourceTest {
     void testSearchSectionsEndpointMissingFilePaths() {
         seedKeywordIndex();
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
                 .when().get("/api/search/sections")
                 .then()
@@ -137,7 +143,7 @@ class SearchResourceTest {
     void testSearchSectionsEndpointWithFilePaths() {
         seedKeywordIndex();
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
                 .queryParam("filePaths", "security-overview.adoc")
                 .when().get("/api/search/sections")
@@ -150,7 +156,7 @@ class SearchResourceTest {
     @Test
     void testSearchSectionsEndpointFilePathsTraversal() {
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("keywords", "oidc")
                 .queryParam("filePaths", "../../etc/passwd")
                 .when().get("/api/search/sections")
@@ -174,7 +180,7 @@ class SearchResourceTest {
     void testSearchSectionsEndpointReturnsResults() {
         seedKeywordIndex();
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
                 .queryParam("filePaths", "security-overview.adoc")
                 .when().get("/api/search/sections")
@@ -200,7 +206,7 @@ class SearchResourceTest {
     @Test
     void testSectionContentEndpointMissingFilePath() {
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("sectionTitle", "Overview")
                 .when().get("/api/search/section-content")
                 .then()
@@ -210,7 +216,7 @@ class SearchResourceTest {
     @Test
     void testSectionContentEndpointMissingSectionTitle() {
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("filePath", "security.adoc")
                 .when().get("/api/search/section-content")
                 .then()
@@ -220,7 +226,7 @@ class SearchResourceTest {
     @Test
     void testSectionContentEndpointPathTraversal() {
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("filePath", "../../etc/passwd")
                 .queryParam("sectionTitle", "Overview")
                 .when().get("/api/search/section-content")
@@ -231,7 +237,7 @@ class SearchResourceTest {
     @Test
     void testSectionContentEndpointDocNotFound() {
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("filePath", "nonexistent.adoc")
                 .queryParam("sectionTitle", "Overview")
                 .when().get("/api/search/section-content")
@@ -244,7 +250,7 @@ class SearchResourceTest {
     void testSectionContentEndpointSectionNotFound() {
         seedDocFile();
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("filePath", "security.adoc")
                 .queryParam("sectionTitle", "Nonexistent Section")
                 .when().get("/api/search/section-content")
@@ -257,7 +263,7 @@ class SearchResourceTest {
     void testSectionContentEndpointReturnsContent() {
         seedDocFile();
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("filePath", "security.adoc")
                 .queryParam("sectionTitle", "Overview")
                 .when().get("/api/search/section-content")
@@ -285,7 +291,7 @@ class SearchResourceTest {
     @Test
     void testVersionsEndpointReturnsCachedVersions() {
         // Seed a doc file to create a cached version directory
-        docStore.write("3.21", "security.adoc", "= Guide\nContent.");
+        docStore.write("3.27", "security.adoc", "= Guide\nContent.");
         docStore.write("3.17", "config.adoc", "= Config\nContent.");
 
         given()
@@ -293,7 +299,7 @@ class SearchResourceTest {
                 .then()
                 .statusCode(200)
                 .body("results.size()", is(2))
-                .body("results", hasItems("3.21", "3.17"));
+                .body("results", hasItems("3.27", "3.17"));
     }
 
     // --- Code sample search endpoint tests ---
@@ -310,7 +316,7 @@ class SearchResourceTest {
     @Test
     void testSearchCodeSamplesEndpointMissingKeywords() {
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .when().get("/api/search/code-samples")
                 .then()
                 .statusCode(400);
@@ -331,7 +337,7 @@ class SearchResourceTest {
     void testSearchCodeSamplesEndpointReturnsResults() {
         seedCodeSampleIndex();
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
                 .when().get("/api/search/code-samples")
                 .then()
@@ -348,7 +354,7 @@ class SearchResourceTest {
     void testSearchCodeSamplesEndpointFiltersToFilePath() {
         seedCodeSampleIndex();
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
                 .queryParam("filePath", "security.adoc")
                 .when().get("/api/search/code-samples")
@@ -362,7 +368,7 @@ class SearchResourceTest {
     void testSearchCodeSamplesEndpointFiltersToSectionTitle() {
         seedCodeSampleIndex();
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
                 .queryParam("sectionTitle", "Authorization")
                 .when().get("/api/search/code-samples")
@@ -375,7 +381,7 @@ class SearchResourceTest {
     @Test
     void testSearchCodeSamplesEndpointPathTraversal() {
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
                 .queryParam("filePath", "../../etc/passwd")
                 .when().get("/api/search/code-samples")
@@ -395,7 +401,7 @@ class SearchResourceTest {
                 == Configuration
                 Config details here.
                 """;
-        docStore.write("3.21", "security.adoc", docContent);
+        docStore.write("3.27", "security.adoc", docContent);
     }
 
     private void seedKeywordIndex() {
@@ -408,7 +414,7 @@ class SearchResourceTest {
                         List.of(new KeywordScore("config", 10), new KeywordScore("quarkus", 5)),
                         List.of())
         ));
-        keywordIndexStore.write("3.21", index);
+        keywordIndexStore.write("3.27", index);
     }
 
     private void seedCodeSampleIndex() {
@@ -422,6 +428,6 @@ class SearchResourceTest {
                         20, 25,
                         List.of(new KeywordScore("security", 10), new KeywordScore("roles", 5)))
         ));
-        codeSampleIndexStore.write("3.21", codeSampleIndex);
+        codeSampleIndexStore.write("3.27", codeSampleIndex);
     }
 }

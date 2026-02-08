@@ -35,7 +35,7 @@ class KeywordIndexStoreTest {
 
     @Test
     void readReturnsEmptyWhenMissing() {
-        Optional<KeywordIndex> result = keywordIndexStore.read("3.21");
+        Optional<KeywordIndex> result = keywordIndexStore.read("3.27");
         assertThat(result).isEmpty();
     }
 
@@ -47,8 +47,8 @@ class KeywordIndexStoreTest {
                         List.of(new SectionKeywordEntry("Overview", 1, 10,
                                 List.of(new KeywordScore("overview", 5)))))
         ));
-        keywordIndexStore.write("3.21", index);
-        Optional<KeywordIndex> result = keywordIndexStore.read("3.21");
+        keywordIndexStore.write("3.27", index);
+        Optional<KeywordIndex> result = keywordIndexStore.read("3.27");
         assertThat(result).isPresent();
         assertThat(result.get().files).hasSize(1);
         assertThat(result.get().files.get(0).path).isEqualTo("test.adoc");
@@ -66,9 +66,9 @@ class KeywordIndexStoreTest {
                 new FileKeywordEntry("old.adoc", List.of(), List.of())));
         KeywordIndex newIndex = new KeywordIndex(List.of(
                 new FileKeywordEntry("new.adoc", List.of(), List.of())));
-        keywordIndexStore.write("3.21", oldIndex);
-        keywordIndexStore.write("3.21", newIndex);
-        Optional<KeywordIndex> result = keywordIndexStore.read("3.21");
+        keywordIndexStore.write("3.27", oldIndex);
+        keywordIndexStore.write("3.27", newIndex);
+        Optional<KeywordIndex> result = keywordIndexStore.read("3.27");
         assertThat(result).isPresent();
         assertThat(result.get().files).hasSize(1);
         assertThat(result.get().files.get(0).path).isEqualTo("new.adoc");
@@ -91,10 +91,10 @@ class KeywordIndexStoreTest {
     void deleteVersionRemovesData() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("test.adoc", List.of(), List.of())));
-        keywordIndexStore.write("3.21", index);
-        assertThat(keywordIndexStore.read("3.21")).isPresent();
+        keywordIndexStore.write("3.27", index);
+        assertThat(keywordIndexStore.read("3.27")).isPresent();
 
-        keywordIndexStore.deleteVersion("3.21");
-        assertThat(keywordIndexStore.read("3.21")).isEmpty();
+        keywordIndexStore.deleteVersion("3.27");
+        assertThat(keywordIndexStore.read("3.27")).isEmpty();
     }
 }

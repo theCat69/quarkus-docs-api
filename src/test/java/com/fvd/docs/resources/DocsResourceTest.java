@@ -41,7 +41,7 @@ class DocsResourceTest {
     @Test
     void testDocEndpointMissingPath() {
         given()
-            .queryParam("version", "3.21")
+            .queryParam("version", "3.27")
             .when().get("/api/doc")
             .then()
                 .statusCode(400);
@@ -50,7 +50,7 @@ class DocsResourceTest {
     @Test
     void testDocEndpointPathTraversal() {
         given()
-            .queryParam("version", "3.21")
+            .queryParam("version", "3.27")
             .queryParam("path", "../../etc/passwd")
             .when().get("/api/doc")
             .then()
@@ -60,7 +60,7 @@ class DocsResourceTest {
     @Test
     void testDocEndpointReturnsDecodedContent() {
         given()
-            .queryParam("version", "3.21")
+            .queryParam("version", "3.27")
             .queryParam("path", "docs/src/main/asciidoc/security-overview.adoc")
             .when().get("/api/doc")
             .then()
@@ -73,7 +73,7 @@ class DocsResourceTest {
     @Test
     void testDocEndpointNotFound() {
         given()
-            .queryParam("version", "3.21")
+            .queryParam("version", "3.27")
             .queryParam("path", "docs/src/main/asciidoc/nonexistent.adoc")
             .when().get("/api/doc")
             .then()

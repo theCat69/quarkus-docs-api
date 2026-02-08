@@ -48,7 +48,7 @@ public class IndexResource {
             @Parameter(
                     description = "Quarkus version branch or tag",
                     required = true,
-                    example = "3.21"
+                    example = "3.27"
             )
             @QueryParam("version") String version) {
         InputValidator.validateVersion(version);

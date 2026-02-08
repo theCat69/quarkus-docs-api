@@ -56,7 +56,7 @@ public class SearchResource {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))
     )
     public SearchResponse<FileSearchResult> searchFiles(
-            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.21")
+            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.27")
             @QueryParam("version") String version,
             @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in lowercase)", required = true, example = "security,oidc")
             @QueryParam("keywords") String keywords) {
@@ -85,7 +85,7 @@ public class SearchResource {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))
     )
     public SearchResponse<SectionSearchResult> searchSections(
-            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.21")
+            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.27")
             @QueryParam("version") String version,
             @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in lowercase)", required = true, example = "security,oidc")
             @QueryParam("keywords") String keywords,
@@ -125,7 +125,7 @@ public class SearchResource {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))
     )
     public SectionContentResult getSectionContent(
-            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.21")
+            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.27")
             @QueryParam("version") String version,
             @Parameter(description = "File path relative to the docs directory", required = true, example = "security-overview.adoc")
             @QueryParam("filePath") String filePath,
@@ -155,7 +155,7 @@ public class SearchResource {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))
     )
     public SearchResponse<CodeSampleSearchResult> searchCodeSamples(
-            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.21")
+            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.27")
             @QueryParam("version") String version,
             @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in lowercase)", required = true, example = "security,oidc")
             @QueryParam("keywords") String keywords,

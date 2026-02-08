@@ -61,7 +61,7 @@ class IndexResourceTest {
     @Test
     void testIndexEndpointValidVersionReturnsIndex() {
         given()
-                .queryParam("version", "3.21")
+                .queryParam("version", "3.27")
                 .when().get("/api/index")
                 .then()
                 .statusCode(200)

@@ -69,6 +69,7 @@ public class CacheRefreshJob {
             String oldSha = oldShaByPath.get(filePath);
             if (oldSha == null || !oldSha.equals(newSha)) {
                 log.info("Re-fetching changed file: {} (version {})", filePath, version);
+                log.debug("Old sha : {}, new sha : {}", oldSha, newSha);
                 fetchAndCacheDoc(version, filePath);
             }
         }
@@ -79,9 +80,12 @@ public class CacheRefreshJob {
             // Replace file index with new data
             indexStore.write(version, newIndex);
 
-            // Rebuild keyword index with all files from the new index
+            // Strip the docs prefix from GitHub API paths to get relative paths
+            // consistent with what ZipDownloadService produces during warmup.
+            // GitHub API returns paths like "docs/src/main/asciidoc/file.adoc"
+            // but DocStore and indexers expect relative paths like "file.adoc".
             List<String> allFilePaths = newIndex.stream()
-                    .map(e -> e.path)
+                    .map(e -> stripDocsPrefix(e.path))
                     .toList();
             keywordIndexer.build(version, allFilePaths);
 
@@ -98,7 +102,17 @@ public class CacheRefreshJob {
     private void fetchAndCacheDoc(String version, String filePath) {
         GithubApiFile file = gitHubService.fetchFileContent(filePath, version);
         String content = file.decodeContent();
-        docStore.write(version, filePath, content);
+        // Strip the docs prefix so the file is stored at the same relative path
+        // that ZipDownloadService uses during warmup
+        docStore.write(version, stripDocsPrefix(filePath), content);
+    }
+
+    String stripDocsPrefix(String path) {
+        String prefix = docParser.docsPrefix();
+        if (path.startsWith(prefix)) {
+            return path.substring(prefix.length());
+        }
+        return path;
     }
 
     private Map<String, String> buildShaMap(List<GithubApiIndex> entries) {

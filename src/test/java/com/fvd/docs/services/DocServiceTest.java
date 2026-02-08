@@ -38,12 +38,12 @@ class DocServiceTest {
 
     @Test
     void getOrFetchDocReturnsCachedContentWithoutCallingGitHub() {
-        docStore.write("3.21", "security-oidc.adoc", "= Security OIDC");
+        docStore.write("3.27", "security-oidc.adoc", "= Security OIDC");
 
-        String result = docService.getOrFetchDoc("3.21", "security-oidc.adoc");
+        String result = docService.getOrFetchDoc("3.27", "security-oidc.adoc");
 
         assertThat(result).isEqualTo("= Security OIDC");
-        verify(gitHubService, never()).fetchFileContent("security-oidc.adoc", "3.21");
+        verify(gitHubService, never()).fetchFileContent("security-oidc.adoc", "3.27");
     }
 
     @Test
@@ -52,14 +52,14 @@ class DocServiceTest {
         String encoded = Base64.getEncoder().encodeToString(content.getBytes());
         GithubApiFile file = new GithubApiFile("security-oidc.adoc",
                 "docs/src/main/asciidoc/security-oidc.adoc", "abc123", encoded, "base64");
-        when(gitHubService.fetchFileContent("security-oidc.adoc", "3.21")).thenReturn(file);
+        when(gitHubService.fetchFileContent("security-oidc.adoc", "3.27")).thenReturn(file);
 
-        String result = docService.getOrFetchDoc("3.21", "security-oidc.adoc");
+        String result = docService.getOrFetchDoc("3.27", "security-oidc.adoc");
 
         assertThat(result).isEqualTo(content);
-        verify(gitHubService).fetchFileContent("security-oidc.adoc", "3.21");
+        verify(gitHubService).fetchFileContent("security-oidc.adoc", "3.27");
         // Also verify it was cached for next time
-        assertThat(docStore.read("3.21", "security-oidc.adoc")).isPresent().hasValue(content);
+        assertThat(docStore.read("3.27", "security-oidc.adoc")).isPresent().hasValue(content);
     }
 
     @Test
@@ -67,9 +67,9 @@ class DocServiceTest {
         String original = "= Hello World\nSome content";
         String encoded = Base64.getEncoder().encodeToString(original.getBytes());
         GithubApiFile file = new GithubApiFile("test.adoc", "path/test.adoc", "sha1", encoded, "base64");
-        when(gitHubService.fetchFileContent("test.adoc", "3.21")).thenReturn(file);
+        when(gitHubService.fetchFileContent("test.adoc", "3.27")).thenReturn(file);
 
-        String result = docService.getOrFetchDoc("3.21", "test.adoc");
+        String result = docService.getOrFetchDoc("3.27", "test.adoc");
 
         assertThat(result).isEqualTo(original);
     }
@@ -80,9 +80,9 @@ class DocServiceTest {
         String encoded = Base64.getEncoder().encodeToString(original.getBytes());
         String withNewlines = encoded.replaceAll("(.{76})", "$1\n");
         GithubApiFile file = new GithubApiFile("test.adoc", "path/test.adoc", "sha1", withNewlines, "base64");
-        when(gitHubService.fetchFileContent("test.adoc", "3.21")).thenReturn(file);
+        when(gitHubService.fetchFileContent("test.adoc", "3.27")).thenReturn(file);
 
-        String result = docService.getOrFetchDoc("3.21", "test.adoc");
+        String result = docService.getOrFetchDoc("3.27", "test.adoc");
 
         assertThat(result).isEqualTo(original);
     }
@@ -90,9 +90,9 @@ class DocServiceTest {
     @Test
     void getOrFetchDocHandlesPlainText() {
         GithubApiFile file = new GithubApiFile("test.adoc", "path/test.adoc", "sha1", "plain text content", null);
-        when(gitHubService.fetchFileContent("test.adoc", "3.21")).thenReturn(file);
+        when(gitHubService.fetchFileContent("test.adoc", "3.27")).thenReturn(file);
 
-        String result = docService.getOrFetchDoc("3.21", "test.adoc");
+        String result = docService.getOrFetchDoc("3.27", "test.adoc");
 
         assertThat(result).isEqualTo("plain text content");
     }

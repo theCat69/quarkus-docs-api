@@ -4,13 +4,13 @@
     "urlPath": "/repos/quarkusio/quarkus/contents/docs/src/main/asciidoc",
     "queryParameters": {
       "ref": {
-        "equalTo": "3.21"
+        "equalTo": "3.27"
       }
     }
   },
   "response": {
     "status": 200,
-    "bodyFileName": "github-index-3.21.json",
+    "bodyFileName": "github-index-3.27.json",
     "headers": {
       "Content-Type": "application/json; charset=utf-8"
     }

@@ -43,28 +43,28 @@ class IndexServiceTest {
     @Test
     void getOrFetchIndexReturnsCachedIndexWithoutCallingGitHub() {
         List<GithubApiIndex> index = List.of(new GithubApiIndex("test.adoc", "path/test.adoc", "abc123"));
-        indexStore.write("3.21", index);
+        indexStore.write("3.27", index);
 
-        List<GithubApiIndex> result = indexService.getOrFetchIndex("3.21");
+        List<GithubApiIndex> result = indexService.getOrFetchIndex("3.27");
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).name).isEqualTo("test.adoc");
         assertThat(result.get(0).sha).isEqualTo("abc123");
-        verify(gitHubService, never()).fetchIndex("3.21");
+        verify(gitHubService, never()).fetchIndex("3.27");
     }
 
     @Test
     void getOrFetchIndexFetchesFromGitHubOnCacheMiss() {
         List<GithubApiIndex> index = List.of(new GithubApiIndex("fetched.adoc", "path/fetched.adoc", "def456"));
-        when(gitHubService.fetchIndex("3.21")).thenReturn(index);
+        when(gitHubService.fetchIndex("3.27")).thenReturn(index);
 
-        List<GithubApiIndex> result = indexService.getOrFetchIndex("3.21");
+        List<GithubApiIndex> result = indexService.getOrFetchIndex("3.27");
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).name).isEqualTo("fetched.adoc");
         assertThat(result.get(0).sha).isEqualTo("def456");
-        verify(gitHubService).fetchIndex("3.21");
+        verify(gitHubService).fetchIndex("3.27");
         // Also verify it was cached for next time
-        assertThat(indexStore.read("3.21")).isPresent();
+        assertThat(indexStore.read("3.27")).isPresent();
     }
 }
