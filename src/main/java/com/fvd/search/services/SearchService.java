@@ -5,6 +5,7 @@ import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.*;
+import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -21,15 +22,18 @@ public class SearchService {
 
     private static final int MAX_FILE_RESULTS = 10;
     private static final int MAX_SECTION_RESULTS = 5;
+    private static final int MAX_CODE_SAMPLE_RESULTS = 10;
     private static final double MULTI_KEYWORD_BOOST = 1.5;
 
     private final KeywordIndexStore keywordIndexStore;
+    private final CodeSampleIndexStore codeSampleIndexStore;
     private final ZipDownloadService zipDownloadService;
     private final KeywordIndexer keywordIndexer;
     private final DocStore docStore;
     private final DocParser docParser;
 
     private final Map<String, KeywordIndex> indexCache = new ConcurrentHashMap<>();
+    private final Map<String, CodeSampleIndex> codeSampleIndexCache = new ConcurrentHashMap<>();
 
     public List<FileSearchResult> searchFiles(String version, List<String> keywords) {
         KeywordIndex index = getOrBuildIndex(version);
@@ -133,12 +137,58 @@ public class SearchService {
                 "Section not found: '" + sectionTitle + "' in " + filePath + " for version: " + version);
     }
 
+    public List<CodeSampleSearchResult> searchCodeSamples(String version, List<String> keywords,
+                                                          String filePath, String sectionTitle) {
+        CodeSampleIndex index = getOrLoadCodeSampleIndex(version);
+        if (index == null) {
+            return List.of();
+        }
+
+        Set<String> keywordSet = new HashSet<>(keywords.stream()
+                .map(String::toLowerCase).toList());
+
+        List<CodeSampleSearchResult> results = new ArrayList<>();
+        for (CodeSampleEntry sample : index.samples) {
+            if (filePath != null && !filePath.isBlank() && !sample.filePath.equals(filePath)) {
+                continue;
+            }
+            if (sectionTitle != null && !sectionTitle.isBlank()
+                    && !sample.sectionTitle.equalsIgnoreCase(sectionTitle)) {
+                continue;
+            }
+
+            double score = 0;
+            int matchedCount = 0;
+            for (KeywordScore ks : sample.keywords) {
+                if (keywordSet.contains(ks.word)) {
+                    score += ks.score;
+                    matchedCount++;
+                }
+            }
+            if (score > 0) {
+                if (matchedCount > 1) {
+                    score *= MULTI_KEYWORD_BOOST;
+                }
+                results.add(new CodeSampleSearchResult(
+                        sample.filePath, sample.sectionTitle, sample.language,
+                        sample.content, sample.startLine, sample.endLine, score));
+            }
+        }
+
+        results.sort(Comparator.comparingDouble((CodeSampleSearchResult r) -> r.score).reversed());
+        if (results.size() > MAX_CODE_SAMPLE_RESULTS) {
+            return results.subList(0, MAX_CODE_SAMPLE_RESULTS);
+        }
+        return results;
+    }
+
     /**
      * Invalidates the in-memory cache for a specific version.
      * Should be called after the keyword index is rebuilt (e.g., during cache refresh).
      */
     public void invalidateCache(String version) {
         indexCache.remove(version);
+        codeSampleIndexCache.remove(version);
     }
 
     private KeywordIndex getOrBuildIndex(String version) {
@@ -176,5 +226,19 @@ public class SearchService {
         } catch (Exception e) {
             log.warn("Failed to lazily build keyword index for version {}", version, e);
         }
+    }
+
+    private CodeSampleIndex getOrLoadCodeSampleIndex(String version) {
+        CodeSampleIndex cached = codeSampleIndexCache.get(version);
+        if (cached != null) {
+            return cached;
+        }
+
+        Optional<CodeSampleIndex> index = codeSampleIndexStore.read(version);
+        if (index.isPresent()) {
+            codeSampleIndexCache.put(version, index.get());
+            return index.get();
+        }
+        return null;
     }
 }

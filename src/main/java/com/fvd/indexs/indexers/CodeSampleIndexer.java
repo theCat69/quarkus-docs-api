@@ -17,6 +17,8 @@ import java.util.regex.Pattern;
 public class CodeSampleIndexer {
 
     private static final int IMPORT_BOOST = 5;
+    private static final int FILENAME_BOOST = 10;
+    private static final int SECTION_TITLE_BOOST = 5;
     private static final Pattern IMPORT_PATTERN = Pattern.compile("^\\s*import\\s+(?:static\\s+)?([a-zA-Z][a-zA-Z0-9_.]+)\\s*;");
 
     private final DocStore docStore;
@@ -62,6 +64,10 @@ public class CodeSampleIndexer {
             // Boost import statements
             applyImportBoost(block.content(), keywords);
 
+            // Boost filename and section title keywords
+            applyFilenameBoost(filePath, keywords);
+            applySectionTitleBoost(block.sectionTitle(), keywords);
+
             List<KeywordScore> scores = toSortedScores(keywords);
 
             entries.add(new CodeSampleEntry(
@@ -98,6 +104,31 @@ public class CodeSampleIndexer {
                     }
                 }
             }
+        }
+    }
+
+    void applyFilenameBoost(String filePath, Map<String, Integer> keywords) {
+        String filename = filePath;
+        int lastSlash = filePath.lastIndexOf('/');
+        if (lastSlash >= 0) {
+            filename = filePath.substring(lastSlash + 1);
+        }
+        if (filename.endsWith(parser.fileSuffix())) {
+            filename = filename.substring(0, filename.length() - parser.fileSuffix().length());
+        }
+        List<String> filenameTokens = parser.tokenize(filename.replace("-", " ").replace("_", " "));
+        for (String token : filenameTokens) {
+            keywords.merge(token, FILENAME_BOOST, Integer::sum);
+        }
+    }
+
+    void applySectionTitleBoost(String sectionTitle, Map<String, Integer> keywords) {
+        if (sectionTitle == null || sectionTitle.isBlank()) {
+            return;
+        }
+        List<String> titleTokens = parser.tokenize(sectionTitle);
+        for (String token : titleTokens) {
+            keywords.merge(token, SECTION_TITLE_BOOST, Integer::sum);
         }
     }
 

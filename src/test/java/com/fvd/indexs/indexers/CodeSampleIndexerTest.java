@@ -271,6 +271,114 @@ class CodeSampleIndexerTest {
         assertThat(keywords.get("foo")).isEqualTo(5);
     }
 
+    @Test
+    void applyFilenameBoostAddsScoreForFilenameTokens() {
+        Map<String, Integer> keywords = new HashMap<>();
+
+        indexer.applyFilenameBoost("security-oidc.adoc", keywords);
+
+        assertThat(keywords.get("security")).isEqualTo(10);
+        assertThat(keywords.get("oidc")).isEqualTo(10);
+    }
+
+    @Test
+    void applyFilenameBoostHandlesPathWithDirectories() {
+        Map<String, Integer> keywords = new HashMap<>();
+
+        indexer.applyFilenameBoost("guides/security-oidc.adoc", keywords);
+
+        assertThat(keywords.get("security")).isEqualTo(10);
+        assertThat(keywords.get("oidc")).isEqualTo(10);
+        assertThat(keywords).doesNotContainKey("guides");
+    }
+
+    @Test
+    void applyFilenameBoostMergesWithExistingKeywords() {
+        Map<String, Integer> keywords = new HashMap<>();
+        keywords.put("security", 3);
+
+        indexer.applyFilenameBoost("security-oidc.adoc", keywords);
+
+        assertThat(keywords.get("security")).isEqualTo(13);
+        assertThat(keywords.get("oidc")).isEqualTo(10);
+    }
+
+    @Test
+    void applySectionTitleBoostAddsScoreForTitleTokens() {
+        Map<String, Integer> keywords = new HashMap<>();
+
+        indexer.applySectionTitleBoost("OIDC Authentication", keywords);
+
+        assertThat(keywords.get("oidc")).isEqualTo(5);
+        assertThat(keywords.get("authentication")).isEqualTo(5);
+    }
+
+    @Test
+    void applySectionTitleBoostMergesWithExistingKeywords() {
+        Map<String, Integer> keywords = new HashMap<>();
+        keywords.put("oidc", 2);
+
+        indexer.applySectionTitleBoost("OIDC Configuration", keywords);
+
+        assertThat(keywords.get("oidc")).isEqualTo(7);
+        assertThat(keywords.get("configuration")).isEqualTo(5);
+    }
+
+    @Test
+    void applySectionTitleBoostHandsNullTitle() {
+        Map<String, Integer> keywords = new HashMap<>();
+        keywords.put("existing", 1);
+
+        indexer.applySectionTitleBoost(null, keywords);
+
+        assertThat(keywords).hasSize(1);
+        assertThat(keywords.get("existing")).isEqualTo(1);
+    }
+
+    @Test
+    void applySectionTitleBoostHandlesBlankTitle() {
+        Map<String, Integer> keywords = new HashMap<>();
+        keywords.put("existing", 1);
+
+        indexer.applySectionTitleBoost("   ", keywords);
+
+        assertThat(keywords).hasSize(1);
+        assertThat(keywords.get("existing")).isEqualTo(1);
+    }
+
+    @Test
+    void buildAppliesAllBoosts() throws IOException {
+        String doc = """
+                = Security Guide
+                
+                == OIDC Configuration
+                
+                Configure the OIDC provider.
+                
+                [source,java]
+                ----
+                import jakarta.inject.Inject;
+                
+                @Inject
+                OidcConfig config;
+                ----
+                """;
+        writeDoc("3.17", "security-oidc.adoc", doc);
+
+        CodeSampleIndex index = indexer.build("3.17", List.of("security-oidc.adoc"));
+
+        assertThat(index.samples).hasSize(1);
+        Map<String, Integer> keywordMap = toMap(index.samples.get(0).keywords);
+        // "security" should have filename boost (10) + possibly section/content score
+        assertThat(keywordMap.get("security")).isGreaterThanOrEqualTo(10);
+        // "oidc" should have filename boost (10) + section title boost (5) + section keywords
+        assertThat(keywordMap.get("oidc")).isGreaterThanOrEqualTo(15);
+        // "configuration" should have section title boost (5) + section keywords
+        assertThat(keywordMap.get("configuration")).isGreaterThanOrEqualTo(5);
+        // "inject" should still have import boost
+        assertThat(keywordMap.get("inject")).isGreaterThanOrEqualTo(5);
+    }
+
     private Map<String, Integer> toMap(List<KeywordScore> scores) {
         Map<String, Integer> map = new HashMap<>();
         for (KeywordScore ks : scores) {

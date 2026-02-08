@@ -3,6 +3,7 @@ package com.fvd.cache.services;
 import com.fvd.common.validators.InputValidator;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.Getter;
+import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.IOException;
@@ -51,6 +52,14 @@ public class CacheService {
                     .toList();
         } catch (IOException e) {
             return List.of();
+        }
+    }
+
+    public void deleteCache() {
+        try {
+            FileUtils.deleteDirectory(cacheRoot.toFile());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }

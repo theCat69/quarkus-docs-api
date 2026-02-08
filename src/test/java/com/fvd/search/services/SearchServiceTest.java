@@ -7,6 +7,7 @@ import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.*;
+import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +35,7 @@ class SearchServiceTest {
 
     SearchService searchService;
     KeywordIndexStore keywordIndexStore;
+    CodeSampleIndexStore codeSampleIndexStore;
     DocParser docParser;
 
     @BeforeEach
@@ -43,8 +45,9 @@ class SearchServiceTest {
         SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
         initializer.initSchema();
         keywordIndexStore = new KeywordIndexStore(ds);
+        codeSampleIndexStore = new CodeSampleIndexStore(ds);
         docParser = new AsciidocParser();
-        searchService = new SearchService(keywordIndexStore, null, null, null, docParser);
+        searchService = new SearchService(keywordIndexStore, codeSampleIndexStore, null, null, null, docParser);
     }
 
     private void seedIndex(String version, KeywordIndex index) {
@@ -248,7 +251,7 @@ class SearchServiceTest {
             CacheService cacheService = new CacheService(tempDir.toString());
             realDocStore = new DocStore(cacheService);
             sectionSearchService = new SearchService(
-                    keywordIndexStore, null, null, realDocStore, docParser);
+                    keywordIndexStore, codeSampleIndexStore, null, null, realDocStore, docParser);
         }
 
         @Test
@@ -344,7 +347,8 @@ class SearchServiceTest {
             SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
             initializer.initSchema();
             lazyKeywordIndexStore = new KeywordIndexStore(ds);
-            lazySearchService = new SearchService(lazyKeywordIndexStore,
+            CodeSampleIndexStore lazyCodeSampleIndexStore = new CodeSampleIndexStore(ds);
+            lazySearchService = new SearchService(lazyKeywordIndexStore, lazyCodeSampleIndexStore,
                     zipDownloadService, keywordIndexer, docStore, docParser);
         }
 
@@ -425,6 +429,186 @@ class SearchServiceTest {
             verify(zipDownloadService, never()).streamAndExtract("3.21");
             verify(keywordIndexer, never()).build(any(), any());
             assertThat(results).hasSize(1);
+        }
+    }
+
+    // --- Code sample search tests ---
+
+    @Nested
+    class CodeSampleSearchTests {
+
+        @Test
+        void searchCodeSamplesReturnsSortedByDescendingScore() {
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("low.adoc", "Section A", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("security", 3))),
+                    new CodeSampleEntry("high.adoc", "Section B", "java", "code2", 10, 15,
+                            List.of(new KeywordScore("security", 20))),
+                    new CodeSampleEntry("mid.adoc", "Section C", "java", "code3", 20, 25,
+                            List.of(new KeywordScore("security", 10)))
+            ));
+            codeSampleIndexStore.write("3.21", index);
+
+            List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
+                    "3.21", List.of("security"), null, null);
+
+            assertThat(results).hasSize(3);
+            assertThat(results.get(0).path).isEqualTo("high.adoc");
+            assertThat(results.get(0).score).isEqualTo(20.0);
+            assertThat(results.get(1).path).isEqualTo("mid.adoc");
+            assertThat(results.get(2).path).isEqualTo("low.adoc");
+        }
+
+        @Test
+        void searchCodeSamplesAppliesMultiKeywordBoost() {
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("multi.adoc", "Section A", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("security", 5), new KeywordScore("oidc", 5))),
+                    new CodeSampleEntry("single.adoc", "Section B", "java", "code2", 10, 15,
+                            List.of(new KeywordScore("security", 10)))
+            ));
+            codeSampleIndexStore.write("3.21", index);
+
+            List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
+                    "3.21", List.of("security", "oidc"), null, null);
+
+            CodeSampleSearchResult multiResult = results.stream()
+                    .filter(r -> r.path.equals("multi.adoc")).findFirst().orElseThrow();
+            CodeSampleSearchResult singleResult = results.stream()
+                    .filter(r -> r.path.equals("single.adoc")).findFirst().orElseThrow();
+            // multi: (5+5) * 1.5 = 15 > single: 10
+            assertThat(multiResult.score).isGreaterThan(singleResult.score);
+        }
+
+        @Test
+        void searchCodeSamplesFiltersToFilePath() {
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("included.adoc", "Section A", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("security", 5))),
+                    new CodeSampleEntry("excluded.adoc", "Section B", "java", "code2", 10, 15,
+                            List.of(new KeywordScore("security", 20)))
+            ));
+            codeSampleIndexStore.write("3.21", index);
+
+            List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
+                    "3.21", List.of("security"), "included.adoc", null);
+
+            assertThat(results).hasSize(1);
+            assertThat(results.get(0).path).isEqualTo("included.adoc");
+        }
+
+        @Test
+        void searchCodeSamplesFiltersToSectionTitle() {
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("test.adoc", "Authentication", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("security", 5))),
+                    new CodeSampleEntry("test.adoc", "Authorization", "java", "code2", 10, 15,
+                            List.of(new KeywordScore("security", 8)))
+            ));
+            codeSampleIndexStore.write("3.21", index);
+
+            List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
+                    "3.21", List.of("security"), null, "Authentication");
+
+            assertThat(results).hasSize(1);
+            assertThat(results.get(0).sectionTitle).isEqualTo("Authentication");
+        }
+
+        @Test
+        void searchCodeSamplesFiltersBothFilePathAndSectionTitle() {
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("a.adoc", "Overview", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("security", 5))),
+                    new CodeSampleEntry("a.adoc", "Config", "java", "code2", 10, 15,
+                            List.of(new KeywordScore("security", 8))),
+                    new CodeSampleEntry("b.adoc", "Overview", "java", "code3", 1, 5,
+                            List.of(new KeywordScore("security", 12)))
+            ));
+            codeSampleIndexStore.write("3.21", index);
+
+            List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
+                    "3.21", List.of("security"), "a.adoc", "Overview");
+
+            assertThat(results).hasSize(1);
+            assertThat(results.get(0).path).isEqualTo("a.adoc");
+            assertThat(results.get(0).sectionTitle).isEqualTo("Overview");
+        }
+
+        @Test
+        void searchCodeSamplesReturnsEmptyForUnknownKeyword() {
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("test.adoc", "Section A", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("security", 10)))
+            ));
+            codeSampleIndexStore.write("3.21", index);
+
+            List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
+                    "3.21", List.of("nonexistent"), null, null);
+
+            assertThat(results).isEmpty();
+        }
+
+        @Test
+        void searchCodeSamplesReturnsEmptyWhenNoIndex() {
+            List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
+                    "3.21", List.of("security"), null, null);
+
+            assertThat(results).isEmpty();
+        }
+
+        @Test
+        void searchCodeSamplesLimitsResultsToTen() {
+            List<CodeSampleEntry> samples = new java.util.ArrayList<>();
+            for (int i = 0; i < 15; i++) {
+                samples.add(new CodeSampleEntry("file" + i + ".adoc", "Section", "java",
+                        "code" + i, i * 5 + 1, (i + 1) * 5,
+                        List.of(new KeywordScore("test", 15 - i))));
+            }
+            codeSampleIndexStore.write("3.21", new CodeSampleIndex(samples));
+
+            List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
+                    "3.21", List.of("test"), null, null);
+
+            assertThat(results).hasSize(10);
+            assertThat(results.get(0).path).isEqualTo("file0.adoc");
+        }
+
+        @Test
+        void searchCodeSamplesReturnsAllFields() {
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("security.adoc", "Authentication", "java",
+                            "import io.quarkus.Security;", 5, 10,
+                            List.of(new KeywordScore("security", 15)))
+            ));
+            codeSampleIndexStore.write("3.21", index);
+
+            List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
+                    "3.21", List.of("security"), null, null);
+
+            assertThat(results).hasSize(1);
+            CodeSampleSearchResult result = results.get(0);
+            assertThat(result.path).isEqualTo("security.adoc");
+            assertThat(result.sectionTitle).isEqualTo("Authentication");
+            assertThat(result.language).isEqualTo("java");
+            assertThat(result.content).isEqualTo("import io.quarkus.Security;");
+            assertThat(result.startLine).isEqualTo(5);
+            assertThat(result.endLine).isEqualTo(10);
+            assertThat(result.score).isEqualTo(15.0);
+        }
+
+        @Test
+        void searchCodeSamplesSectionTitleFilterIsCaseInsensitive() {
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("test.adoc", "Authentication", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("security", 5)))
+            ));
+            codeSampleIndexStore.write("3.21", index);
+
+            List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
+                    "3.21", List.of("security"), null, "authentication");
+
+            assertThat(results).hasSize(1);
+            assertThat(results.get(0).sectionTitle).isEqualTo("Authentication");
         }
     }
 }

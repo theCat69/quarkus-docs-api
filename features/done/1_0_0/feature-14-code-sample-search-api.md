@@ -11,8 +11,8 @@ Add an endpoint to search code samples directly with keywords and return code sa
 
 ## Tasks
 
-- [ ] Define request/response DTOs for code sample search.
-- [ ] Implement service method to query code-sample index.
-- [ ] Add JAX-RS endpoint and validation.
-- [ ] Add tests for success and error cases.
-- [ ] Add OpenAPI descriptions for the new endpoint.
+- [x] Define request/response DTOs for code sample search.
+- [x] Implement service method to query code-sample index.
+- [x] Add JAX-RS endpoint and validation.
+- [x] Add tests for success and error cases.
+- [x] Add OpenAPI descriptions for the new endpoint.

@@ -2,10 +2,7 @@ package com.fvd.search.resources;
 
 import com.fvd.common.resources.ErrorResponse;
 import com.fvd.common.validators.InputValidator;
-import com.fvd.search.services.FileSearchResult;
-import com.fvd.search.services.SearchService;
-import com.fvd.search.services.SectionContentResult;
-import com.fvd.search.services.SectionSearchResult;
+import com.fvd.search.services.*;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -119,5 +116,45 @@ public class SearchResource {
         InputValidator.validatePath(filePath);
         InputValidator.validateSectionTitle(sectionTitle);
         return searchService.getSectionContent(version, filePath, sectionTitle);
+    }
+
+    @GET
+    @Path("/code-samples")
+    @Operation(
+            summary = "Search code samples by keywords",
+            description = "Searches the code sample index for code blocks matching the given keywords. "
+                    + "Returns code samples ranked by relevance score. Optionally filter by file path or section title."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Code sample search results returned successfully",
+            content = @Content(schema = @Schema(implementation = SearchResponse.class))
+    )
+    @APIResponse(
+            responseCode = "400",
+            description = "Invalid input parameters (missing or malformed version/keywords)",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
+    public SearchResponse<CodeSampleSearchResult> searchCodeSamples(
+            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.21")
+            @QueryParam("version") String version,
+            @Parameter(description = "Comma-separated list of search keywords", required = true, example = "security,oidc")
+            @QueryParam("keywords") String keywords,
+            @Parameter(description = "Optional file path to filter results", example = "security-overview.adoc")
+            @QueryParam("filePath") String filePath,
+            @Parameter(description = "Optional section title to filter results", example = "Authentication")
+            @QueryParam("sectionTitle") String sectionTitle) {
+        InputValidator.validateVersion(version);
+        InputValidator.validateKeywords(keywords);
+        if (filePath != null && !filePath.isBlank()) {
+            InputValidator.validatePath(filePath);
+        }
+        if (sectionTitle != null && !sectionTitle.isBlank()) {
+            InputValidator.validateSectionTitle(sectionTitle);
+        }
+        List<String> keywordList = Arrays.asList(keywords.split(","));
+        List<CodeSampleSearchResult> results = searchService.searchCodeSamples(
+                version, keywordList, filePath, sectionTitle);
+        return new SearchResponse<>(results);
     }
 }

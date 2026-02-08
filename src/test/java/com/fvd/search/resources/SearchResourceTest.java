@@ -1,10 +1,8 @@
 package com.fvd.search.resources;
 
 import com.fvd.docs.stores.DocStore;
-import com.fvd.indexs.indexers.FileKeywordEntry;
-import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordScore;
-import com.fvd.indexs.indexers.SectionKeywordEntry;
+import com.fvd.indexs.indexers.*;
+import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import io.quarkus.test.junit.QuarkusTest;
@@ -26,6 +24,9 @@ class SearchResourceTest {
 
     @Inject
     KeywordIndexStore keywordIndexStore;
+
+    @Inject
+    CodeSampleIndexStore codeSampleIndexStore;
 
     @Inject
     DocStore docStore;
@@ -254,6 +255,93 @@ class SearchResourceTest {
                 .body("endLine", greaterThan(0));
     }
 
+    // --- Code sample search endpoint tests ---
+
+    @Test
+    void testSearchCodeSamplesEndpointMissingVersion() {
+        given()
+                .queryParam("keywords", "security")
+                .when().get("/api/search/code-samples")
+                .then()
+                .statusCode(400);
+    }
+
+    @Test
+    void testSearchCodeSamplesEndpointMissingKeywords() {
+        given()
+                .queryParam("version", "3.21")
+                .when().get("/api/search/code-samples")
+                .then()
+                .statusCode(400);
+    }
+
+    @Test
+    void testSearchCodeSamplesEndpointNoIndexReturnsEmpty() {
+        given()
+                .queryParam("version", "3.99")
+                .queryParam("keywords", "security")
+                .when().get("/api/search/code-samples")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(0));
+    }
+
+    @Test
+    void testSearchCodeSamplesEndpointReturnsResults() {
+        seedCodeSampleIndex();
+        given()
+                .queryParam("version", "3.21")
+                .queryParam("keywords", "security")
+                .when().get("/api/search/code-samples")
+                .then()
+                .statusCode(200)
+                .body("results.size()", greaterThan(0))
+                .body("results[0].path", equalTo("security.adoc"))
+                .body("results[0].sectionTitle", equalTo("Authentication"))
+                .body("results[0].language", equalTo("java"))
+                .body("results[0].content", notNullValue())
+                .body("results[0].score", greaterThan(0f));
+    }
+
+    @Test
+    void testSearchCodeSamplesEndpointFiltersToFilePath() {
+        seedCodeSampleIndex();
+        given()
+                .queryParam("version", "3.21")
+                .queryParam("keywords", "security")
+                .queryParam("filePath", "security.adoc")
+                .when().get("/api/search/code-samples")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(1))
+                .body("results[0].path", equalTo("security.adoc"));
+    }
+
+    @Test
+    void testSearchCodeSamplesEndpointFiltersToSectionTitle() {
+        seedCodeSampleIndex();
+        given()
+                .queryParam("version", "3.21")
+                .queryParam("keywords", "security")
+                .queryParam("sectionTitle", "Authorization")
+                .when().get("/api/search/code-samples")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(1))
+                .body("results[0].sectionTitle", equalTo("Authorization"));
+    }
+
+    @Test
+    void testSearchCodeSamplesEndpointPathTraversal() {
+        given()
+                .queryParam("version", "3.21")
+                .queryParam("keywords", "security")
+                .queryParam("filePath", "../../etc/passwd")
+                .when().get("/api/search/code-samples")
+                .then()
+                .statusCode(400);
+    }
+
     private void seedDocFile() {
         String docContent = """
                 = Security Guide
@@ -280,5 +368,19 @@ class SearchResourceTest {
                         List.of())
         ));
         keywordIndexStore.write("3.21", index);
+    }
+
+    private void seedCodeSampleIndex() {
+        CodeSampleIndex codeSampleIndex = new CodeSampleIndex(List.of(
+                new CodeSampleEntry("security.adoc", "Authentication", "java",
+                        "import io.quarkus.security.identity.SecurityIdentity;",
+                        5, 10,
+                        List.of(new KeywordScore("security", 15), new KeywordScore("identity", 8))),
+                new CodeSampleEntry("config.adoc", "Authorization", "java",
+                        "@RolesAllowed(\"admin\")",
+                        20, 25,
+                        List.of(new KeywordScore("security", 10), new KeywordScore("roles", 5)))
+        ));
+        codeSampleIndexStore.write("3.21", codeSampleIndex);
     }
 }

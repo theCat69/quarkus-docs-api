@@ -1,7 +1,9 @@
 package com.fvd.cache.jobs;
 
+import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.services.ZipDownloadService;
+import com.fvd.indexs.indexers.CodeSampleIndexer;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.services.IndexService;
 import io.quarkus.runtime.StartupEvent;
@@ -24,9 +26,13 @@ public class CacheWarmupJob {
     private final ZipDownloadService zipDownloadService;
     private final IndexService indexService;
     private final KeywordIndexer keywordIndexer;
+    private final CodeSampleIndexer codeSampleIndexer;
+    private final CacheService cacheService;
 
     @ConfigProperty(name = "app.versions")
     Optional<List<String>> configuredVersions;
+    @ConfigProperty(name = "app.cache-warmup.full-reset")
+    Optional<Boolean> fullReset;
 
     void onStartup(@Observes @Priority(200) StartupEvent event) {
         if (configuredVersions.isEmpty() || configuredVersions.get().isEmpty()) {
@@ -49,6 +55,7 @@ public class CacheWarmupJob {
     }
 
     private void warmupVersion(String version) {
+        fullReset.ifPresent((bool) -> { if(bool) cacheService.deleteCache(); });
         if (docStore.docsExist(version)) {
             log.info("Version {} already cached, skipping warmup", version);
             return;
@@ -64,5 +71,8 @@ public class CacheWarmupJob {
 
         keywordIndexer.build(version, extractedFiles);
         log.info("Keyword index built for version {}", version);
+
+        codeSampleIndexer.build(version, extractedFiles);
+        log.info("Code sample index built for version {}", version);
     }
 }
