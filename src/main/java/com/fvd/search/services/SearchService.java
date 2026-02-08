@@ -1,6 +1,8 @@
 package com.fvd.search.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fvd.asciidocs.parser.AsciidocParser;
+import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.*;
@@ -26,6 +28,7 @@ public class SearchService {
     private final ZipDownloadService zipDownloadService;
     private final KeywordIndexer keywordIndexer;
     private final DocStore docStore;
+    private final AsciidocParser asciidocParser;
 
     public List<FileSearchResult> searchFiles(String version, List<String> keywords) {
         ensureIndex(version);
@@ -104,6 +107,31 @@ public class SearchService {
             return results.subList(0, MAX_SECTION_RESULTS);
         }
         return results;
+    }
+
+    public SectionContentResult getSectionContent(String version, String filePath, String sectionTitle) {
+        Optional<String> docContent = docStore.read(version, filePath);
+        if (docContent.isEmpty()) {
+            throw new DocNotFoundException("Document not found: " + filePath + " for version: " + version);
+        }
+
+        String content = docContent.get();
+        List<AsciidocParser.Section> sections = asciidocParser.parseSections(content);
+        String[] lines = content.split("\n", -1);
+
+        for (AsciidocParser.Section section : sections) {
+            if (section.title().equalsIgnoreCase(sectionTitle)) {
+                int startIdx = Math.max(0, section.startLine() - 1);
+                int endIdx = Math.min(lines.length, section.endLine());
+                String sectionContent = String.join("\n",
+                        Arrays.copyOfRange(lines, startIdx, endIdx));
+                return new SectionContentResult(
+                        filePath, section.title(), section.startLine(), section.endLine(), sectionContent);
+            }
+        }
+
+        throw new DocNotFoundException(
+                "Section not found: '" + sectionTitle + "' in " + filePath + " for version: " + version);
     }
 
     private void ensureIndex(String version) {

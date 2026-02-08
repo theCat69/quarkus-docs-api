@@ -1,8 +1,10 @@
 package com.fvd.search.resources;
 
+import com.fvd.common.resources.ErrorResponse;
 import com.fvd.common.validators.InputValidator;
 import com.fvd.search.services.FileSearchResult;
 import com.fvd.search.services.SearchService;
+import com.fvd.search.services.SectionContentResult;
 import com.fvd.search.services.SectionSearchResult;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -10,6 +12,10 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import lombok.RequiredArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 import java.util.Arrays;
 import java.util.List;
@@ -43,5 +49,35 @@ public class SearchResource {
         List<String> filePathList = Arrays.asList(filePaths.split(","));
         List<SectionSearchResult> results = searchService.searchSections(version, keywordList, filePathList);
         return new SearchResponse<>(results);
+    }
+
+    @GET
+    @Path("/section-content")
+    @Operation(
+            summary = "Get section content",
+            description = "Returns the raw AsciiDoc content and metadata for a specific section in a document."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Section content retrieved successfully",
+            content = @Content(schema = @Schema(implementation = SectionContentResult.class))
+    )
+    @APIResponse(
+            responseCode = "400",
+            description = "Invalid input parameters",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
+    @APIResponse(
+            responseCode = "404",
+            description = "Document or section not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
+    public SectionContentResult getSectionContent(@QueryParam("version") String version,
+                                                  @QueryParam("filePath") String filePath,
+                                                  @QueryParam("sectionTitle") String sectionTitle) {
+        InputValidator.validateVersion(version);
+        InputValidator.validatePath(filePath);
+        InputValidator.validateSectionTitle(sectionTitle);
+        return searchService.getSectionContent(version, filePath, sectionTitle);
     }
 }

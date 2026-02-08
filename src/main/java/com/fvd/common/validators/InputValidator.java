@@ -42,4 +42,8 @@ public class InputValidator {
     public static void validateKeywords(String keywords) {
         requireNonEmpty(keywords, "keywords");
     }
+
+    public static void validateSectionTitle(String sectionTitle) {
+        requireNonEmpty(sectionTitle, "sectionTitle");
+    }
 }

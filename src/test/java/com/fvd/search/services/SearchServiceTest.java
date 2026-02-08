@@ -1,7 +1,9 @@
 package com.fvd.search.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.cache.services.CacheService;
+import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.*;
@@ -18,6 +20,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -30,13 +33,15 @@ class SearchServiceTest {
     SearchService searchService;
     KeywordIndexStore keywordIndexStore;
     ObjectMapper objectMapper;
+    AsciidocParser asciidocParser;
 
     @BeforeEach
     void setUp() {
         CacheService cacheService = new CacheService(tempDir.toString());
         keywordIndexStore = new KeywordIndexStore(cacheService);
         objectMapper = new ObjectMapper();
-        searchService = new SearchService(keywordIndexStore, objectMapper, null, null, null);
+        asciidocParser = new AsciidocParser();
+        searchService = new SearchService(keywordIndexStore, objectMapper, null, null, null, asciidocParser);
     }
 
     private void seedIndex(String version, KeywordIndex index) throws Exception {
@@ -231,6 +236,90 @@ class SearchServiceTest {
     // --- Lazy initialization tests ---
 
     @Nested
+    class SectionContentTests {
+
+        private SearchService sectionSearchService;
+        private DocStore realDocStore;
+
+        @BeforeEach
+        void setUpSectionContent() {
+            CacheService cacheService = new CacheService(tempDir.toString());
+            realDocStore = new DocStore(cacheService);
+            sectionSearchService = new SearchService(
+                    keywordIndexStore, objectMapper, null, null, realDocStore, asciidocParser);
+        }
+
+        @Test
+        void getSectionContentReturnsMatchingSection() {
+            String docContent = """
+                    = Main Title
+                    Some intro text.
+                    
+                    == Overview
+                    This is the overview section.
+                    It has multiple lines.
+                    
+                    == Configuration
+                    Config details here.
+                    """;
+            realDocStore.write("3.21", "security.adoc", docContent);
+
+            SectionContentResult result = sectionSearchService.getSectionContent(
+                    "3.21", "security.adoc", "Overview");
+
+            assertThat(result.path).isEqualTo("security.adoc");
+            assertThat(result.title).isEqualTo("Overview");
+            assertThat(result.content).contains("This is the overview section.");
+            assertThat(result.content).contains("It has multiple lines.");
+            assertThat(result.startLine).isGreaterThan(0);
+            assertThat(result.endLine).isGreaterThanOrEqualTo(result.startLine);
+        }
+
+        @Test
+        void getSectionContentIsCaseInsensitive() {
+            String docContent = """
+                    = Main Title
+                    Intro.
+                    
+                    == Security Overview
+                    Content here.
+                    """;
+            realDocStore.write("3.21", "security.adoc", docContent);
+
+            SectionContentResult result = sectionSearchService.getSectionContent(
+                    "3.21", "security.adoc", "security overview");
+
+            assertThat(result.title).isEqualTo("Security Overview");
+            assertThat(result.content).contains("Content here.");
+        }
+
+        @Test
+        void getSectionContentThrowsWhenDocNotFound() {
+            assertThatThrownBy(() ->
+                    sectionSearchService.getSectionContent("3.21", "nonexistent.adoc", "Overview"))
+                    .isInstanceOf(DocNotFoundException.class)
+                    .hasMessageContaining("Document not found");
+        }
+
+        @Test
+        void getSectionContentThrowsWhenSectionNotFound() {
+            String docContent = """
+                    = Main Title
+                    Intro.
+                    
+                    == Overview
+                    Content here.
+                    """;
+            realDocStore.write("3.21", "security.adoc", docContent);
+
+            assertThatThrownBy(() ->
+                    sectionSearchService.getSectionContent("3.21", "security.adoc", "Nonexistent Section"))
+                    .isInstanceOf(DocNotFoundException.class)
+                    .hasMessageContaining("Section not found");
+        }
+    }
+
+    @Nested
     @ExtendWith(MockitoExtension.class)
     class LazyInitTests {
 
@@ -251,7 +340,7 @@ class SearchServiceTest {
             CacheService cacheService = new CacheService(tempDir.toString());
             lazyKeywordIndexStore = new KeywordIndexStore(cacheService);
             lazySearchService = new SearchService(lazyKeywordIndexStore, objectMapper,
-                    zipDownloadService, keywordIndexer, docStore);
+                    zipDownloadService, keywordIndexer, docStore, asciidocParser);
         }
 
         @Test

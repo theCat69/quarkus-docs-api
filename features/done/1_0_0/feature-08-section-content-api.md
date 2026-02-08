@@ -11,9 +11,9 @@ Add a new endpoint that returns section content (raw Asciidoc) for a specific se
 
 ## Tasks
 
-- [ ] Identify stable section identifier(s) in current models/parsing.
-- [ ] Define request/response DTOs for section content retrieval.
-- [ ] Add service method to load section content from cached doc/parsed model.
-- [ ] Add JAX-RS endpoint and validation.
-- [ ] Add tests for success and error cases.
-- [ ] Add OpenAPI annotations and example response.
+- [x] Identify stable section identifier(s) in current models/parsing.
+- [x] Define request/response DTOs for section content retrieval.
+- [x] Add service method to load section content from cached doc/parsed model.
+- [x] Add JAX-RS endpoint and validation.
+- [x] Add tests for success and error cases.
+- [x] Add OpenAPI annotations and example response.
