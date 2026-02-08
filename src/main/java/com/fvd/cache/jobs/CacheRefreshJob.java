@@ -49,21 +49,21 @@ public class CacheRefreshJob {
         log.info("Refreshing cache for version {}", version);
 
         List<GithubApiIndex> newIndex = gitHubService.fetchIndex(version);
-        Map<String, String> newShaByName = buildShaMap(newIndex);
+        Map<String, String> newShaByPath = buildShaMap(newIndex);
 
         Optional<List<GithubApiIndex>> oldIndex = indexStore.read(version);
-        Map<String, String> oldShaByName = oldIndex
+        Map<String, String> oldShaByPath = oldIndex
                 .map(this::buildShaMap)
                 .orElse(Map.of());
 
         // Find files that need re-fetching (changed SHA or new files)
-        for (Map.Entry<String, String> entry : newShaByName.entrySet()) {
-            String fileName = entry.getKey();
+        for (Map.Entry<String, String> entry : newShaByPath.entrySet()) {
+            String filePath = entry.getKey();
             String newSha = entry.getValue();
-            String oldSha = oldShaByName.get(fileName);
+            String oldSha = oldShaByPath.get(filePath);
             if (oldSha == null || !oldSha.equals(newSha)) {
-                log.info("Re-fetching changed file: {} (version {})", fileName, version);
-                fetchAndCacheDoc(version, fileName);
+                log.info("Re-fetching changed file: {} (version {})", filePath, version);
+                fetchAndCacheDoc(version, filePath);
             }
         }
 
@@ -71,27 +71,27 @@ public class CacheRefreshJob {
         indexStore.write(version, newIndex);
 
         // Rebuild keyword index with all files from the new index
-        List<String> allFileNames = newIndex.stream()
-                .map(e -> e.name)
+        List<String> allFilePaths = newIndex.stream()
+                .map(e -> e.path)
                 .toList();
-        keywordIndexer.build(version, allFileNames);
+        keywordIndexer.build(version, allFilePaths);
 
         log.info("Cache refresh completed for version {}", version);
     }
 
-    private void fetchAndCacheDoc(String version, String fileName) {
-        GithubApiFile file = gitHubService.fetchFileContent(fileName, version);
+    private void fetchAndCacheDoc(String version, String filePath) {
+        GithubApiFile file = gitHubService.fetchFileContent(filePath, version);
         String content = file.decodeContent();
-        docStore.write(version, fileName, content);
+        docStore.write(version, filePath, content);
     }
 
     private Map<String, String> buildShaMap(List<GithubApiIndex> entries) {
-        Map<String, String> shaByName = new HashMap<>();
+        Map<String, String> shaByPath = new HashMap<>();
         for (GithubApiIndex entry : entries) {
-            if (entry.name != null && entry.sha != null) {
-                shaByName.put(entry.name, entry.sha);
+            if (entry.path != null && entry.sha != null) {
+                shaByPath.put(entry.path, entry.sha);
             }
         }
-        return shaByName;
+        return shaByPath;
     }
 }

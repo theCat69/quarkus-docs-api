@@ -14,7 +14,7 @@ import java.io.InputStream;
 public interface GithubRepositoryClient {
 
     @GET
-    @Path("quarkus/archive/refs/heads/{version}.zip")
+    @Path("archive/refs/heads/{version}.zip")
     InputStream fetchZipStream(String version);
 
     @ClientExceptionMapper

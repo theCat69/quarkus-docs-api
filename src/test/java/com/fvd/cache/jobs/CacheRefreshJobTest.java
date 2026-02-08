@@ -77,14 +77,14 @@ class CacheRefreshJobTest {
         when(indexStore.read("3.21")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.21")).thenReturn(newIndexWithChangedSha());
         GithubApiFile docFile = githubDocFile("updated content");
-        when(gitHubService.fetchFileContent("security-overview.adoc", "3.21")).thenReturn(docFile);
+        when(gitHubService.fetchFileContent("docs/src/main/asciidoc/security-overview.adoc", "3.21")).thenReturn(docFile);
         when(keywordIndexer.build(eq("3.21"), any())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
         // security-overview.adoc has a changed SHA, should be re-fetched and written
-        verify(gitHubService).fetchFileContent("security-overview.adoc", "3.21");
-        verify(docStore).write(eq("3.21"), eq("security-overview.adoc"), eq("updated content"));
+        verify(gitHubService).fetchFileContent("docs/src/main/asciidoc/security-overview.adoc", "3.21");
+        verify(docStore).write(eq("3.21"), eq("docs/src/main/asciidoc/security-overview.adoc"), eq("updated content"));
         // config.adoc has the same SHA, should NOT be re-fetched
         verify(gitHubService, never()).fetchFileContent(eq("config.adoc"), anyString());
     }
@@ -96,7 +96,7 @@ class CacheRefreshJobTest {
         List<GithubApiIndex> newIndex = newIndexWithChangedSha();
         when(gitHubService.fetchIndex("3.21")).thenReturn(newIndex);
         GithubApiFile docFile = githubDocFile("updated content");
-        when(gitHubService.fetchFileContent("security-overview.adoc", "3.21")).thenReturn(docFile);
+        when(gitHubService.fetchFileContent("docs/src/main/asciidoc/security-overview.adoc", "3.21")).thenReturn(docFile);
         when(keywordIndexer.build(eq("3.21"), any())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
@@ -110,12 +110,12 @@ class CacheRefreshJobTest {
         when(indexStore.read("3.21")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.21")).thenReturn(newIndexWithChangedSha());
         GithubApiFile docFile = githubDocFile("updated content");
-        when(gitHubService.fetchFileContent("security-overview.adoc", "3.21")).thenReturn(docFile);
+        when(gitHubService.fetchFileContent("docs/src/main/asciidoc/security-overview.adoc", "3.21")).thenReturn(docFile);
         when(keywordIndexer.build(eq("3.21"), any())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
-        verify(keywordIndexer).build(eq("3.21"), eq(List.of("security-overview.adoc", "config.adoc")));
+        verify(keywordIndexer).build(eq("3.21"), eq(List.of("docs/src/main/asciidoc/security-overview.adoc", "docs/src/main/asciidoc/config.adoc")));
     }
 
     @Test
@@ -124,14 +124,14 @@ class CacheRefreshJobTest {
         when(indexStore.read("3.21")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.21")).thenReturn(newIndexWithAddedFile());
         GithubApiFile docFile = githubDocFile("new file content");
-        when(gitHubService.fetchFileContent("new-file.adoc", "3.21")).thenReturn(docFile);
+        when(gitHubService.fetchFileContent("docs/src/main/asciidoc/new-file.adoc", "3.21")).thenReturn(docFile);
         when(keywordIndexer.build(eq("3.21"), any())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
         // new-file.adoc is not in the old index, should be fetched
-        verify(gitHubService).fetchFileContent("new-file.adoc", "3.21");
-        verify(docStore).write(eq("3.21"), eq("new-file.adoc"), eq("new file content"));
+        verify(gitHubService).fetchFileContent("docs/src/main/asciidoc/new-file.adoc", "3.21");
+        verify(docStore).write(eq("3.21"), eq("docs/src/main/asciidoc/new-file.adoc"), eq("new file content"));
     }
 
     @Test
@@ -144,7 +144,7 @@ class CacheRefreshJobTest {
         job.refresh();
 
         // Only config.adoc remains in the new index
-        verify(keywordIndexer).build(eq("3.21"), eq(List.of("config.adoc")));
+        verify(keywordIndexer).build(eq("3.21"), eq(List.of("docs/src/main/asciidoc/config.adoc")));
     }
 
     @Test
@@ -154,17 +154,17 @@ class CacheRefreshJobTest {
         when(gitHubService.fetchIndex("3.21")).thenReturn(oldIndex());
         GithubApiFile docFile1 = githubDocFile("security content");
         GithubApiFile docFile2 = githubDocFile("config content");
-        when(gitHubService.fetchFileContent("security-overview.adoc", "3.21")).thenReturn(docFile1);
-        when(gitHubService.fetchFileContent("config.adoc", "3.21")).thenReturn(docFile2);
+        when(gitHubService.fetchFileContent("docs/src/main/asciidoc/security-overview.adoc", "3.21")).thenReturn(docFile1);
+        when(gitHubService.fetchFileContent("docs/src/main/asciidoc/config.adoc", "3.21")).thenReturn(docFile2);
         when(keywordIndexer.build(eq("3.21"), any())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
         // All files should be fetched since there's no old index to compare
-        verify(gitHubService).fetchFileContent("security-overview.adoc", "3.21");
-        verify(gitHubService).fetchFileContent("config.adoc", "3.21");
-        verify(docStore).write(eq("3.21"), eq("security-overview.adoc"), eq("security content"));
-        verify(docStore).write(eq("3.21"), eq("config.adoc"), eq("config content"));
+        verify(gitHubService).fetchFileContent("docs/src/main/asciidoc/security-overview.adoc", "3.21");
+        verify(gitHubService).fetchFileContent("docs/src/main/asciidoc/config.adoc", "3.21");
+        verify(docStore).write(eq("3.21"), eq("docs/src/main/asciidoc/security-overview.adoc"), eq("security content"));
+        verify(docStore).write(eq("3.21"), eq("docs/src/main/asciidoc/config.adoc"), eq("config content"));
     }
 
     @Test
@@ -207,7 +207,7 @@ class CacheRefreshJobTest {
         // Index should still be written
         verify(indexStore).write("3.21", oldIndex());
         // Keywords should still be rebuilt
-        verify(keywordIndexer).build(eq("3.21"), eq(List.of("security-overview.adoc", "config.adoc")));
+        verify(keywordIndexer).build(eq("3.21"), eq(List.of("docs/src/main/asciidoc/security-overview.adoc", "docs/src/main/asciidoc/config.adoc")));
     }
 
     @Test
