@@ -44,3 +44,6 @@ nb-configuration.xml
 .cache/
 
 .tmp/external-context/
+
+# opencode
+session-ses*
