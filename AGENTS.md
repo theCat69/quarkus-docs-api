@@ -6,12 +6,14 @@ This file guides agentic coding in this repository. Follow it exactly.
 ** CRITICAL RULES ** 
 Those RULES are CRITICAL you must follow them.
 - ALWAYS use the question tool to interact with the user 
-- NEVER return directly unless you can't use the question tool or if you are done with ALL tasks and features
+- NEVER return directly unless you can't use the question tool or if ALL tasks and features are done, reviewed and accepted.
 ** END CRITICAL RULES **
 
 ## Project summary
-- Quarkus REST API using Gradle (wrapper only).
+- Quarkus REST API using Gradle (wrapper only), with OpenAPI annotations.
 - Java 21 source/target compatibility.
+- Caches Quarkus docs by version and provides search across keyword indexes.
+- SQLite-backed keyword and code sample indexes.
 - Tests are JUnit 5 with QuarkusTest, RestAssured, AssertJ, Mockito.
 - Lombok is available; use it to reduce boilerplate when possible.
 
@@ -62,8 +64,8 @@ Short descriptions of every folder at repo root and under `src/`.
 - `src/main/java/com/fvd/common`: Shared exceptions, validators, and error response DTOs.
 - `src/main/java/com/fvd/docs`: Docs API resources, doc services, and doc storage.
 - `src/main/java/com/fvd/github`: GitHub API client, zip download, and upstream error mapping.
-- `src/main/java/com/fvd/indexs`: Indexing services, index stores, and keyword index models.
-- `src/main/java/com/fvd/search`: Search services and response DTOs for file/section searches.
+- `src/main/java/com/fvd/indexs`: Indexing services, index stores, and keyword/code-sample index models.
+- `src/main/java/com/fvd/search`: Search services and response DTOs for file/section/code-sample searches.
 
 ### Common subpackages (generic guide)
 - `.../resources`: JAX-RS endpoints and response DTOs.
@@ -176,6 +178,7 @@ consistent.
 - Quarkus REST, REST client, Jackson.
 - Quarkus Scheduler, SmallRye Health, OpenAPI.
 - Quarkus ARC (CDI).
+- Quarkus Agroal + SQLite (quarkiverse JDBC).
 - Lombok (io.freefair.lombok plugin).
 - WireMock (test support).
 - AssertJ, RestAssured, Mockito for testing.
