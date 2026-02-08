@@ -21,12 +21,13 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import static com.fvd.common.utils.AsciiDocConstants.ASCIIDOC_PREFIX;
+import static com.fvd.common.utils.AsciiDocConstants.ASCIIDOC_SUFFIX;
+
 @Slf4j
 @ApplicationScoped
 @RequiredArgsConstructor
 public class ZipDownloadService {
-
-    private static final String ASCIIDOC_PREFIX = "docs/src/main/asciidoc/";
 
     private final GitHubService gitHubService;
     private final DocStore docStore;
@@ -66,7 +67,7 @@ public class ZipDownloadService {
              ZipInputStream zis = new ZipInputStream(zipStream)) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
-                if (entry.isDirectory()) {
+                if (entry.isDirectory() || !entry.getName().endsWith(ASCIIDOC_SUFFIX)) {
                     continue;
                 }
                 String entryName = entry.getName();

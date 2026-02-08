@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.fvd.common.utils.AsciiDocConstants.ASCIIDOC_SUFFIX;
+
 @Slf4j
 @ApplicationScoped
 @RequiredArgsConstructor
@@ -28,7 +30,7 @@ public class CacheRefreshJob {
     private final DocStore docStore;
     private final KeywordIndexer keywordIndexer;
 
-    @Scheduled(every = "${app.refresh.interval:6h}")
+    @Scheduled(every = "${app.refresh.interval:6h}", delayed = "10m")
     public void refresh() {
         List<String> versions = cacheService.listCachedVersions();
         if (versions.isEmpty()) {
@@ -67,15 +69,19 @@ public class CacheRefreshJob {
             }
         }
 
-        // Replace file index with new data
-        indexStore.write(version, newIndex);
+        if(!newIndex.isEmpty()) {
+            log.info("Should rebuild index stores");
 
-        // Rebuild keyword index with all files from the new index
-        List<String> allFilePaths = newIndex.stream()
-                .map(e -> e.path)
-                .toList();
-        keywordIndexer.build(version, allFilePaths);
+            // Replace file index with new data
+            indexStore.write(version, newIndex);
 
+            // Rebuild keyword index with all files from the new index
+            List<String> allFilePaths = newIndex.stream()
+                    .map(e -> e.path)
+                    .toList();
+            keywordIndexer.build(version, allFilePaths);
+
+        }
         log.info("Cache refresh completed for version {}", version);
     }
 
@@ -88,7 +94,7 @@ public class CacheRefreshJob {
     private Map<String, String> buildShaMap(List<GithubApiIndex> entries) {
         Map<String, String> shaByPath = new HashMap<>();
         for (GithubApiIndex entry : entries) {
-            if (entry.path != null && entry.sha != null) {
+            if (entry.path != null && entry.sha != null && entry.name.endsWith(ASCIIDOC_SUFFIX)) {
                 shaByPath.put(entry.path, entry.sha);
             }
         }
