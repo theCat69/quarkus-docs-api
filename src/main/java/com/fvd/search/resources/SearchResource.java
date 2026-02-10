@@ -17,6 +17,7 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Path("/api/search")
 @Produces(MediaType.APPLICATION_JSON)
@@ -51,7 +52,7 @@ public class SearchResource {
     )
     @APIResponse(
             responseCode = "200",
-            description = "Search results returned successfully",
+            description = "Search results returned successfully. Includes queriedKeywords (echo of parsed input keywords) and searchTimeMs (wall-clock milliseconds).",
             content = @Content(schema = @Schema(implementation = SearchResponse.class))
     )
     @APIResponse(
@@ -73,9 +74,13 @@ public class SearchResource {
         int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
         int validOffset = InputValidator.validateOffset(offset);
         List<String> keywordList = Arrays.asList(keywords.split(","));
+        List<String> queriedKeywords = keywordList.stream().map(String::toLowerCase).toList();
+        long startNanos = System.nanoTime();
         PaginatedResult<FileSearchResult> result = searchService.searchFiles(version, keywordList,
                 validLimit, validOffset);
-        return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset);
+        long searchTimeMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
+        return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset,
+                queriedKeywords, searchTimeMs);
     }
 
     @GET
@@ -87,7 +92,7 @@ public class SearchResource {
     )
     @APIResponse(
             responseCode = "200",
-            description = "Section search results returned successfully",
+            description = "Section search results returned successfully. Includes queriedKeywords and searchTimeMs.",
             content = @Content(schema = @Schema(implementation = SearchResponse.class))
     )
     @APIResponse(
@@ -111,14 +116,18 @@ public class SearchResource {
         int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
         int validOffset = InputValidator.validateOffset(offset);
         List<String> keywordList = Arrays.asList(keywords.split(","));
+        List<String> queriedKeywords = keywordList.stream().map(String::toLowerCase).toList();
         List<String> filePathList = null;
         if (filePaths != null && !filePaths.isBlank()) {
             InputValidator.validateFilePaths(filePaths);
             filePathList = Arrays.asList(filePaths.split(","));
         }
+        long startNanos = System.nanoTime();
         PaginatedResult<SectionSearchResult> result = searchService.searchSections(version, keywordList,
                 filePathList, validLimit, validOffset);
-        return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset);
+        long searchTimeMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
+        return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset,
+                queriedKeywords, searchTimeMs);
     }
 
     @GET
@@ -172,7 +181,7 @@ public class SearchResource {
     )
     @APIResponse(
             responseCode = "200",
-            description = "Code sample search results returned successfully",
+            description = "Code sample search results returned successfully. Includes queriedKeywords and searchTimeMs.",
             content = @Content(schema = @Schema(implementation = SearchResponse.class))
     )
     @APIResponse(
@@ -204,9 +213,13 @@ public class SearchResource {
             InputValidator.validateSectionTitle(sectionTitle);
         }
         List<String> keywordList = Arrays.asList(keywords.split(","));
+        List<String> queriedKeywords = keywordList.stream().map(String::toLowerCase).toList();
+        long startNanos = System.nanoTime();
         PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
                 version, keywordList, filePath, sectionTitle, validLimit, validOffset);
-        return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset);
+        long searchTimeMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
+        return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset,
+                queriedKeywords, searchTimeMs);
     }
 
     @GET
@@ -219,7 +232,7 @@ public class SearchResource {
     )
     @APIResponse(
             responseCode = "200",
-            description = "Content search results returned successfully",
+            description = "Content search results returned successfully. Includes queriedKeywords and searchTimeMs.",
             content = @Content(schema = @Schema(implementation = SearchResponse.class))
     )
     @APIResponse(
@@ -243,13 +256,17 @@ public class SearchResource {
         int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
         int validOffset = InputValidator.validateOffset(offset);
         List<String> keywordList = Arrays.asList(keywords.split(","));
+        List<String> queriedKeywords = keywordList.stream().map(String::toLowerCase).toList();
         List<String> filePathList = null;
         if (filePaths != null && !filePaths.isBlank()) {
             InputValidator.validateFilePaths(filePaths);
             filePathList = Arrays.asList(filePaths.split(","));
         }
+        long startNanos = System.nanoTime();
         PaginatedResult<ContentSearchResult> result = searchService.searchContent(
                 version, keywordList, filePathList, validLimit, validOffset);
-        return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset);
+        long searchTimeMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
+        return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset,
+                queriedKeywords, searchTimeMs);
     }
 }

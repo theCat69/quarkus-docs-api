@@ -63,24 +63,36 @@ Updated `ContentSearchResult`:
 
 ## Tasks
 
-- [ ] Add unit tests: `FileSearchResult` includes `matchedKeywords` with correct keywords after search.
-- [ ] Add unit tests: `SectionSearchResult` includes `matchedKeywords` for multi-keyword match.
-- [ ] Add unit tests: `CodeSampleSearchResult` includes `matchedKeywords`.
-- [ ] Add unit tests: `ContentSearchResult` includes `matchedKeywords` and `matchCount`.
-- [ ] Add unit tests: single-keyword match produces `matchedKeywords` with one entry; multi-keyword produces multiple.
-- [ ] Add `matchedKeywords` field to `FileSearchResult` DTO; update constructors.
-- [ ] Add `matchedKeywords` field to `SectionSearchResult` DTO; update constructors.
-- [ ] Add `matchedKeywords` field to `CodeSampleSearchResult` DTO; update constructors.
-- [ ] Add `matchedKeywords` and `matchCount` fields to `ContentSearchResult` DTO; update constructors.
-- [ ] Refactor `SearchService.getScores()` to collect matched keywords per file alongside score accumulation.
-- [ ] Refactor `SearchService.searchSections()` scoring loop to collect matched keywords per section.
-- [ ] Refactor `SearchService.searchCodeSamples()` scoring loop to collect matched keywords per sample.
-- [ ] Refactor `SearchService.searchContent()` to collect matched keywords and total match count per file.
-- [ ] Add `queriedKeywords` and `searchTimeMs` fields to `SearchResponse` DTO; replace `@AllArgsConstructor` with explicit constructors — keep existing convenience constructor `SearchResponse(List<T>)` for backward compat, add new full constructor with all fields including metadata.
-- [ ] Update `SearchResource.searchFiles()` to measure timing and pass metadata to `SearchResponse`.
-- [ ] Update `SearchResource.searchSections()` to measure timing and pass metadata to `SearchResponse`.
-- [ ] Update `SearchResource.searchCodeSamples()` to measure timing and pass metadata to `SearchResponse`.
-- [ ] Update `SearchResource.searchContent()` to measure timing and pass metadata to `SearchResponse`.
-- [ ] Add integration tests confirming `queriedKeywords` and `searchTimeMs` are present in JSON response.
-- [ ] Add integration tests confirming `matchedKeywords` is present in result items.
-- [ ] Update OpenAPI descriptions to document new response fields.
+- [x] Add unit tests: `FileSearchResult` includes `matchedKeywords` with correct keywords after search.
+- [x] Add unit tests: `SectionSearchResult` includes `matchedKeywords` for multi-keyword match.
+- [x] Add unit tests: `CodeSampleSearchResult` includes `matchedKeywords`.
+- [x] Add unit tests: `ContentSearchResult` includes `matchedKeywords` and `matchCount`.
+- [x] Add unit tests: single-keyword match produces `matchedKeywords` with one entry; multi-keyword produces multiple.
+- [x] Add `matchedKeywords` field to `FileSearchResult` DTO; update constructors.
+- [x] Add `matchedKeywords` field to `SectionSearchResult` DTO; update constructors.
+- [x] Add `matchedKeywords` field to `CodeSampleSearchResult` DTO; update constructors.
+- [x] Add `matchedKeywords` and `matchCount` fields to `ContentSearchResult` DTO; update constructors.
+- [x] Refactor `SearchService.getScores()` to collect matched keywords per file alongside score accumulation.
+- [x] Refactor `SearchService.searchSections()` scoring loop to collect matched keywords per section.
+- [x] Refactor `SearchService.searchCodeSamples()` scoring loop to collect matched keywords per sample.
+- [x] Refactor `SearchService.searchContent()` to collect matched keywords and total match count per file.
+- [x] Add `queriedKeywords` and `searchTimeMs` fields to `SearchResponse` DTO; replace `@AllArgsConstructor` with explicit constructors — keep existing convenience constructor `SearchResponse(List<T>)` for backward compat, add new full constructor with all fields including metadata.
+- [x] Update `SearchResource.searchFiles()` to measure timing and pass metadata to `SearchResponse`.
+- [x] Update `SearchResource.searchSections()` to measure timing and pass metadata to `SearchResponse`.
+- [x] Update `SearchResource.searchCodeSamples()` to measure timing and pass metadata to `SearchResponse`.
+- [x] Update `SearchResource.searchContent()` to measure timing and pass metadata to `SearchResponse`.
+- [x] Add integration tests confirming `queriedKeywords` and `searchTimeMs` are present in JSON response.
+- [x] Add integration tests confirming `matchedKeywords` is present in result items.
+- [x] Update OpenAPI descriptions to document new response fields.
+
+## Implementation notes
+
+- `MatchAccumulator` record extended with `Set<String> matchedKeywords` field to track which query keywords matched during scoring. The `computeMatchingScore()` method now returns the actual matched keyword set instead of just the count.
+- `getScores()` refactored to `getFileResults()` which returns `List<FileSearchResult>` directly, including `matchedKeywords` from the accumulator.
+- All four search result DTOs (`FileSearchResult`, `SectionSearchResult`, `CodeSampleSearchResult`, `ContentSearchResult`) received `public List<String> matchedKeywords` fields. `ContentSearchResult` additionally received `public int matchCount` for total keyword occurrence count.
+- `SearchResponse` removed `@AllArgsConstructor`, added three explicit constructors: convenience `(List<T>)`, backward-compat paginated `(List<T>, int, int, int)`, and full `(List<T>, int, int, int, List<String>, long)` with `queriedKeywords` and `searchTimeMs`.
+- `SearchResource` methods wrap service calls with `System.nanoTime()` timing, compute `queriedKeywords` from lowercased input, and pass both to the full `SearchResponse` constructor.
+- For keyword-index-based searches (files, sections, code samples), `matchedKeywords` contains stemmed query keyword forms (e.g., "secur" for query "security"). For content search, `matchedKeywords` contains lowercased query keywords.
+- Unit test assertions added to 8 existing `SearchServiceTest` methods verifying `matchedKeywords` contents and `matchCount` values.
+- Integration test assertions added to 4 existing `SearchResourceTest` methods verifying `queriedKeywords`, `searchTimeMs`, and `matchedKeywords` presence in JSON responses.
+- OpenAPI `@APIResponse` descriptions updated to mention the new `queriedKeywords` and `searchTimeMs` response fields.

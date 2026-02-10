@@ -3,6 +3,8 @@ package com.fvd.search.services;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @NoArgsConstructor
 @AllArgsConstructor
 public class CodeSampleSearchResult {
@@ -16,5 +18,6 @@ public class CodeSampleSearchResult {
     public int startLine;
     public int endLine;
     public double score;
+    public List<String> matchedKeywords;
 
 }

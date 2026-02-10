@@ -71,20 +71,16 @@ public class SearchService {
 
         Set<String> keywordSet = new HashSet<>(keywords.stream()
                 .map(k -> Stemmer.stem(k.toLowerCase())).toList());
-        Map<String, Double> scores = getScores(index, keywordSet);
+        List<FileSearchResult> all = getFileResults(index, keywordSet);
 
-        List<FileSearchResult> all = scores.entrySet().stream()
-                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
-                .map(e -> new FileSearchResult(e.getKey(), e.getValue()))
-                .toList();
-
+        all.sort(Comparator.comparingDouble((FileSearchResult r) -> r.score).reversed());
         return paginate(all, limit, offset);
     }
 
     @Nonnull
-    private Map<String, Double> getScores(KeywordIndex index, Set<String> keywordSet) {
+    private List<FileSearchResult> getFileResults(KeywordIndex index, Set<String> keywordSet) {
         double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
-        Map<String, Double> scores = new HashMap<>();
+        List<FileSearchResult> results = new ArrayList<>();
 
         for (FileKeywordEntry file : index.files) {
             MatchAccumulator acc = computeMatchingScore(file.keywords, keywordSet);
@@ -93,10 +89,11 @@ public class SearchService {
                 if (acc.matchedCount > 1) {
                     finalScore *= multiKeywordBoost;
                 }
-                scores.put(file.path, finalScore);
+                results.add(new FileSearchResult(file.path, finalScore,
+                        List.copyOf(acc.matchedKeywords)));
             }
         }
-        return scores;
+        return results;
     }
 
     public PaginatedResult<SectionSearchResult> searchSections(String version, List<String> keywords,
@@ -125,7 +122,8 @@ public class SearchService {
                         finalScore *= multiKeywordBoost;
                     }
                     results.add(new SectionSearchResult(
-                            file.path, section.title, section.start, section.end, finalScore));
+                            file.path, section.title, section.start, section.end, finalScore,
+                            List.copyOf(acc.matchedKeywords)));
                 }
             }
         }
@@ -233,7 +231,8 @@ public class SearchService {
                 }
                 results.add(new CodeSampleSearchResult(
                         sample.filePath, sample.sectionTitle, matchedTitle, matchScore,
-                        sample.language, sample.content, sample.startLine, sample.endLine, finalScore));
+                        sample.language, sample.content, sample.startLine, sample.endLine, finalScore,
+                        List.copyOf(acc.matchedKeywords)));
             }
         }
 
@@ -260,6 +259,7 @@ public class SearchService {
         Map<String, Double> fileScores = new HashMap<>();
         Map<String, Set<String>> fileMatchedKeywords = new HashMap<>();
         Map<String, Integer> fileFirstMatchOffset = new HashMap<>();
+        Map<String, Integer> fileTotalMatchCount = new HashMap<>();
 
         for (String keyword : keywordSet) {
             List<ContentOccurrence> occurrences = contentIndex.wordOccurrences.get(keyword);
@@ -281,6 +281,7 @@ public class SearchService {
                 int matchCount = entry.getValue().size();
                 fileScores.merge(filePath, (double) matchCount, Double::sum);
                 fileMatchedKeywords.computeIfAbsent(filePath, k -> new HashSet<>()).add(keyword);
+                fileTotalMatchCount.merge(filePath, matchCount, Integer::sum);
 
                 // Track earliest match offset per file
                 int earliestOffset = entry.getValue().stream()
@@ -294,7 +295,8 @@ public class SearchService {
         for (Map.Entry<String, Double> entry : fileScores.entrySet()) {
             String filePath = entry.getKey();
             double score = entry.getValue();
-            int matchedCount = fileMatchedKeywords.get(filePath).size();
+            Set<String> matched = fileMatchedKeywords.get(filePath);
+            int matchedCount = matched.size();
             if (matchedCount > 1) {
                 score *= multiKeywordBoost;
             }
@@ -306,7 +308,8 @@ public class SearchService {
             }
             int matchLine = computeLineNumber(content.get(), firstOffset);
             String snippet = generateSnippet(content.get(), firstOffset);
-            results.add(new ContentSearchResult(filePath, snippet, firstOffset, matchLine, score));
+            results.add(new ContentSearchResult(filePath, snippet, firstOffset, matchLine, score,
+                    List.copyOf(matched), fileTotalMatchCount.get(filePath)));
         }
 
         results.sort(Comparator.comparingDouble((ContentSearchResult r) -> r.score).reversed());
@@ -342,7 +345,8 @@ public class SearchService {
 
             double fileScore = 0;
             int firstMatchOffset = -1;
-            int matchedKeywordCount = 0;
+            int totalMatchCount = 0;
+            Set<String> matchedKws = new HashSet<>();
 
             for (String keyword : keywordSet) {
                 int idx = 0;
@@ -355,18 +359,20 @@ public class SearchService {
                     idx += keyword.length();
                 }
                 if (matchCount > 0) {
-                    matchedKeywordCount++;
+                    matchedKws.add(keyword);
+                    totalMatchCount += matchCount;
                 }
                 fileScore += matchCount;
             }
 
             if (fileScore > 0 && firstMatchOffset >= 0) {
-                if (matchedKeywordCount > 1) {
+                if (matchedKws.size() > 1) {
                     fileScore *= multiKeywordBoost;
                 }
                 int firstMatchLine = computeLineNumber(text, firstMatchOffset);
                 String snippet = generateSnippet(text, firstMatchOffset);
-                results.add(new ContentSearchResult(filePath, snippet, firstMatchOffset, firstMatchLine, fileScore));
+                results.add(new ContentSearchResult(filePath, snippet, firstMatchOffset, firstMatchLine, fileScore,
+                        List.copyOf(matchedKws), totalMatchCount));
             }
         }
 
@@ -393,7 +399,7 @@ public class SearchService {
         return new PaginatedResult<>(all.subList(offset, end), total);
     }
 
-    record MatchAccumulator(double score, int matchedCount) {}
+    record MatchAccumulator(double score, int matchedCount, Set<String> matchedKeywords) {}
 
     /**
      * Computes the total matching score for a list of indexed keywords against a set of query keywords.
@@ -431,7 +437,7 @@ public class SearchService {
             }
         }
 
-        return new MatchAccumulator(totalScore, matchedQueryKeywords.size());
+        return new MatchAccumulator(totalScore, matchedQueryKeywords.size(), matchedQueryKeywords);
     }
 
     int computeLineNumber(String text, int charOffset) {

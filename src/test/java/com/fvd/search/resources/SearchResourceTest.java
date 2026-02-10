@@ -92,9 +92,13 @@ class SearchResourceTest {
                 .body("results.size()", greaterThan(0))
                 .body("results[0].path", equalTo("security-overview.adoc"))
                 .body("results[0].score", greaterThan(0f))
+                .body("results[0].matchedKeywords", notNullValue())
+                .body("results[0].matchedKeywords.size()", greaterThan(0))
                 .body("total", greaterThan(0))
                 .body("limit", is(10))
-                .body("offset", is(0));
+                .body("offset", is(0))
+                .body("queriedKeywords", hasItem("security"))
+                .body("searchTimeMs", greaterThanOrEqualTo(0));
     }
 
     @Test
@@ -248,7 +252,11 @@ class SearchResourceTest {
                 .statusCode(200)
                 .body("results.size()", greaterThan(0))
                 .body("results[0].path", equalTo("security-overview.adoc"))
-                .body("results[0].score", greaterThan(0f));
+                .body("results[0].score", greaterThan(0f))
+                .body("results[0].matchedKeywords", notNullValue())
+                .body("results[0].matchedKeywords.size()", greaterThan(0))
+                .body("queriedKeywords", hasItem("security"))
+                .body("searchTimeMs", greaterThanOrEqualTo(0));
     }
 
     @Test
@@ -437,7 +445,12 @@ class SearchResourceTest {
                 .body("results[0].snippet", notNullValue())
                 .body("results[0].matchOffset", greaterThanOrEqualTo(0))
                 .body("results[0].matchLine", greaterThanOrEqualTo(1))
-                .body("results[0].score", greaterThan(0.0f));
+                .body("results[0].score", greaterThan(0.0f))
+                .body("results[0].matchedKeywords", notNullValue())
+                .body("results[0].matchedKeywords", hasItem("security"))
+                .body("results[0].matchCount", greaterThan(0))
+                .body("queriedKeywords", hasItem("security"))
+                .body("searchTimeMs", greaterThanOrEqualTo(0));
     }
 
     @Test
@@ -571,7 +584,11 @@ class SearchResourceTest {
                 .body("results[0].sectionTitle", equalTo("Authentication"))
                 .body("results[0].language", equalTo("java"))
                 .body("results[0].content", notNullValue())
-                .body("results[0].score", greaterThan(0f));
+                .body("results[0].score", greaterThan(0f))
+                .body("results[0].matchedKeywords", notNullValue())
+                .body("results[0].matchedKeywords.size()", greaterThan(0))
+                .body("queriedKeywords", hasItem("security"))
+                .body("searchTimeMs", greaterThanOrEqualTo(0));
     }
 
     @Test

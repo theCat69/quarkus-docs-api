@@ -81,6 +81,7 @@ class SearchServiceTest {
         assertThat(result.total()).isEqualTo(3);
         assertThat(result.items().get(0).path).isEqualTo("high.adoc");
         assertThat(result.items().get(0).score).isEqualTo(20.0);
+        assertThat(result.items().get(0).matchedKeywords).containsExactly("secur");
         assertThat(result.items().get(1).path).isEqualTo("mid.adoc");
         assertThat(result.items().get(2).path).isEqualTo("low.adoc");
     }
@@ -100,6 +101,8 @@ class SearchServiceTest {
         assertThat(result.items()).hasSize(2);
         assertThat(result.items().get(0).path).isEqualTo("both.adoc");
         assertThat(result.items().get(0).score).isGreaterThan(result.items().get(1).score);
+        assertThat(result.items().get(0).matchedKeywords).containsExactlyInAnyOrder("secur", "oidc");
+        assertThat(result.items().get(1).matchedKeywords).containsExactly("secur");
     }
 
     @Test
@@ -323,6 +326,7 @@ class SearchServiceTest {
         assertThat(result.items().get(0).section).isEqualTo("Overview"); // score 8 > 3
         assertThat(result.items().get(0).start).isEqualTo(1);
         assertThat(result.items().get(0).end).isEqualTo(10);
+        assertThat(result.items().get(0).matchedKeywords).containsExactly("secur");
     }
 
     @Test
@@ -426,6 +430,7 @@ class SearchServiceTest {
         assertThat(result.items()).hasSize(1);
         // Raw sum is 10, with 1.5x boost should be 15
         assertThat(result.items().get(0).score).isEqualTo(15.0);
+        assertThat(result.items().get(0).matchedKeywords).containsExactlyInAnyOrder("secur", "oidc");
     }
 
     @Test
@@ -985,6 +990,7 @@ class SearchServiceTest {
             assertThat(r.startLine).isEqualTo(5);
             assertThat(r.endLine).isEqualTo(10);
             assertThat(r.score).isEqualTo(15.0);
+            assertThat(r.matchedKeywords).containsExactly("secur");
             assertThat(r.matchedSectionTitle).isNull();
             assertThat(r.sectionMatchScore).isEqualTo(0.0);
         }
@@ -1121,6 +1127,8 @@ class SearchServiceTest {
             assertThat(result.items()).hasSize(1);
             assertThat(result.items().get(0).path).isEqualTo("security.adoc");
             assertThat(result.items().get(0).score).isGreaterThan(0);
+            assertThat(result.items().get(0).matchedKeywords).containsExactly("security");
+            assertThat(result.items().get(0).matchCount).isGreaterThan(0);
         }
 
         @Test
@@ -1215,6 +1223,8 @@ class SearchServiceTest {
             ContentSearchResult oneResult = result.items().stream()
                     .filter(r -> r.path.equals("one.adoc")).findFirst().orElseThrow();
             assertThat(bothResult.score).isGreaterThan(oneResult.score);
+            assertThat(bothResult.matchedKeywords).containsExactlyInAnyOrder("security", "oidc");
+            assertThat(oneResult.matchedKeywords).containsExactly("security");
         }
 
         @Test
@@ -1241,6 +1251,8 @@ class SearchServiceTest {
             assertThat(result.items()).hasSize(1);
             // 3 occurrences, single keyword → no boost → score = 3.0
             assertThat(result.items().get(0).score).isEqualTo(3.0);
+            assertThat(result.items().get(0).matchedKeywords).containsExactly("security");
+            assertThat(result.items().get(0).matchCount).isEqualTo(3);
         }
 
         @Test
