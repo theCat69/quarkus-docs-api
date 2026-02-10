@@ -476,6 +476,32 @@ class SearchResourceTest {
                 .body("offset", is(1));
     }
 
+    @Test
+    void testSearchContentEndpointWithFilePathsFilter() {
+        seedDocFile();
+        docStore.write("3.27", "config.adoc", "= Config Guide\nSecurity config for quarkus.\n");
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("filePaths", "security.adoc")
+                .when().get("/api/search/content")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(1))
+                .body("results[0].path", equalTo("security.adoc"));
+    }
+
+    @Test
+    void testSearchContentEndpointFilePathsTraversal() {
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("filePaths", "../../etc/passwd")
+                .when().get("/api/search/content")
+                .then()
+                .statusCode(400);
+    }
+
     // --- Versions endpoint tests ---
 
     @Test

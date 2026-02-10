@@ -222,15 +222,18 @@ public class SearchService {
     }
 
     public PaginatedResult<ContentSearchResult> searchContent(String version, List<String> keywords,
+                                                               List<String> filePaths,
                                                                int limit, int offset) {
         ContentIndex contentIndex = getOrLoadContentIndex(version);
         if (contentIndex == null) {
             log.warn("Content index not available for version {}, falling back to brute-force scan", version);
-            return searchContentBruteForce(version, keywords, limit, offset);
+            return searchContentBruteForce(version, keywords, filePaths, limit, offset);
         }
 
         Set<String> keywordSet = new HashSet<>(keywords.stream()
                 .map(String::toLowerCase).toList());
+        Set<String> filePathSet = (filePaths == null || filePaths.isEmpty())
+                ? null : new HashSet<>(filePaths);
         double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
 
         // Aggregate scores per file from the inverted index
@@ -247,6 +250,9 @@ public class SearchService {
             // Group occurrences by file
             Map<String, List<ContentOccurrence>> byFile = new HashMap<>();
             for (ContentOccurrence occ : occurrences) {
+                if (filePathSet != null && !filePathSet.contains(occ.filePath)) {
+                    continue;
+                }
                 byFile.computeIfAbsent(occ.filePath, k -> new ArrayList<>()).add(occ);
             }
 
@@ -288,6 +294,7 @@ public class SearchService {
     }
 
     private PaginatedResult<ContentSearchResult> searchContentBruteForce(String version, List<String> keywords,
+                                                                          List<String> filePaths,
                                                                           int limit, int offset) {
         List<String> files = docStore.listDocFiles(version);
         if (files.isEmpty()) {
@@ -296,11 +303,16 @@ public class SearchService {
 
         Set<String> keywordSet = new HashSet<>(keywords.stream()
                 .map(String::toLowerCase).toList());
+        Set<String> filePathSet = (filePaths == null || filePaths.isEmpty())
+                ? null : new HashSet<>(filePaths);
         double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
 
         List<ContentSearchResult> results = new ArrayList<>();
 
         for (String filePath : files) {
+            if (filePathSet != null && !filePathSet.contains(filePath)) {
+                continue;
+            }
             Optional<String> content = docStore.read(version, filePath);
             if (content.isEmpty()) {
                 continue;

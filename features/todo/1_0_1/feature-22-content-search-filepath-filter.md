@@ -20,13 +20,23 @@ Add an optional `filePaths` query parameter to the `/api/search/content` endpoin
 
 ## Tasks
 
-- [ ] Add unit test: `searchContent` with `filePaths=["security-overview.adoc"]` returns only results from that file.
-- [ ] Add unit test: `searchContent` with `filePaths=null` returns results from all files (existing behavior).
-- [ ] Add unit test: `searchContent` with `filePaths` containing a non-matching path returns empty results.
-- [ ] Add `filePaths` parameter to `SearchService.searchContent()` method signature.
-- [ ] Implement file path filtering in `searchContent()`: if `filePaths` is non-null, filter inverted index results by file path set before scoring.
-- [ ] Add `@QueryParam("filePaths")` to `SearchResource.searchContent()` with `InputValidator.validateFilePaths()`.
-- [ ] Parse comma-separated filePaths string to `List<String>` in the resource, pass to service.
-- [ ] Add integration test: `/api/search/content?version=X&keywords=security&filePaths=security-overview.adoc` returns filtered results.
-- [ ] Add integration test: `/api/search/content` with invalid filePaths (containing `..`) returns 400.
-- [ ] Update OpenAPI `@Parameter` description and `@Operation` description to document the new `filePaths` parameter.
+- [x] Add unit test: `searchContent` with `filePaths=["security-overview.adoc"]` returns only results from that file.
+- [x] Add unit test: `searchContent` with `filePaths=null` returns results from all files (existing behavior).
+- [x] Add unit test: `searchContent` with `filePaths` containing a non-matching path returns empty results.
+- [x] Add `filePaths` parameter to `SearchService.searchContent()` method signature.
+- [x] Implement file path filtering in `searchContent()`: if `filePaths` is non-null, filter inverted index results by file path set before scoring.
+- [x] Add `@QueryParam("filePaths")` to `SearchResource.searchContent()` with `InputValidator.validateFilePaths()`.
+- [x] Parse comma-separated filePaths string to `List<String>` in the resource, pass to service.
+- [x] Add integration test: `/api/search/content?version=X&keywords=security&filePaths=security-overview.adoc` returns filtered results.
+- [x] Add integration test: `/api/search/content` with invalid filePaths (containing `..`) returns 400.
+- [x] Update OpenAPI `@Parameter` description and `@Operation` description to document the new `filePaths` parameter.
+
+## Implementation notes
+
+- Added `List<String> filePaths` parameter (nullable) to `SearchService.searchContent()` and `searchContentBruteForce()`.
+- In index-based path: occurrences with non-matching `occ.filePath` are skipped before grouping/scoring when `filePathSet` is non-null.
+- In brute-force fallback: files not in the `filePathSet` are skipped in the iteration loop.
+- `SearchResource.searchContent()` parses comma-separated `filePaths` query param to `List<String>`, validates with `InputValidator.validateFilePaths()`.
+- Updated OpenAPI `@Operation` and `@APIResponse` descriptions to document the new parameter.
+- 13 existing unit tests updated to pass `null` as third argument (filePaths). 3 new unit tests + 2 new integration tests added.
+- Pattern follows `searchSections()` which already had `filePaths` filtering.

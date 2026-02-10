@@ -1025,7 +1025,7 @@ class SearchServiceTest {
                     "= Config Guide\nThis document covers configuration.");
 
             PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
-                    "3.27", List.of("security"), 10, 0);
+                    "3.27", List.of("security"), null, 10, 0);
 
             assertThat(result.items()).hasSize(1);
             assertThat(result.items().get(0).path).isEqualTo("security.adoc");
@@ -1038,7 +1038,7 @@ class SearchServiceTest {
                     "= Config Guide\nThis document covers configuration.");
 
             PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
-                    "3.27", List.of("security"), 10, 0);
+                    "3.27", List.of("security"), null, 10, 0);
 
             assertThat(result.items()).isEmpty();
             assertThat(result.total()).isEqualTo(0);
@@ -1047,7 +1047,7 @@ class SearchServiceTest {
         @Test
         void searchContentReturnsEmptyWhenNoFiles() {
             PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
-                    "3.27", List.of("security"), 10, 0);
+                    "3.27", List.of("security"), null, 10, 0);
 
             assertThat(result.items()).isEmpty();
             assertThat(result.total()).isEqualTo(0);
@@ -1059,7 +1059,7 @@ class SearchServiceTest {
                     "= Guide\nThis document covers SECURITY and Authentication.");
 
             PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
-                    "3.27", List.of("security"), 10, 0);
+                    "3.27", List.of("security"), null, 10, 0);
 
             assertThat(result.items()).hasSize(1);
             assertThat(result.items().get(0).path).isEqualTo("security.adoc");
@@ -1071,7 +1071,7 @@ class SearchServiceTest {
                     "= Guide\nThis document covers security and authentication in Quarkus.");
 
             PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
-                    "3.27", List.of("security"), 10, 0);
+                    "3.27", List.of("security"), null, 10, 0);
 
             assertThat(result.items()).hasSize(1);
             assertThat(result.items().get(0).snippet).contains("security");
@@ -1084,7 +1084,7 @@ class SearchServiceTest {
             realDocStore.write("3.27", "security.adoc", content);
 
             PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
-                    "3.27", List.of("security"), 10, 0);
+                    "3.27", List.of("security"), null, 10, 0);
 
             assertThat(result.items()).hasSize(1);
             ContentSearchResult r = result.items().get(0);
@@ -1100,7 +1100,7 @@ class SearchServiceTest {
                     "security once only");
 
             PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
-                    "3.27", List.of("security"), 10, 0);
+                    "3.27", List.of("security"), null, 10, 0);
 
             assertThat(result.items()).hasSize(2);
             assertThat(result.items().get(0).path).isEqualTo("many.adoc");
@@ -1115,7 +1115,7 @@ class SearchServiceTest {
                     "This has only security content here.");
 
             PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
-                    "3.27", List.of("security", "oidc"), 10, 0);
+                    "3.27", List.of("security", "oidc"), null, 10, 0);
 
             assertThat(result.items()).hasSize(2);
             // "both" should have boosted score
@@ -1132,7 +1132,7 @@ class SearchServiceTest {
                     "This has security but not the other keyword.");
 
             PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
-                    "3.27", List.of("security", "oidc"), 10, 0);
+                    "3.27", List.of("security", "oidc"), null, 10, 0);
 
             assertThat(result.items()).hasSize(1);
             // Only "security" matched, raw count is 1, no boost
@@ -1145,7 +1145,7 @@ class SearchServiceTest {
                     "security security security");
 
             PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
-                    "3.27", List.of("security"), 10, 0);
+                    "3.27", List.of("security"), null, 10, 0);
 
             assertThat(result.items()).hasSize(1);
             // 3 occurrences, single keyword → no boost → score = 3.0
@@ -1160,7 +1160,7 @@ class SearchServiceTest {
             }
 
             PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
-                    "3.27", List.of("security"), 2, 0);
+                    "3.27", List.of("security"), null, 2, 0);
 
             assertThat(result.items()).hasSize(2);
             assertThat(result.total()).isEqualTo(5);
@@ -1174,7 +1174,7 @@ class SearchServiceTest {
             }
 
             PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
-                    "3.27", List.of("security"), 2, 3);
+                    "3.27", List.of("security"), null, 2, 3);
 
             assertThat(result.items()).hasSize(2);
             assertThat(result.total()).isEqualTo(5);
@@ -1185,10 +1185,49 @@ class SearchServiceTest {
             realDocStore.write("3.27", "doc.adoc", "security content");
 
             PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
-                    "3.27", List.of("security"), 10, 100);
+                    "3.27", List.of("security"), null, 10, 100);
 
             assertThat(result.items()).isEmpty();
             assertThat(result.total()).isEqualTo(1);
+        }
+
+        @Test
+        void searchContentWithFilePathsFiltersToSpecifiedFiles() {
+            realDocStore.write("3.27", "security.adoc",
+                    "= Security Guide\nThis document covers security and authentication.");
+            realDocStore.write("3.27", "config.adoc",
+                    "= Config Guide\nThis document also mentions security settings.");
+
+            PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
+                    "3.27", List.of("security"), List.of("security.adoc"), 10, 0);
+
+            assertThat(result.items()).hasSize(1);
+            assertThat(result.items().get(0).path).isEqualTo("security.adoc");
+        }
+
+        @Test
+        void searchContentWithNullFilePathsSearchesAllFiles() {
+            realDocStore.write("3.27", "security.adoc",
+                    "= Security Guide\nThis document covers security.");
+            realDocStore.write("3.27", "config.adoc",
+                    "= Config Guide\nThis document also has security info.");
+
+            PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
+                    "3.27", List.of("security"), null, 10, 0);
+
+            assertThat(result.items()).hasSize(2);
+        }
+
+        @Test
+        void searchContentWithNonMatchingFilePathsReturnsEmpty() {
+            realDocStore.write("3.27", "security.adoc",
+                    "= Security Guide\nThis document covers security.");
+
+            PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
+                    "3.27", List.of("security"), List.of("nonexistent.adoc"), 10, 0);
+
+            assertThat(result.items()).isEmpty();
+            assertThat(result.total()).isEqualTo(0);
         }
     }
 }

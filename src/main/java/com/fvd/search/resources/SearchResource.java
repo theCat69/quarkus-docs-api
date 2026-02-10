@@ -210,9 +210,9 @@ public class SearchResource {
     @Path("/content")
     @Operation(
             summary = "Full-text search in document content",
-            description = "Searches within the body of all documentation files for the given keywords. "
-                    + "Returns matching files with context snippets around the first match, "
-                    + "match offset, line number, and a relevance score based on keyword frequency."
+            description = "Full-text search across all document content for a given version. "
+                    + "Returns matching excerpts ranked by relevance. "
+                    + "Optionally filter by file paths. When filePaths is omitted, all files are searched."
     )
     @APIResponse(
             responseCode = "200",
@@ -221,7 +221,7 @@ public class SearchResource {
     )
     @APIResponse(
             responseCode = "400",
-            description = "Invalid input parameters (missing or malformed version/keywords)",
+            description = "Invalid input parameters (missing or malformed version/keywords/filePaths)",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))
     )
     public SearchResponse<ContentSearchResult> searchContent(
@@ -229,6 +229,8 @@ public class SearchResource {
             @QueryParam("version") String version,
             @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in document body)", required = true, example = "security,oidc")
             @QueryParam("keywords") String keywords,
+            @Parameter(description = "Comma-separated list of file paths relative to the docs directory (optional)", example = "security-overview.adoc,config.adoc")
+            @QueryParam("filePaths") String filePaths,
             @Parameter(description = "Maximum number of results to return (default 10, max 100)", example = "10")
             @QueryParam("limit") Integer limit,
             @Parameter(description = "Number of results to skip (default 0)", example = "0")
@@ -238,8 +240,13 @@ public class SearchResource {
         int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
         int validOffset = InputValidator.validateOffset(offset);
         List<String> keywordList = Arrays.asList(keywords.split(","));
+        List<String> filePathList = null;
+        if (filePaths != null && !filePaths.isBlank()) {
+            InputValidator.validateFilePaths(filePaths);
+            filePathList = Arrays.asList(filePaths.split(","));
+        }
         PaginatedResult<ContentSearchResult> result = searchService.searchContent(
-                version, keywordList, validLimit, validOffset);
+                version, keywordList, filePathList, validLimit, validOffset);
         return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset);
     }
 }
