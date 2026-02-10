@@ -9,6 +9,8 @@ public class CodeSampleSearchResult {
 
     public String path;
     public String sectionTitle;
+    public String matchedSectionTitle;
+    public double sectionMatchScore;
     public String language;
     public String content;
     public int startLine;

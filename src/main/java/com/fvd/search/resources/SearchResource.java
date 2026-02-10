@@ -165,7 +165,10 @@ public class SearchResource {
     @Operation(
             summary = "Search code samples by keywords",
             description = "Searches the code sample index for code blocks matching the given keywords. "
-                    + "Returns code samples ranked by relevance score. Optionally filter by file path or section title."
+                    + "Returns code samples ranked by relevance score. Optionally filter by file path or section title. "
+                    + "Section title filtering uses fuzzy matching (Levenshtein similarity, containment, word overlap) "
+                    + "so partial or approximate titles like 'Auth' will match 'Authentication'. "
+                    + "Response includes matchedSectionTitle and sectionMatchScore when a section title filter is applied."
     )
     @APIResponse(
             responseCode = "200",

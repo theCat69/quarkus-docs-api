@@ -983,6 +983,8 @@ class SearchServiceTest {
             assertThat(r.startLine).isEqualTo(5);
             assertThat(r.endLine).isEqualTo(10);
             assertThat(r.score).isEqualTo(15.0);
+            assertThat(r.matchedSectionTitle).isNull();
+            assertThat(r.sectionMatchScore).isEqualTo(0.0);
         }
 
         @Test
@@ -998,6 +1000,93 @@ class SearchServiceTest {
 
             assertThat(result.items()).hasSize(1);
             assertThat(result.items().get(0).sectionTitle).isEqualTo("Authentication");
+        }
+
+        @Test
+        void searchCodeSamplesExactSectionTitleStillMatches() {
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("test.adoc", "Authentication", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("security", 5))),
+                    new CodeSampleEntry("test.adoc", "Authorization", "java", "code2", 10, 15,
+                            List.of(new KeywordScore("security", 8)))
+            ));
+            codeSampleIndexStore.write("3.27", index);
+
+            PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
+                    "3.27", List.of("security"), null, "Authentication", 10, 0);
+
+            assertThat(result.items()).hasSize(1);
+            assertThat(result.items().get(0).sectionTitle).isEqualTo("Authentication");
+            assertThat(result.items().get(0).matchedSectionTitle).isEqualTo("Authentication");
+            assertThat(result.items().get(0).sectionMatchScore).isEqualTo(1.0);
+        }
+
+        @Test
+        void searchCodeSamplesFuzzySectionTitleMatchesPartial() {
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("test.adoc", "Authentication", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("security", 5))),
+                    new CodeSampleEntry("test.adoc", "Authorization", "java", "code2", 10, 15,
+                            List.of(new KeywordScore("security", 8)))
+            ));
+            codeSampleIndexStore.write("3.27", index);
+
+            // "Authenticat" is a close partial match for "Authentication"
+            // FuzzyMatcher should pick it above threshold
+            PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
+                    "3.27", List.of("security"), null, "Authenticat", 10, 0);
+
+            assertThat(result.items()).isNotEmpty();
+            assertThat(result.items().get(0).matchedSectionTitle).isEqualTo("Authentication");
+            assertThat(result.items().get(0).sectionMatchScore).isGreaterThan(0.0);
+        }
+
+        @Test
+        void searchCodeSamplesSectionTitleBelowThresholdReturnsEmpty() {
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("test.adoc", "Authentication", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("security", 5)))
+            ));
+            codeSampleIndexStore.write("3.27", index);
+
+            PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
+                    "3.27", List.of("security"), null, "ZzzzCompletelyDifferent", 10, 0);
+
+            assertThat(result.items()).isEmpty();
+        }
+
+        @Test
+        void searchCodeSamplesMatchedSectionTitlePopulatedWhenFiltered() {
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("test.adoc", "Authentication", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("security", 5)))
+            ));
+            codeSampleIndexStore.write("3.27", index);
+
+            PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
+                    "3.27", List.of("security"), null, "authentication", 10, 0);
+
+            assertThat(result.items()).hasSize(1);
+            CodeSampleSearchResult r = result.items().get(0);
+            assertThat(r.matchedSectionTitle).isEqualTo("Authentication");
+            assertThat(r.sectionMatchScore).isEqualTo(1.0);
+        }
+
+        @Test
+        void searchCodeSamplesMatchedSectionTitleNullWhenNoFilter() {
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("test.adoc", "Authentication", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("security", 5)))
+            ));
+            codeSampleIndexStore.write("3.27", index);
+
+            PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
+                    "3.27", List.of("security"), null, null, 10, 0);
+
+            assertThat(result.items()).hasSize(1);
+            CodeSampleSearchResult r = result.items().get(0);
+            assertThat(r.matchedSectionTitle).isNull();
+            assertThat(r.sectionMatchScore).isEqualTo(0.0);
         }
     }
 

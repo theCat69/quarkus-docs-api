@@ -195,13 +195,32 @@ public class SearchService {
                 .map(String::toLowerCase).toList());
         double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
 
+        // Resolve fuzzy section title match if sectionTitle filter is provided
+        String matchedTitle = null;
+        double matchScore = 0.0;
+        if (sectionTitle != null && !sectionTitle.isBlank()) {
+            // Collect unique section titles from candidate samples (after filePath filtering)
+            List<String> uniqueTitles = index.samples.stream()
+                    .filter(s -> filePath == null || filePath.isBlank() || s.filePath.equals(filePath))
+                    .map(s -> s.sectionTitle)
+                    .distinct()
+                    .toList();
+            Optional<FuzzyMatcher.MatchResult> fuzzyResult = fuzzyMatcher.bestMatch(sectionTitle, uniqueTitles);
+            if (fuzzyResult.isPresent()) {
+                matchedTitle = fuzzyResult.get().value();
+                matchScore = fuzzyResult.get().score();
+            } else {
+                // No section title matched above threshold — return empty
+                return new PaginatedResult<>(List.of(), 0);
+            }
+        }
+
         List<CodeSampleSearchResult> results = new ArrayList<>();
         for (CodeSampleEntry sample : index.samples) {
             if (filePath != null && !filePath.isBlank() && !sample.filePath.equals(filePath)) {
                 continue;
             }
-            if (sectionTitle != null && !sectionTitle.isBlank()
-                    && !sample.sectionTitle.equalsIgnoreCase(sectionTitle)) {
+            if (matchedTitle != null && !sample.sectionTitle.equals(matchedTitle)) {
                 continue;
             }
 
@@ -212,8 +231,8 @@ public class SearchService {
                     finalScore *= multiKeywordBoost;
                 }
                 results.add(new CodeSampleSearchResult(
-                        sample.filePath, sample.sectionTitle, sample.language,
-                        sample.content, sample.startLine, sample.endLine, finalScore));
+                        sample.filePath, sample.sectionTitle, matchedTitle, matchScore,
+                        sample.language, sample.content, sample.startLine, sample.endLine, finalScore));
             }
         }
 

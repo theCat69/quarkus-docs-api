@@ -57,14 +57,24 @@ When `sectionTitle` query param is not provided:
 
 ## Tasks
 
-- [ ] Add unit test: `searchCodeSamples` with exact section title still matches (backward compatibility).
-- [ ] Add unit test: `searchCodeSamples` with partial/fuzzy section title (e.g., "Auth" matching "Authentication") returns correct samples.
-- [ ] Add unit test: `searchCodeSamples` with section title below threshold returns empty results.
-- [ ] Add unit test: `matchedSectionTitle` and `sectionMatchScore` are populated correctly when sectionTitle filter is used.
-- [ ] Add unit test: `matchedSectionTitle` is null when sectionTitle filter is not provided.
-- [ ] Add `matchedSectionTitle` (String) and `sectionMatchScore` (double) fields to `CodeSampleSearchResult` DTO.
-- [ ] Update `CodeSampleSearchResult` `@AllArgsConstructor` to include new fields (add new constructor or update existing).
-- [ ] Refactor `SearchService.searchCodeSamples()`: collect unique section titles from candidates, run `FuzzyMatcher.bestMatch()`, filter by matched title.
-- [ ] Populate `matchedSectionTitle` and `sectionMatchScore` in returned `CodeSampleSearchResult` instances.
-- [ ] Add integration test via `/api/search/code-samples?sectionTitle=Auth` confirming fuzzy match works end-to-end.
-- [ ] Update OpenAPI `@Operation` description on `/code-samples` to document fuzzy section title matching behavior.
+- [x] Add unit test: `searchCodeSamples` with exact section title still matches (backward compatibility).
+- [x] Add unit test: `searchCodeSamples` with partial/fuzzy section title (e.g., "Auth" matching "Authentication") returns correct samples.
+- [x] Add unit test: `searchCodeSamples` with section title below threshold returns empty results.
+- [x] Add unit test: `matchedSectionTitle` and `sectionMatchScore` are populated correctly when sectionTitle filter is used.
+- [x] Add unit test: `matchedSectionTitle` is null when sectionTitle filter is not provided.
+- [x] Add `matchedSectionTitle` (String) and `sectionMatchScore` (double) fields to `CodeSampleSearchResult` DTO.
+- [x] Update `CodeSampleSearchResult` `@AllArgsConstructor` to include new fields (add new constructor or update existing).
+- [x] Refactor `SearchService.searchCodeSamples()`: collect unique section titles from candidates, run `FuzzyMatcher.bestMatch()`, filter by matched title.
+- [x] Populate `matchedSectionTitle` and `sectionMatchScore` in returned `CodeSampleSearchResult` instances.
+- [x] Add integration test via `/api/search/code-samples?sectionTitle=Auth` confirming fuzzy match works end-to-end.
+- [x] Update OpenAPI `@Operation` description on `/code-samples` to document fuzzy section title matching behavior.
+
+## Implementation notes
+
+- Added `matchedSectionTitle` (String) and `sectionMatchScore` (double) fields to `CodeSampleSearchResult` DTO between `sectionTitle` and `language` fields. Uses Lombok `@AllArgsConstructor` for the 9-arg constructor.
+- Refactored `SearchService.searchCodeSamples()`: when `sectionTitle` is provided, collects unique section titles from candidates (after filePath filtering), runs `fuzzyMatcher.bestMatch(sectionTitle, uniqueTitles)` with default threshold (0.3). If no match exceeds threshold, returns empty. Otherwise filters samples to matched title only.
+- `matchedSectionTitle` and `sectionMatchScore` are `null`/`0.0` when no sectionTitle filter is provided (backward compatible).
+- Existing `searchCodeSamplesSectionTitleFilterIsCaseInsensitive` test still passes since FuzzyMatcher treats case-insensitive exact matches as score 1.0.
+- Updated `searchCodeSamplesReturnsAllFields` test to also assert the new fields are null/0.0 when no filter.
+- 5 new unit tests + 1 integration test added (327 total, all passing).
+- OpenAPI `@Operation` description updated to document fuzzy section title matching behavior.

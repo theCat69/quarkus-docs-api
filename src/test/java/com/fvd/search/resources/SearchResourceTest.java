@@ -647,6 +647,21 @@ class SearchResourceTest {
                 .body("offset", is(1));
     }
 
+    @Test
+    void testSearchCodeSamplesEndpointFuzzySectionTitleMatch() {
+        seedCodeSampleIndex();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("sectionTitle", "Authenticat")
+                .when().get("/api/search/code-samples")
+                .then()
+                .statusCode(200)
+                .body("results.size()", greaterThan(0))
+                .body("results[0].matchedSectionTitle", notNullValue())
+                .body("results[0].sectionMatchScore", greaterThan(0f));
+    }
+
     private void seedDocFile() {
         String docContent = """
                 = Security Guide
