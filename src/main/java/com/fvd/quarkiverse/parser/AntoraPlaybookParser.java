@@ -57,6 +57,11 @@ public class AntoraPlaybookParser {
         String branch = resolveBranch(source.branches);
         String startPath = source.startPath != null ? source.startPath : "";
 
+        //sanitizing .git from repo name
+        if(repo.endsWith(".git")) {
+            repo = repo.replaceAll(".git", "");
+        }
+
         return java.util.Optional.of(new ResolvedContentSource(org, repo, branch, startPath, repo));
     }
 
@@ -98,6 +103,8 @@ public class AntoraPlaybookParser {
 
     private boolean isConcreteBranch(String branch) {
         if (branch.startsWith("/") && branch.endsWith("/")) {
+            return false;
+        } else if(branch.equals("HEAD")) {
             return false;
         }
         return !WILDCARD_PATTERN.matcher(branch).find();
