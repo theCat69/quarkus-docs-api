@@ -1,6 +1,10 @@
-# Feature 21: Fuzzy Section Title Matching in Code Sample Search
+# Feature 23: Fuzzy Section Title Matching in Code Sample Search
+
+> **Dependencies**: Feature 18 (SearchConfig @ConfigMapping) must be implemented first. FuzzyMatcher is now a CDI bean — inject it instead of using static calls. Use SearchConfig.fuzzy().defaultThreshold() for the fuzzy threshold instead of hardcoding 0.3.
 
 Replace the exact `equalsIgnoreCase` section title filter in `searchCodeSamples` with `FuzzyMatcher.bestMatch()`, making section title filtering consistent with `getSectionContent` and more forgiving for AI agent callers.
+
+> **Note**: FuzzyMatcher should be injected as a CDI bean (per Feature 18), not called statically.
 
 ## Scope and behavior
 
@@ -15,7 +19,7 @@ Replace the exact `equalsIgnoreCase` section title filter in `searchCodeSamples`
 
 ## Internal interfaces
 
-- `FuzzyMatcher.bestMatch(String query, List<String> candidates)` — already exists, reused as-is.
+- `FuzzyMatcher.bestMatch(String query, List<String> candidates)` — already exists, reused as-is. FuzzyMatcher should be injected as a CDI bean (per Feature 18), not called statically.
 - `CodeSampleSearchResult` — add `public String matchedSectionTitle` and `public double sectionMatchScore` fields.
 - `SearchService.searchCodeSamples(...)` — internal refactor only, no signature change.
 
@@ -64,4 +68,3 @@ When `sectionTitle` query param is not provided:
 - [ ] Populate `matchedSectionTitle` and `sectionMatchScore` in returned `CodeSampleSearchResult` instances.
 - [ ] Add integration test via `/api/search/code-samples?sectionTitle=Auth` confirming fuzzy match works end-to-end.
 - [ ] Update OpenAPI `@Operation` description on `/code-samples` to document fuzzy section title matching behavior.
-

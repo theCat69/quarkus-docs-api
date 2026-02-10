@@ -1,4 +1,6 @@
-# Feature 20: File Path Filtering on Content Search
+# Feature 22: File Path Filtering on Content Search
+
+> **Dependencies**: Feature 21 (Index-Based Content Search) should be implemented first. This feature adds file path filtering to the index-based implementation.
 
 Add an optional `filePaths` query parameter to the `/api/search/content` endpoint so callers can restrict full-text content search to specific files, consistent with the sections and code samples endpoints.
 
@@ -8,9 +10,7 @@ Add an optional `filePaths` query parameter to the `/api/search/content` endpoin
 - When provided, restrict content search to only those file paths.
 - When omitted, search all files (current behavior).
 - Validate with `InputValidator.validateFilePaths()`, same as `/api/search/sections`.
-- If Feature 19 (index-based content search) is implemented: filter inverted index results by `filePaths` set before scoring.
-- If Feature 19 is not yet implemented: filter the `docStore.listDocFiles()` list before iteration (current brute-force path).
-- Both implementations must be supported — the filePaths filter is independent of the indexing strategy.
+- Filter inverted index results by `filePaths` set before scoring (Feature 21 provides the index-based implementation).
 - Pass `filePaths` as `List<String>` through to `SearchService.searchContent()`.
 
 ## Internal interfaces
@@ -24,10 +24,9 @@ Add an optional `filePaths` query parameter to the `/api/search/content` endpoin
 - [ ] Add unit test: `searchContent` with `filePaths=null` returns results from all files (existing behavior).
 - [ ] Add unit test: `searchContent` with `filePaths` containing a non-matching path returns empty results.
 - [ ] Add `filePaths` parameter to `SearchService.searchContent()` method signature.
-- [ ] Implement file path filtering in `searchContent()`: if `filePaths` is non-null, filter file candidates before search.
+- [ ] Implement file path filtering in `searchContent()`: if `filePaths` is non-null, filter inverted index results by file path set before scoring.
 - [ ] Add `@QueryParam("filePaths")` to `SearchResource.searchContent()` with `InputValidator.validateFilePaths()`.
 - [ ] Parse comma-separated filePaths string to `List<String>` in the resource, pass to service.
 - [ ] Add integration test: `/api/search/content?version=X&keywords=security&filePaths=security-overview.adoc` returns filtered results.
 - [ ] Add integration test: `/api/search/content` with invalid filePaths (containing `..`) returns 400.
 - [ ] Update OpenAPI `@Parameter` description and `@Operation` description to document the new `filePaths` parameter.
-

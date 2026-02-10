@@ -1,12 +1,16 @@
-# Feature 23: Search Result Metadata Enrichment
+# Feature 25: Search Result Metadata Enrichment
+
+> **Dependencies**: Feature 19 (Unify Search Algorithm) establishes matchedCount tracking in all search methods. Feature 20 (Fuzzy Matching) adds prefix matching. This feature extends the tracking to collect matched keyword details.
 
 Add matched keyword lists to all search result DTOs and query metadata to `SearchResponse` so that callers understand why results matched and how long the search took.
+
+> **Note**: The `matchedCount` variable introduced by Feature 19 in searchSections and searchContent can be reused. The `matchedKeywords` list naturally provides this count via `.size()`.
 
 ## Scope and behavior
 
 - Add `matchedKeywords` field (`List<String>`) to `FileSearchResult`, `SectionSearchResult`, `CodeSampleSearchResult`, and `ContentSearchResult`.
 - `matchedKeywords` contains the distinct query keywords (lowercased) that contributed to the result's score.
-- If Feature 18 (prefix matching) is implemented, `matchedKeywords` contains the query keywords that matched (not the indexed keywords they matched against).
+- If Feature 20 (prefix matching) is implemented, `matchedKeywords` contains the query keywords that matched (not the indexed keywords they matched against).
 - Add `matchCount` field (`int`) to `ContentSearchResult` — total number of keyword occurrences found across all matched keywords for that file.
 - Add `queriedKeywords` field (`List<String>`) to `SearchResponse` — echo of the input keywords as parsed and lowercased.
 - Add `searchTimeMs` field (`long`) to `SearchResponse` — wall-clock milliseconds for the search operation (measured in `SearchResource` around the service call).
@@ -21,7 +25,7 @@ Add matched keyword lists to all search result DTOs and query metadata to `Searc
 - `CodeSampleSearchResult` — add `public List<String> matchedKeywords`.
 - `ContentSearchResult` — add `public List<String> matchedKeywords` and `public int matchCount`.
 - `SearchResponse<T>` — add `public List<String> queriedKeywords` and `public long searchTimeMs`.
-- All `@AllArgsConstructor` annotations must be updated or new constructors added.
+- **Constructor strategy for `SearchResponse`**: Remove `@AllArgsConstructor` and add explicit constructors instead. Keep the existing convenience constructor `SearchResponse(List<T> results)` for backward compatibility. Add a new full constructor with all fields including `queriedKeywords` and `searchTimeMs`. Update all call sites in `SearchResource` to use the new full constructor. The `@NoArgsConstructor` annotation stays for Jackson deserialization.
 - `SearchResource` methods wrap service calls with `System.nanoTime()` timing and pass `queriedKeywords` + `searchTimeMs` to `SearchResponse`.
 
 ## Response shape
@@ -72,7 +76,7 @@ Updated `ContentSearchResult`:
 - [ ] Refactor `SearchService.searchSections()` scoring loop to collect matched keywords per section.
 - [ ] Refactor `SearchService.searchCodeSamples()` scoring loop to collect matched keywords per sample.
 - [ ] Refactor `SearchService.searchContent()` to collect matched keywords and total match count per file.
-- [ ] Add `queriedKeywords` and `searchTimeMs` fields to `SearchResponse` DTO; update constructors (keep existing constructors for backward compat).
+- [ ] Add `queriedKeywords` and `searchTimeMs` fields to `SearchResponse` DTO; replace `@AllArgsConstructor` with explicit constructors — keep existing convenience constructor `SearchResponse(List<T>)` for backward compat, add new full constructor with all fields including metadata.
 - [ ] Update `SearchResource.searchFiles()` to measure timing and pass metadata to `SearchResponse`.
 - [ ] Update `SearchResource.searchSections()` to measure timing and pass metadata to `SearchResponse`.
 - [ ] Update `SearchResource.searchCodeSamples()` to measure timing and pass metadata to `SearchResponse`.
@@ -80,4 +84,3 @@ Updated `ContentSearchResult`:
 - [ ] Add integration tests confirming `queriedKeywords` and `searchTimeMs` are present in JSON response.
 - [ ] Add integration tests confirming `matchedKeywords` is present in result items.
 - [ ] Update OpenAPI descriptions to document new response fields.
-
