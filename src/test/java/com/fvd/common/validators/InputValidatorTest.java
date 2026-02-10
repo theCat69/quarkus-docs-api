@@ -34,9 +34,9 @@ class InputValidatorTest {
     }
 
     @Test
-    void validateVersionRejectsSlash() {
-        assertThatThrownBy(() -> InputValidator.validateVersion("3.27/foo"))
-                .isInstanceOf(InvalidInputException.class);
+    void validateVersionAcceptsSlashForCompositeKeys() {
+        assertThatCode(() -> InputValidator.validateVersion("quarkiverse/quarkus-openapi-generator"))
+                .doesNotThrowAnyException();
     }
 
     @Test

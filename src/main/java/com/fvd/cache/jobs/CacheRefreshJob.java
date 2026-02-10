@@ -10,13 +10,17 @@ import com.fvd.indexs.indexers.CodeSampleIndexer;
 import com.fvd.indexs.indexers.ContentIndexer;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.stores.IndexStore;
+import com.fvd.quarkiverse.services.QuarkiverseService;
 import com.fvd.search.services.SearchService;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -35,6 +39,10 @@ public class CacheRefreshJob {
     private final ContentIndexer contentIndexer;
     private final SearchService searchService;
     private final DocParser docParser;
+    private final QuarkiverseService quarkiverseService;
+
+    @ConfigProperty(name = "app.quarkiverse.enabled", defaultValue = "false")
+    boolean quarkiverseEnabled;
 
     @Scheduled(every = "${app.refresh.interval:6h}", delayed = "${app.refresh.interval:6h}")
     public void refresh() {
@@ -44,12 +52,22 @@ public class CacheRefreshJob {
             return;
         }
 
+        boolean mainRefreshed = false;
+
         for (String version : versions) {
             try {
                 refreshVersion(version);
+                if ("main".equals(version)) {
+                    mainRefreshed = true;
+                }
             } catch (Exception e) {
                 log.error("Failed to refresh cache for version {}, keeping existing cache", version, e);
             }
+        }
+
+        // After core refresh, handle quarkiverse for "main"
+        if (quarkiverseEnabled && mainRefreshed) {
+            refreshQuarkiverse();
         }
     }
 
@@ -102,6 +120,55 @@ public class CacheRefreshJob {
 
         }
         log.info("Cache refresh completed for version {}", version);
+    }
+
+    private void refreshQuarkiverse() {
+        try {
+            boolean anyChanges = quarkiverseService.refreshAll();
+            if (!anyChanges) {
+                log.info("No quarkiverse changes detected, skipping main index rebuild");
+                return;
+            }
+
+            log.info("Quarkiverse changes detected, rebuilding main indexes with merged data");
+
+            // Get all files currently on disk for "main" (includes quarkiverse)
+            List<String> allFiles = docStore.listDocFiles("main");
+            Map<String, List<String>> filePathsByExtension = buildExtensionMap(allFiles);
+
+            keywordIndexer.build("main", filePathsByExtension);
+            codeSampleIndexer.build("main", filePathsByExtension);
+            contentIndexer.build("main", filePathsByExtension);
+
+            searchService.invalidateCache("main");
+
+            log.info("Main indexes rebuilt with quarkiverse data ({} extensions)",
+                    filePathsByExtension.size());
+        } catch (Exception e) {
+            log.error("Failed to refresh quarkiverse docs, main core indexes remain intact", e);
+        }
+    }
+
+    static Map<String, List<String>> buildExtensionMap(List<String> allFiles) {
+        Map<String, List<String>> map = new LinkedHashMap<>();
+        List<String> coreFiles = new ArrayList<>();
+        Map<String, List<String>> quarkiverseGroups = new LinkedHashMap<>();
+
+        for (String path : allFiles) {
+            if (path.startsWith("quarkiverse/")) {
+                String[] parts = path.split("/", 3);
+                if (parts.length >= 2) {
+                    String extensionName = parts[1];
+                    quarkiverseGroups.computeIfAbsent(extensionName, k -> new ArrayList<>()).add(path);
+                }
+            } else {
+                coreFiles.add(path);
+            }
+        }
+
+        map.put("quarkus-core", coreFiles);
+        map.putAll(quarkiverseGroups);
+        return map;
     }
 
     private void fetchAndCacheDoc(String version, String filePath) {

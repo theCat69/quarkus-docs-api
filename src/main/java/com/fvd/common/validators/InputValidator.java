@@ -14,8 +14,11 @@ public class InputValidator {
 
     public static void validateVersion(String version) {
         requireNonEmpty(version, "version");
-        if (!version.matches("[a-zA-Z0-9._-]+")) {
+        if (!version.matches("[a-zA-Z0-9._/-]+")) {
             throw new InvalidInputException("version contains invalid characters");
+        }
+        if (version.contains("..")) {
+            throw new InvalidInputException("version must not contain '..'");
         }
     }
 

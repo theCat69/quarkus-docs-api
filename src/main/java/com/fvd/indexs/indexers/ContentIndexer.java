@@ -49,6 +49,30 @@ public class ContentIndexer {
         return index;
     }
 
+    public ContentIndex build(String version, Map<String, List<String>> filePathsByExtension) {
+        Map<String, List<ContentOccurrence>> wordOccurrences = new HashMap<>();
+        int minTokenLength = searchConfig.index().minTokenLength();
+        int totalFiles = 0;
+
+        for (Map.Entry<String, List<String>> entry : filePathsByExtension.entrySet()) {
+            String extension = entry.getKey();
+            for (String filePath : entry.getValue()) {
+                Optional<String> content = docStore.read(version, filePath);
+                if (content.isEmpty()) {
+                    continue;
+                }
+                tokenizeAndIndex(filePath, content.get(), wordOccurrences, minTokenLength, extension);
+                totalFiles++;
+            }
+        }
+
+        ContentIndex index = new ContentIndex(wordOccurrences);
+        contentIndexStore.write(version, index);
+        log.info("Content index built for version {}: {} unique words across {} files",
+                version, wordOccurrences.size(), totalFiles);
+        return index;
+    }
+
     void tokenizeAndIndex(String filePath, String text, Map<String, List<ContentOccurrence>> wordOccurrences,
                           int minTokenLength, String extension) {
         int lineNumber = 1;

@@ -51,6 +51,18 @@ public class GitHubService {
         return githubRepositoryClient.fetchZipStream(owner, repo, branch);
     }
 
+    public InputStream fetchZipStreamForRepo(String owner, String repo, String branch) {
+        return githubRepositoryClient.fetchZipStream(owner, repo, branch);
+    }
+
+    public List<GithubApiIndex> fetchIndexForRepo(String owner, String repo, String docsPath, String branch) {
+        return githubApiClient.fetchIndex(owner, repo, docsPath, branch);
+    }
+
+    public GithubApiFile fetchFileContentForRepo(String owner, String repo, String filePath, String branch) {
+        return githubApiClient.fetchFile(owner, repo, filePath, branch);
+    }
+
     private String stripTrailingSlash(String path) {
         if (path.endsWith("/")) {
             return path.substring(0, path.length() - 1);

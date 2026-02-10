@@ -12,17 +12,22 @@ import com.fvd.indexs.indexers.ContentIndexer;
 import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.services.IndexService;
+import com.fvd.quarkiverse.services.QuarkiverseService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -50,13 +55,17 @@ class CacheWarmupJobTest {
     @Mock
     private CacheService cacheService;
 
+    @Mock
+    private QuarkiverseService quarkiverseService;
+
     private CacheWarmupJob job;
 
     @BeforeEach
     void setUp() {
-        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, contentIndexer, cacheService);
+        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, contentIndexer, cacheService, quarkiverseService);
         job.configuredVersions = Optional.of(List.of("3.17", "3.27"));
         job.fullReset = Optional.empty();
+        job.quarkiverseEnabled = false;
     }
 
     @Test
@@ -67,12 +76,12 @@ class CacheWarmupJobTest {
                 .thenReturn(Map.of("3.17", List.of("security.adoc"), "3.27", List.of("config.adoc")));
         when(indexService.getOrFetchIndex("3.17")).thenReturn(List.of());
         when(indexService.getOrFetchIndex("3.27")).thenReturn(List.of());
-        when(keywordIndexer.build(eq("3.17"), any())).thenReturn(new KeywordIndex(List.of()));
-        when(keywordIndexer.build(eq("3.27"), any())).thenReturn(new KeywordIndex(List.of()));
-        when(codeSampleIndexer.build(eq("3.17"), any())).thenReturn(new CodeSampleIndex(List.of()));
-        when(codeSampleIndexer.build(eq("3.27"), any())).thenReturn(new CodeSampleIndex(List.of()));
-        when(contentIndexer.build(eq("3.17"), any())).thenReturn(new ContentIndex(Map.of()));
-        when(contentIndexer.build(eq("3.27"), any())).thenReturn(new ContentIndex(Map.of()));
+        when(keywordIndexer.build(eq("3.17"), anyList())).thenReturn(new KeywordIndex(List.of()));
+        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
+        when(codeSampleIndexer.build(eq("3.17"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
+        when(codeSampleIndexer.build(eq("3.27"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
+        when(contentIndexer.build(eq("3.17"), anyList())).thenReturn(new ContentIndex(Map.of()));
+        when(contentIndexer.build(eq("3.27"), anyList())).thenReturn(new ContentIndex(Map.of()));
 
         job.onStartup(null);
 
@@ -94,9 +103,9 @@ class CacheWarmupJobTest {
         when(zipDownloadService.streamAndExtractAll(List.of("3.27")))
                 .thenReturn(Map.of("3.27", List.of("config.adoc")));
         when(indexService.getOrFetchIndex("3.27")).thenReturn(List.of());
-        when(keywordIndexer.build(eq("3.27"), any())).thenReturn(new KeywordIndex(List.of()));
-        when(codeSampleIndexer.build(eq("3.27"), any())).thenReturn(new CodeSampleIndex(List.of()));
-        when(contentIndexer.build(eq("3.27"), any())).thenReturn(new ContentIndex(Map.of()));
+        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
+        when(codeSampleIndexer.build(eq("3.27"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
+        when(contentIndexer.build(eq("3.27"), anyList())).thenReturn(new ContentIndex(Map.of()));
 
         job.onStartup(null);
 
@@ -112,9 +121,9 @@ class CacheWarmupJobTest {
         job.onStartup(null);
 
         verify(zipDownloadService, never()).streamAndExtractAll(any());
-        verify(keywordIndexer, never()).build(any(), any());
-        verify(codeSampleIndexer, never()).build(any(), any());
-        verify(contentIndexer, never()).build(any(), any());
+        verify(keywordIndexer, never()).build(anyString(), anyList());
+        verify(codeSampleIndexer, never()).build(anyString(), anyList());
+        verify(contentIndexer, never()).build(anyString(), anyList());
     }
 
     @Test
@@ -125,9 +134,9 @@ class CacheWarmupJobTest {
                 .thenReturn(Map.of("3.17", List.of("security.adoc"), "3.27", List.of("config.adoc")));
         when(indexService.getOrFetchIndex("3.17")).thenThrow(new UpstreamException("GitHub down"));
         when(indexService.getOrFetchIndex("3.27")).thenReturn(List.of());
-        when(keywordIndexer.build(eq("3.27"), any())).thenReturn(new KeywordIndex(List.of()));
-        when(codeSampleIndexer.build(eq("3.27"), any())).thenReturn(new CodeSampleIndex(List.of()));
-        when(contentIndexer.build(eq("3.27"), any())).thenReturn(new ContentIndex(Map.of()));
+        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
+        when(codeSampleIndexer.build(eq("3.27"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
+        when(contentIndexer.build(eq("3.27"), anyList())).thenReturn(new ContentIndex(Map.of()));
 
         job.onStartup(null);
 
@@ -139,24 +148,26 @@ class CacheWarmupJobTest {
 
     @Test
     void warmupDoesNothingWhenNoVersionsConfigured() {
-        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, contentIndexer, cacheService);
+        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, contentIndexer, cacheService, quarkiverseService);
         job.configuredVersions = Optional.empty();
         job.fullReset = Optional.empty();
+        job.quarkiverseEnabled = false;
 
         job.onStartup(null);
 
         verify(zipDownloadService, never()).streamAndExtractAll(any());
         verify(indexService, never()).getOrFetchIndex(any());
-        verify(keywordIndexer, never()).build(any(), any());
-        verify(codeSampleIndexer, never()).build(any(), any());
-        verify(contentIndexer, never()).build(any(), any());
+        verify(keywordIndexer, never()).build(anyString(), anyList());
+        verify(codeSampleIndexer, never()).build(anyString(), anyList());
+        verify(contentIndexer, never()).build(anyString(), anyList());
     }
 
     @Test
     void warmupDoesNothingWhenVersionsListIsEmpty() {
-        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, contentIndexer, cacheService);
+        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, contentIndexer, cacheService, quarkiverseService);
         job.configuredVersions = Optional.of(List.of());
         job.fullReset = Optional.empty();
+        job.quarkiverseEnabled = false;
 
         job.onStartup(null);
 
@@ -173,13 +184,14 @@ class CacheWarmupJobTest {
                 new GithubApiIndex("b.adoc", "path/b.adoc", "sha2")
         );
         when(indexService.getOrFetchIndex("3.17")).thenReturn(index);
-        when(keywordIndexer.build(eq("3.17"), any())).thenReturn(new KeywordIndex(List.of()));
-        when(codeSampleIndexer.build(eq("3.17"), any())).thenReturn(new CodeSampleIndex(List.of()));
-        when(contentIndexer.build(eq("3.17"), any())).thenReturn(new ContentIndex(Map.of()));
+        when(keywordIndexer.build(eq("3.17"), anyList())).thenReturn(new KeywordIndex(List.of()));
+        when(codeSampleIndexer.build(eq("3.17"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
+        when(contentIndexer.build(eq("3.17"), anyList())).thenReturn(new ContentIndex(Map.of()));
 
-        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, contentIndexer, cacheService);
+        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, contentIndexer, cacheService, quarkiverseService);
         job.configuredVersions = Optional.of(List.of("3.17"));
         job.fullReset = Optional.empty();
+        job.quarkiverseEnabled = false;
 
         job.onStartup(null);
 
@@ -187,5 +199,199 @@ class CacheWarmupJobTest {
         verify(keywordIndexer).build("3.17", List.of("a.adoc", "b.adoc"));
         verify(codeSampleIndexer).build("3.17", List.of("a.adoc", "b.adoc"));
         verify(contentIndexer).build("3.17", List.of("a.adoc", "b.adoc"));
+    }
+
+    // -- Quarkiverse integration tests --
+
+    @Test
+    void warmupWithQuarkiverseEnabledMergesMainIndexes() {
+        job.configuredVersions = Optional.of(List.of("main"));
+        job.quarkiverseEnabled = true;
+
+        when(docStore.docsExist("main")).thenReturn(false);
+        when(zipDownloadService.streamAndExtractAll(List.of("main")))
+                .thenReturn(Map.of("main", List.of("security.adoc", "config.adoc")));
+        when(indexService.getOrFetchIndex("main")).thenReturn(List.of());
+        when(quarkiverseService.fetchAndExtractAll())
+                .thenReturn(List.of("quarkiverse/quarkus-openapi-generator/index.adoc"));
+
+        // The Map overload is used for merged builds
+        when(keywordIndexer.build(eq("main"), anyMap())).thenReturn(new KeywordIndex(List.of()));
+        when(codeSampleIndexer.build(eq("main"), anyMap())).thenReturn(new CodeSampleIndex(List.of()));
+        when(contentIndexer.build(eq("main"), anyMap())).thenReturn(new ContentIndex(Map.of()));
+
+        job.onStartup(null);
+
+        // Verify quarkiverse was called
+        verify(quarkiverseService).fetchAndExtractAll();
+
+        // Verify indexes are built with Map overload (merged core + quarkiverse)
+        Map<String, List<String>> expected = new LinkedHashMap<>();
+        expected.put("quarkus-core", List.of("security.adoc", "config.adoc"));
+        expected.put("quarkus-openapi-generator", List.of("quarkiverse/quarkus-openapi-generator/index.adoc"));
+        verify(keywordIndexer).build(eq("main"), eq(expected));
+        verify(codeSampleIndexer).build(eq("main"), eq(expected));
+        verify(contentIndexer).build(eq("main"), eq(expected));
+
+        // Verify List overload was NOT called for "main"
+        verify(keywordIndexer, never()).build(eq("main"), anyList());
+        verify(codeSampleIndexer, never()).build(eq("main"), anyList());
+        verify(contentIndexer, never()).build(eq("main"), anyList());
+    }
+
+    @Test
+    void warmupWithQuarkiverseDisabledDoesNotCallQuarkiverse() {
+        job.configuredVersions = Optional.of(List.of("main"));
+        job.quarkiverseEnabled = false;
+
+        when(docStore.docsExist("main")).thenReturn(false);
+        when(zipDownloadService.streamAndExtractAll(List.of("main")))
+                .thenReturn(Map.of("main", List.of("security.adoc")));
+        when(indexService.getOrFetchIndex("main")).thenReturn(List.of());
+        when(keywordIndexer.build(eq("main"), anyList())).thenReturn(new KeywordIndex(List.of()));
+        when(codeSampleIndexer.build(eq("main"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
+        when(contentIndexer.build(eq("main"), anyList())).thenReturn(new ContentIndex(Map.of()));
+
+        job.onStartup(null);
+
+        // Quarkiverse should not be called
+        verify(quarkiverseService, never()).fetchAndExtractAll();
+
+        // Indexes should be built with List overload (core only)
+        verify(keywordIndexer).build(eq("main"), eq(List.of("security.adoc")));
+    }
+
+    @Test
+    void warmupWithQuarkiverseEnabledButNoMainVersionSkipsQuarkiverse() {
+        job.configuredVersions = Optional.of(List.of("3.27"));
+        job.quarkiverseEnabled = true;
+
+        when(docStore.docsExist("3.27")).thenReturn(false);
+        when(zipDownloadService.streamAndExtractAll(List.of("3.27")))
+                .thenReturn(Map.of("3.27", List.of("config.adoc")));
+        when(indexService.getOrFetchIndex("3.27")).thenReturn(List.of());
+        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
+        when(codeSampleIndexer.build(eq("3.27"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
+        when(contentIndexer.build(eq("3.27"), anyList())).thenReturn(new ContentIndex(Map.of()));
+
+        job.onStartup(null);
+
+        // Quarkiverse should not be called since "main" isn't in versions
+        verify(quarkiverseService, never()).fetchAndExtractAll();
+    }
+
+    @Test
+    void warmupWithQuarkiverseEnabledBuildsNonMainVersionsNormally() {
+        job.configuredVersions = Optional.of(List.of("main", "3.27"));
+        job.quarkiverseEnabled = true;
+
+        when(docStore.docsExist("main")).thenReturn(false);
+        when(docStore.docsExist("3.27")).thenReturn(false);
+        when(zipDownloadService.streamAndExtractAll(List.of("main", "3.27")))
+                .thenReturn(Map.of("main", List.of("security.adoc"), "3.27", List.of("config.adoc")));
+        when(indexService.getOrFetchIndex("main")).thenReturn(List.of());
+        when(indexService.getOrFetchIndex("3.27")).thenReturn(List.of());
+        when(quarkiverseService.fetchAndExtractAll())
+                .thenReturn(List.of("quarkiverse/quarkus-cxf/index.adoc"));
+
+        // 3.27 uses List overload
+        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
+        when(codeSampleIndexer.build(eq("3.27"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
+        when(contentIndexer.build(eq("3.27"), anyList())).thenReturn(new ContentIndex(Map.of()));
+        // main uses Map overload
+        when(keywordIndexer.build(eq("main"), anyMap())).thenReturn(new KeywordIndex(List.of()));
+        when(codeSampleIndexer.build(eq("main"), anyMap())).thenReturn(new CodeSampleIndex(List.of()));
+        when(contentIndexer.build(eq("main"), anyMap())).thenReturn(new ContentIndex(Map.of()));
+
+        job.onStartup(null);
+
+        // 3.27 should use List overload (core only)
+        verify(keywordIndexer).build(eq("3.27"), eq(List.of("config.adoc")));
+        verify(codeSampleIndexer).build(eq("3.27"), eq(List.of("config.adoc")));
+        verify(contentIndexer).build(eq("3.27"), eq(List.of("config.adoc")));
+
+        // main should use Map overload (merged)
+        verify(keywordIndexer).build(eq("main"), anyMap());
+        verify(codeSampleIndexer).build(eq("main"), anyMap());
+        verify(contentIndexer).build(eq("main"), anyMap());
+    }
+
+    @Test
+    void warmupWithQuarkiverseFailureStillBuildsMainCoreIndexes() {
+        job.configuredVersions = Optional.of(List.of("main"));
+        job.quarkiverseEnabled = true;
+
+        when(docStore.docsExist("main")).thenReturn(false);
+        when(zipDownloadService.streamAndExtractAll(List.of("main")))
+                .thenReturn(Map.of("main", List.of("security.adoc")));
+        when(indexService.getOrFetchIndex("main")).thenReturn(List.of());
+        when(quarkiverseService.fetchAndExtractAll())
+                .thenThrow(new RuntimeException("Quarkiverse fetch failed"));
+
+        // When quarkiverse fails, fallback to core-only List overload
+        when(keywordIndexer.build(eq("main"), anyList())).thenReturn(new KeywordIndex(List.of()));
+        when(codeSampleIndexer.build(eq("main"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
+        when(contentIndexer.build(eq("main"), anyList())).thenReturn(new ContentIndex(Map.of()));
+
+        job.onStartup(null);
+
+        // Core indexes should still be built even when quarkiverse fails
+        verify(keywordIndexer).build(eq("main"), eq(List.of("security.adoc")));
+        verify(codeSampleIndexer).build(eq("main"), eq(List.of("security.adoc")));
+        verify(contentIndexer).build(eq("main"), eq(List.of("security.adoc")));
+    }
+
+    @Test
+    void warmupWithQuarkiverseReturningEmptyListBuildsMainCoreOnly() {
+        job.configuredVersions = Optional.of(List.of("main"));
+        job.quarkiverseEnabled = true;
+
+        when(docStore.docsExist("main")).thenReturn(false);
+        when(zipDownloadService.streamAndExtractAll(List.of("main")))
+                .thenReturn(Map.of("main", List.of("security.adoc")));
+        when(indexService.getOrFetchIndex("main")).thenReturn(List.of());
+        when(quarkiverseService.fetchAndExtractAll()).thenReturn(List.of());
+
+        // When quarkiverse returns empty, use List overload (core only)
+        when(keywordIndexer.build(eq("main"), anyList())).thenReturn(new KeywordIndex(List.of()));
+        when(codeSampleIndexer.build(eq("main"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
+        when(contentIndexer.build(eq("main"), anyList())).thenReturn(new ContentIndex(Map.of()));
+
+        job.onStartup(null);
+
+        verify(keywordIndexer).build(eq("main"), eq(List.of("security.adoc")));
+    }
+
+    @Test
+    void warmupWithQuarkiverseGroupsPathsByExtension() {
+        job.configuredVersions = Optional.of(List.of("main"));
+        job.quarkiverseEnabled = true;
+
+        when(docStore.docsExist("main")).thenReturn(false);
+        when(zipDownloadService.streamAndExtractAll(List.of("main")))
+                .thenReturn(Map.of("main", List.of("security.adoc")));
+        when(indexService.getOrFetchIndex("main")).thenReturn(List.of());
+        when(quarkiverseService.fetchAndExtractAll())
+                .thenReturn(List.of(
+                        "quarkiverse/quarkus-openapi-generator/index.adoc",
+                        "quarkiverse/quarkus-openapi-generator/usage.adoc",
+                        "quarkiverse/quarkus-cxf/index.adoc"
+                ));
+
+        when(keywordIndexer.build(eq("main"), anyMap())).thenReturn(new KeywordIndex(List.of()));
+        when(codeSampleIndexer.build(eq("main"), anyMap())).thenReturn(new CodeSampleIndex(List.of()));
+        when(contentIndexer.build(eq("main"), anyMap())).thenReturn(new ContentIndex(Map.of()));
+
+        job.onStartup(null);
+
+        // Verify the map passed to indexers has correct grouping
+        Map<String, List<String>> expected = new LinkedHashMap<>();
+        expected.put("quarkus-core", List.of("security.adoc"));
+        expected.put("quarkus-openapi-generator", List.of(
+                "quarkiverse/quarkus-openapi-generator/index.adoc",
+                "quarkiverse/quarkus-openapi-generator/usage.adoc"));
+        expected.put("quarkus-cxf", List.of("quarkiverse/quarkus-cxf/index.adoc"));
+
+        verify(keywordIndexer).build(eq("main"), eq(expected));
     }
 }

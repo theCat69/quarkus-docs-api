@@ -49,6 +49,29 @@ public class CodeSampleIndexer {
         return index;
     }
 
+    public CodeSampleIndex build(String version, Map<String, List<String>> filePathsByExtension) {
+        List<CodeSampleEntry> entries = new ArrayList<>();
+
+        for (Map.Entry<String, List<String>> mapEntry : filePathsByExtension.entrySet()) {
+            String extension = mapEntry.getKey();
+            for (String filePath : mapEntry.getValue()) {
+                Optional<String> content = docStore.read(version, filePath);
+                if (content.isEmpty()) {
+                    continue;
+                }
+                List<CodeSampleEntry> fileEntries = buildEntriesForFile(filePath, content.get());
+                for (CodeSampleEntry entry : fileEntries) {
+                    entry.extension = extension;
+                }
+                entries.addAll(fileEntries);
+            }
+        }
+
+        CodeSampleIndex index = new CodeSampleIndex(entries);
+        codeSampleIndexStore.write(version, index);
+        return index;
+    }
+
     List<CodeSampleEntry> buildEntriesForFile(String filePath, String content) {
         List<DocParser.CodeBlock> codeBlocks = parser.parseCodeBlocks(content);
         List<DocParser.Section> sections = parser.parseSections(content);

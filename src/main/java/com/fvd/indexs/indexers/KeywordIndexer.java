@@ -79,6 +79,27 @@ public class KeywordIndexer {
         return index;
     }
 
+    public KeywordIndex build(String version, Map<String, List<String>> filePathsByExtension) {
+        List<FileKeywordEntry> fileEntries = new ArrayList<>();
+
+        for (Map.Entry<String, List<String>> entry : filePathsByExtension.entrySet()) {
+            String extension = entry.getKey();
+            for (String filePath : entry.getValue()) {
+                Optional<String> content = docStore.read(version, filePath);
+                if (content.isEmpty()) {
+                    continue;
+                }
+                FileKeywordEntry fileEntry = buildFileEntry(filePath, content.get());
+                fileEntry.extension = extension;
+                fileEntries.add(fileEntry);
+            }
+        }
+
+        KeywordIndex index = new KeywordIndex(fileEntries);
+        persist(version, index);
+        return index;
+    }
+
     private Map<String, Integer> filterFileEntries(Map<String, Integer> originalFileKeywords) {
         int minScore = searchConfig.index().minKeywordScore();
         Map<String, Integer> filteredFileKeywords = new HashMap<>();

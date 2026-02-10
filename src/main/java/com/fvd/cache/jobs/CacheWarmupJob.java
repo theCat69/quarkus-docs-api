@@ -7,6 +7,7 @@ import com.fvd.indexs.indexers.CodeSampleIndexer;
 import com.fvd.indexs.indexers.ContentIndexer;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.services.IndexService;
+import com.fvd.quarkiverse.services.QuarkiverseService;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -15,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -31,11 +34,14 @@ public class CacheWarmupJob {
     private final CodeSampleIndexer codeSampleIndexer;
     private final ContentIndexer contentIndexer;
     private final CacheService cacheService;
+    private final QuarkiverseService quarkiverseService;
 
     @ConfigProperty(name = "app.versions")
     Optional<List<String>> configuredVersions;
     @ConfigProperty(name = "app.cache-warmup.full-reset")
     Optional<Boolean> fullReset;
+    @ConfigProperty(name = "app.quarkiverse.enabled", defaultValue = "false")
+    boolean quarkiverseEnabled;
 
     void onStartup(@Observes @Priority(200) StartupEvent event) {
         if (configuredVersions.isEmpty() || configuredVersions.get().isEmpty()) {
@@ -73,22 +79,83 @@ public class CacheWarmupJob {
                     indexService.getOrFetchIndex(version);
                     log.info("Index fetched for version {}", version);
 
-                    keywordIndexer.build(version, extractedFiles);
-                    log.info("Keyword index built for version {}", version);
+                    if ("main".equals(version) && quarkiverseEnabled) {
+                        // Defer index build for "main" until after quarkiverse extraction
+                        continue;
+                    }
 
-                    codeSampleIndexer.build(version, extractedFiles);
-                    log.info("Code sample index built for version {}", version);
-
-                    contentIndexer.build(version, extractedFiles);
-                    log.info("Content index built for version {}", version);
+                    buildIndexes(version, extractedFiles);
                 } catch (Exception e) {
                     log.error("Failed to build indexes for version {}, skipping", version, e);
                 }
+            }
+
+            // Handle quarkiverse for "main" version
+            if (quarkiverseEnabled && extractedByVersion.containsKey("main")) {
+                List<String> mainCoreFiles = extractedByVersion.get("main");
+                buildMainWithQuarkiverse(mainCoreFiles);
             }
         } catch (Exception e) {
             log.error("Failed to download and extract zip for warmup", e);
         }
 
         log.info("Cache warmup completed");
+    }
+
+    private void buildMainWithQuarkiverse(List<String> coreFiles) {
+        List<String> quarkiversePaths;
+        try {
+            quarkiversePaths = quarkiverseService.fetchAndExtractAll();
+        } catch (Exception e) {
+            log.error("Failed to fetch quarkiverse docs, building main with core only", e);
+            buildIndexes("main", coreFiles);
+            return;
+        }
+
+        if (quarkiversePaths.isEmpty()) {
+            log.info("No quarkiverse docs found, building main with core only");
+            buildIndexes("main", coreFiles);
+            return;
+        }
+
+        Map<String, List<String>> filePathsByExtension = buildExtensionMap(coreFiles, quarkiversePaths);
+        log.info("Building main indexes with {} core files and {} quarkiverse files across {} extensions",
+                coreFiles.size(), quarkiversePaths.size(), filePathsByExtension.size() - 1);
+
+        keywordIndexer.build("main", filePathsByExtension);
+        log.info("Keyword index built for version main (merged)");
+
+        codeSampleIndexer.build("main", filePathsByExtension);
+        log.info("Code sample index built for version main (merged)");
+
+        contentIndexer.build("main", filePathsByExtension);
+        log.info("Content index built for version main (merged)");
+    }
+
+    static Map<String, List<String>> buildExtensionMap(List<String> coreFiles, List<String> quarkiversePaths) {
+        Map<String, List<String>> map = new LinkedHashMap<>();
+        map.put("quarkus-core", coreFiles);
+
+        for (String path : quarkiversePaths) {
+            // Path format: quarkiverse/<ext-name>/<file>.adoc
+            String[] parts = path.split("/", 3);
+            if (parts.length >= 2) {
+                String extensionName = parts[1];
+                map.computeIfAbsent(extensionName, k -> new ArrayList<>()).add(path);
+            }
+        }
+
+        return map;
+    }
+
+    private void buildIndexes(String version, List<String> extractedFiles) {
+        keywordIndexer.build(version, extractedFiles);
+        log.info("Keyword index built for version {}", version);
+
+        codeSampleIndexer.build(version, extractedFiles);
+        log.info("Code sample index built for version {}", version);
+
+        contentIndexer.build(version, extractedFiles);
+        log.info("Content index built for version {}", version);
     }
 }

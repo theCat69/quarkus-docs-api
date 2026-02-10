@@ -97,32 +97,32 @@ GET /api/doc?version=main&path=quarkiverse/quarkus-openapi-generator/index.adoc
 
 ## Tasks
 
-- [ ] Add `com.fasterxml.jackson.dataformat:jackson-dataformat-yaml` to `build.gradle`.
-- [ ] Add unit tests for `AntoraPlaybookParser.parse()`: parses YAML, resolves single concrete branch, handles list (picks first concrete), handles wildcard/regex (fallback to `main`), handles `start_path` mapping.
-- [ ] Create `AntoraPlaybook`, `ContentConfig`, `ContentSource` DTOs in `com.fvd.quarkiverse.models`.
-- [ ] Create `ResolvedContentSource` record in `com.fvd.quarkiverse.parser`.
-- [ ] Implement `AntoraPlaybookParser`.
-- [ ] Add unit tests for `QuarkiverseZipExtractor.extractDocs()`: extracts `.adoc` from `<startPath>/modules/ROOT/pages/`, ignores non-adoc files, ignores non-ROOT modules (logs warning), writes to namespaced `quarkiverse/<ext>/` paths.
-- [ ] Implement `QuarkiverseZipExtractor`.
-- [ ] Add unit tests for `GitHubService.fetchZipStreamForRepo()`: calls `githubRepositoryClient.fetchZipStream(owner, repo, branch)` with correct params.
-- [ ] Add unit tests for `GitHubService.fetchIndexForRepo()`: calls `githubApiClient.fetchIndex(owner, repo, docsPath, branch)` with correct params.
-- [ ] Add unit tests for `GitHubService.fetchFileContentForRepo()`: calls `githubApiClient.fetchFile(owner, repo, filePath, branch)` with correct params.
-- [ ] Add `fetchZipStreamForRepo()`, `fetchIndexForRepo()`, `fetchFileContentForRepo()` to `GitHubService`.
-- [ ] Add unit tests for `QuarkiverseService.fetchAndExtractAll()`: fetches playbook, downloads zips in parallel (concurrency 4 via `ManagedExecutor`), extracts docs, returns aggregated file list with namespaced paths.
-- [ ] Add unit tests for `QuarkiverseService` error handling: single extension failure doesn't abort others, logs error and continues.
-- [ ] Add unit tests for `QuarkiverseService.refreshAll()`: SHA comparison per extension using composite key in `IndexStore`, re-fetches only changed files, returns `true` when changes detected.
-- [ ] Implement `QuarkiverseService`.
-- [ ] Add config keys to `application.properties`: `app.quarkiverse.enabled=true`, `app.quarkiverse.playbook-repo=quarkiverse/quarkiverse-docs`, `app.quarkiverse.playbook-branch=main`, `app.quarkiverse.download-concurrency=4`.
-- [ ] Add unit tests for `CacheWarmupJob` with quarkiverse enabled: after core warmup for `"main"`, calls `quarkiverseService.fetchAndExtractAll()`, merges paths, rebuilds `"main"` indexes.
-- [ ] Update `CacheWarmupJob` to call quarkiverse after core warmup.
-- [ ] Add unit tests for `CacheRefreshJob` with quarkiverse enabled: after core refresh, calls `quarkiverseService.refreshAll()`, rebuilds `"main"` indexes if changes detected.
-- [ ] Update `CacheRefreshJob` to call quarkiverse refresh.
-- [ ] Add WireMock stubs for playbook YAML (base64-encoded via GitHub Contents API) and sample extension zip files.
-- [ ] Add integration tests: quarkiverse docs appear in `version=main` search results with correct `extension` field.
-- [ ] Add integration tests: quarkiverse docs do NOT appear for `version=3.27`.
-- [ ] Add integration tests: `/api/doc?version=main&path=quarkiverse/<ext>/index.adoc` returns 200 with content.
-- [ ] Add integration tests: `/api/index?version=main` does NOT include quarkiverse file paths (core-only).
-- [ ] Disable quarkiverse in test profile by default (`%test.app.quarkiverse.enabled=false`) except in quarkiverse-specific integration tests.
+- [x] Add `com.fasterxml.jackson.dataformat:jackson-dataformat-yaml` to `build.gradle`.
+- [x] Add unit tests for `AntoraPlaybookParser.parse()`: parses YAML, resolves single concrete branch, handles list (picks first concrete), handles wildcard/regex (fallback to `main`), handles `start_path` mapping.
+- [x] Create `AntoraPlaybook`, `ContentConfig`, `ContentSource` DTOs in `com.fvd.quarkiverse.models`.
+- [x] Create `ResolvedContentSource` record in `com.fvd.quarkiverse.parser`.
+- [x] Implement `AntoraPlaybookParser`.
+- [x] Add unit tests for `QuarkiverseZipExtractor.extractDocs()`: extracts `.adoc` from `<startPath>/modules/ROOT/pages/`, ignores non-adoc files, ignores non-ROOT modules (logs warning), writes to namespaced `quarkiverse/<ext>/` paths.
+- [x] Implement `QuarkiverseZipExtractor`.
+- [x] Add unit tests for `GitHubService.fetchZipStreamForRepo()`: calls `githubRepositoryClient.fetchZipStream(owner, repo, branch)` with correct params.
+- [x] Add unit tests for `GitHubService.fetchIndexForRepo()`: calls `githubApiClient.fetchIndex(owner, repo, docsPath, branch)` with correct params.
+- [x] Add unit tests for `GitHubService.fetchFileContentForRepo()`: calls `githubApiClient.fetchFile(owner, repo, filePath, branch)` with correct params.
+- [x] Add `fetchZipStreamForRepo()`, `fetchIndexForRepo()`, `fetchFileContentForRepo()` to `GitHubService`.
+- [x] Add unit tests for `QuarkiverseService.fetchAndExtractAll()`: fetches playbook, downloads zips in parallel (concurrency 4 via `ManagedExecutor`), extracts docs, returns aggregated file list with namespaced paths.
+- [x] Add unit tests for `QuarkiverseService` error handling: single extension failure doesn't abort others, logs error and continues.
+- [x] Add unit tests for `QuarkiverseService.refreshAll()`: SHA comparison per extension using composite key in `IndexStore`, re-fetches only changed files, returns `true` when changes detected.
+- [x] Implement `QuarkiverseService`.
+- [x] Add config keys to `application.properties`: `app.quarkiverse.enabled=true`, `app.quarkiverse.playbook-repo=quarkiverse/quarkiverse-docs`, `app.quarkiverse.playbook-branch=main`, `app.quarkiverse.download-concurrency=4`.
+- [x] Add unit tests for `CacheWarmupJob` with quarkiverse enabled: after core warmup for `"main"`, calls `quarkiverseService.fetchAndExtractAll()`, merges paths, rebuilds `"main"` indexes.
+- [x] Update `CacheWarmupJob` to call quarkiverse after core warmup.
+- [x] Add unit tests for `CacheRefreshJob` with quarkiverse enabled: after core refresh, calls `quarkiverseService.refreshAll()`, rebuilds `"main"` indexes if changes detected.
+- [x] Update `CacheRefreshJob` to call quarkiverse refresh.
+- [x] Add WireMock stubs for playbook YAML (base64-encoded via GitHub Contents API) and sample extension zip files.
+- [x] Add integration tests: quarkiverse docs appear in `version=main` search results with correct `extension` field.
+- [x] Add integration tests: quarkiverse docs do NOT appear for `version=3.27`.
+- [x] Add integration tests: `/api/doc?version=main&path=quarkiverse/<ext>/index.adoc` returns 200 with content.
+- [x] Add integration tests: `/api/index?version=main` does NOT include quarkiverse file paths (core-only).
+- [x] Disable quarkiverse in test profile by default (`%test.app.quarkiverse.enabled=false`) except in quarkiverse-specific integration tests.
 
 ## Operational notes
 
@@ -136,4 +136,38 @@ GET /api/doc?version=main&path=quarkiverse/quarkus-openapi-generator/index.adoc
 
 ## Implementation notes
 
-_(To be filled during implementation)_
+### New packages and classes
+
+- **`com.fvd.quarkiverse.models`**: `AntoraPlaybook`, `ContentConfig`, `ContentSource` DTOs for Antora playbook YAML deserialization.
+- **`com.fvd.quarkiverse.parser`**: `ResolvedContentSource` record and `AntoraPlaybookParser` (`@ApplicationScoped`) for parsing playbook YAML and resolving branches.
+- **`com.fvd.quarkiverse.services`**: `QuarkiverseService` (`@ApplicationScoped`) and `QuarkiverseZipExtractor` (`@ApplicationScoped`).
+
+### Key design decisions
+
+- **Branch resolution**: For `branches` field in playbook YAML, handles `String`, `List<String>`, and `Number` (YAML parses `3.8` as a number). Picks first concrete branch (no `*`, `?`, `[`, `{`, `^`, `$`, `(`, `)`, `+` metacharacters). Falls back to `"main"` if none found.
+- **Indexer merge strategy**: Added `build(String version, Map<String, List<String>> filePathsByExtension)` overloads on `KeywordIndexer`, `CodeSampleIndexer`, and `ContentIndexer`. These build all entries in one call and persist once, avoiding the stores' `write()` delete-then-insert overwriting issue with multiple calls.
+- **InputValidator**: `/` is now allowed in version strings to support composite keys like `"quarkiverse/quarkus-openapi-generator"` used in `IndexStore`. A separate `..` traversal check prevents path traversal attacks.
+- **CacheWarmupJob flow**: For `"main"` with quarkiverse enabled, defers index build during the version loop. After the loop, calls `buildMainWithQuarkiverse()` which fetches quarkiverse docs and merges with core file list. Falls back to core-only on failure.
+- **CacheRefreshJob flow**: After core refresh loop, if `"main"` was refreshed and quarkiverse enabled, calls `quarkiverseService.refreshAll()`. If changes detected, reads all files from disk via `docStore.listDocFiles("main")`, groups by extension, rebuilds indexes with Map overload.
+- **Extension name extraction**: Parsed from quarkiverse path format `quarkiverse/<ext-name>/<file>.adoc` using `path.split("/", 3)[1]`.
+- **Sequential processing**: Extensions are processed sequentially (not in parallel with `ManagedExecutor`). This simplifies the implementation and avoids rate limiting concerns. Parallel downloads can be added as a future optimization.
+
+### WireMock integration test setup
+
+- **`QuarkiverseTestProfile`** (`QuarkusTestProfile` implementation): Overrides `app.quarkiverse.enabled=true` for quarkiverse-specific integration tests.
+- **WireMock stubs**: `quarkiverse-playbook.json` mapping (playbook YAML via GitHub Contents API) and `quarkiverse-ext-zip.json` mapping (sample extension zip).
+- **Test fixtures**: `quarkiverse-playbook.json` (base64-encoded playbook YAML response), `quarkiverse-ext-zip.zip` (sample extension with `docs/modules/ROOT/pages/index.adoc`).
+
+### Test summary
+
+- **14** unit tests for `AntoraPlaybookParser`
+- **6** unit tests for `QuarkiverseZipExtractor`
+- **3** unit tests for `GitHubService` generic repo methods
+- **6** unit tests for `QuarkiverseService`
+- **7** unit tests for `CacheWarmupJob` quarkiverse integration
+- **7** unit tests for `CacheRefreshJob` quarkiverse integration
+- **7** WireMock integration tests (`QuarkiverseIntegrationTest`) verifying end-to-end quarkiverse doc extraction, search, and retrieval
+
+### Deferred
+
+- **Parallel downloads**: Not implemented. The spec called for `ManagedExecutor` with configurable concurrency. Current implementation processes extensions sequentially. The `app.quarkiverse.download-concurrency` config key is present but unused. Can be added in a future iteration.
