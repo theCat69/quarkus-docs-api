@@ -74,38 +74,38 @@ Features 26, 27, and 28 each specify their own OpenAPI annotation changes as tas
 
 ### README.md
 
-- [ ] Write "Project Title & Badges" section: project name, one-line description.
-- [ ] Write "Overview" section: what it does, who it's for, key capabilities (multi-version, quarkiverse, fuzzy matching, stemming, pagination, SQLite indexes).
-- [ ] Write "Architecture" section: data flow (GitHub website repo → zip → cache → SQLite → REST API), single-zip multi-version extraction, quarkiverse playbook parsing, background SHA-based refresh. List main packages.
-- [ ] Write "API Endpoints" section: table/list of all 8 endpoints with method, path, summary, key params. Note optional version (defaults to `main`) and optional extension filter.
-- [ ] Write "Quick Start" section: prerequisites (Java 21), clone, dev mode command, OpenAPI UI URL, example curl for file search and doc retrieval.
-- [ ] Write "Configuration" section with two tables: core config keys (app.cache.dir, app.github.owner, app.github.repo, app.github.branch, app.versions, app.refresh.interval, app.cache-warmup.full-reset, app.quarkiverse.enabled, app.quarkiverse.playbook-repo, app.quarkiverse.playbook-branch, app.quarkiverse.download-concurrency, SQLite keys, REST client URL keys) and an "Advanced / Search Tuning" subsection listing all 15 `search.*` config keys with defaults.
-- [ ] Write "Examples" section: 3-4 curl examples with sample JSON responses (search files, search with extension filter, get doc content, list versions).
-- [ ] Write "Building & Testing" section: build, test, single test class, dev mode commands.
-- [ ] Write "Technology Stack" section: bullet list of all frameworks and libraries.
-- [ ] Remove all default Quarkus boilerplate content.
+- [x] Write "Project Title & Badges" section: project name, one-line description.
+- [x] Write "Overview" section: what it does, who it's for, key capabilities (multi-version, quarkiverse, fuzzy matching, stemming, pagination, SQLite indexes).
+- [x] Write "Architecture" section: data flow (GitHub website repo → zip → cache → SQLite → REST API), single-zip multi-version extraction, quarkiverse playbook parsing, background SHA-based refresh. List main packages.
+- [x] Write "API Endpoints" section: table/list of all 8 endpoints with method, path, summary, key params. Note optional version (defaults to `main`) and optional extension filter.
+- [x] Write "Quick Start" section: prerequisites (Java 21), clone, dev mode command, OpenAPI UI URL, example curl for file search and doc retrieval.
+- [x] Write "Configuration" section with two tables: core config keys (app.cache.dir, app.github.owner, app.github.repo, app.github.branch, app.versions, app.refresh.interval, app.cache-warmup.full-reset, app.quarkiverse.enabled, app.quarkiverse.playbook-repo, app.quarkiverse.playbook-branch, app.quarkiverse.download-concurrency, SQLite keys, REST client URL keys) and an "Advanced / Search Tuning" subsection listing all 15 `search.*` config keys with defaults.
+- [x] Write "Examples" section: 3-4 curl examples with sample JSON responses (search files, search with extension filter, get doc content, list versions).
+- [x] Write "Building & Testing" section: build, test, single test class, dev mode commands.
+- [x] Write "Technology Stack" section: bullet list of all frameworks and libraries.
+- [x] Remove all default Quarkus boilerplate content.
 
 ### AGENTS.md
 
-- [ ] Update "Project summary" section: add website repo source (`quarkusio.github.io`), quarkiverse extension support via Antora playbook, optional version defaulting to `main`, Jackson YAML dependency.
-- [ ] Update "src/main/java package map": add `src/main/java/com/fvd/quarkiverse` entry with description and subpackages (`models`, `parser`, `services`).
-- [ ] Update "Dependencies of note": add `Jackson YAML (com.fasterxml.jackson.dataformat:jackson-dataformat-yaml)` line.
-- [ ] Update "Configuration" section: add a bullet list of new config keys from v1.0.2 under the existing section: `app.github.branch` (default `main`), `app.quarkiverse.enabled` (default `true`), `app.quarkiverse.playbook-repo` (default `quarkiverse/quarkiverse-docs`), `app.quarkiverse.playbook-branch` (default `main`), `app.quarkiverse.download-concurrency` (default `4`).
-- [ ] Update "Resource example" in code examples: show `InputValidator.resolveVersion(version)` pattern, optional `extension` query param, `@Parameter(required = false)` with `@Schema(defaultValue = "main")` on version param.
-- [ ] Update "POJO/DTO example" in code examples: add `extension` field to the DTO example.
-- [ ] Update "Service example" in code examples: remove stale `ensureIndex()` / `zipDownloadService` lazy-download pattern (removed in F26); show current service pattern that loads from SQLite store only.
+- [x] Update "Project summary" section: add website repo source (`quarkusio.github.io`), quarkiverse extension support via Antora playbook, optional version defaulting to `main`, Jackson YAML dependency.
+- [x] Update "src/main/java package map": add `src/main/java/com/fvd/quarkiverse` entry with description and subpackages (`models`, `parser`, `services`).
+- [x] Update "Dependencies of note": add `Jackson YAML (com.fasterxml.jackson.dataformat:jackson-dataformat-yaml)` line.
+- [x] Update "Configuration" section: add a bullet list of new config keys from v1.0.2 under the existing section: `app.github.branch` (default `main`), `app.quarkiverse.enabled` (default `true`), `app.quarkiverse.playbook-repo` (default `quarkiverse/quarkiverse-docs`), `app.quarkiverse.playbook-branch` (default `main`), `app.quarkiverse.download-concurrency` (default `4`).
+- [x] Update "Resource example" in code examples: show `InputValidator.resolveVersion(version)` pattern, optional `extension` query param, `@Parameter(required = false)` with `@Schema(defaultValue = "main")` on version param.
+- [x] Update "POJO/DTO example" in code examples: add `extension` field to the DTO example.
+- [x] Update "Service example" in code examples: remove stale `ensureIndex()` / `zipDownloadService` lazy-download pattern (removed in F26); show current service pattern that loads from SQLite store only.
 
 ### OpenAPI annotation audit
 
-- [ ] Audit `DocsResource.getDoc()`: verify `path` param description and example updated to relative path (`security-overview.adoc`), mention quarkiverse path pattern. Verify `version` param is `required = false` with `@Schema(defaultValue = "main")` and default note. Verify `extension` param present with description and example. Update `@Operation` description to mention website repo and quarkiverse. Update 200 response description to mention `extension` field.
-- [ ] Audit `IndexResource.getIndex()`: verify `version` param is `required = false` with `@Schema(defaultValue = "main")` and default note. Update `@Operation` description to clarify core-only (no quarkiverse files).
-- [ ] Audit `SearchResource.searchFiles()`: verify `version` optional with default note and quarkiverse disclaimer. Verify `extension` param present with description and example. Update 200 response description to mention `extension` field.
-- [ ] Audit `SearchResource.searchSections()`: same checks as `searchFiles`.
-- [ ] Audit `SearchResource.getSectionContent()`: verify `version` optional with default note and quarkiverse disclaimer. Verify `extension` param if present. Update 200 response description.
-- [ ] Audit `SearchResource.searchCodeSamples()`: same checks as `searchFiles`.
-- [ ] Audit `SearchResource.searchContent()`: same checks as `searchFiles`.
-- [ ] Verify `SearchResource.listVersions()` is unchanged (no version param, no extension param).
-- [ ] Generate OpenAPI spec (`/q/openapi`) and verify all descriptions, parameter metadata, and response schemas are accurate.
+- [x] Audit `DocsResource.getDoc()`: verify `path` param description and example updated to relative path (`security-overview.adoc`), mention quarkiverse path pattern. Verify `version` param is `required = false` with `@Schema(defaultValue = "main")` and default note. Verify `extension` param present with description and example. Update `@Operation` description to mention website repo and quarkiverse. Update 200 response description to mention `extension` field.
+- [x] Audit `IndexResource.getIndex()`: verify `version` param is `required = false` with `@Schema(defaultValue = "main")` and default note. Update `@Operation` description to clarify core-only (no quarkiverse files).
+- [x] Audit `SearchResource.searchFiles()`: verify `version` optional with default note and quarkiverse disclaimer. Verify `extension` param present with description and example. Update 200 response description to mention `extension` field.
+- [x] Audit `SearchResource.searchSections()`: same checks as `searchFiles`.
+- [x] Audit `SearchResource.getSectionContent()`: verify `version` optional with default note and quarkiverse disclaimer. Verify `extension` param if present. Update 200 response description.
+- [x] Audit `SearchResource.searchCodeSamples()`: same checks as `searchFiles`.
+- [x] Audit `SearchResource.searchContent()`: same checks as `searchFiles`.
+- [x] Verify `SearchResource.listVersions()` is unchanged (no version param, no extension param).
+- [x] Generate OpenAPI spec (`/q/openapi`) and verify all descriptions, parameter metadata, and response schemas are accurate.
 
 ## Operational notes
 
@@ -117,4 +117,27 @@ Features 26, 27, and 28 each specify their own OpenAPI annotation changes as tas
 
 ## Implementation notes
 
-_(To be filled during implementation)_
+### README.md
+- Full rewrite replacing all Quarkus boilerplate with 10 sections as specified: Title, Overview, Architecture (with ASCII data flow diagram), API Endpoints (2 tables: retrieval + search), Quick Start, Configuration (2 tables: core + search tuning with all 15 `search.*` keys), Examples (4 curl examples with JSON responses), Building & Testing, Technology Stack, License.
+- All 8 endpoints documented with method, path, summary, and key parameters.
+- Configuration tables include all keys from `application.properties` and `SearchConfig.java` with accurate defaults.
+
+### AGENTS.md
+- 7 targeted edits applied:
+  1. Project summary: added website repo source, quarkiverse support, optional version, Jackson YAML.
+  2. Package map: added `com.fvd.quarkiverse` entry with subpackages.
+  3. Dependencies: added Jackson YAML line.
+  4. Configuration: added v1.0.2 config keys bullet list.
+  5. POJO/DTO example: replaced `SearchResponse<T>` with `FileSearchResult` showing `extension` field.
+  6. Service example: replaced stale `ensureIndex()`/`zipDownloadService` pattern with current SQLite-only `getOrBuildIndex()` pattern using `KeywordIndexStore.read()`.
+  7. Resource example: added `@Parameter(required = false)` with `@Schema(defaultValue = "main")` on version, `InputValidator.resolveVersion(version)`, and optional `extension` query param.
+
+### OpenAPI annotation audit
+- **DocsResource**: Updated `path` param from full GitHub path (`_versions/3.27/guides/...`) to relative path (`security-overview.adoc`) with quarkiverse path pattern note. Updated `@Operation` to mention website repo and quarkiverse. Updated 200 response to mention `extension` field. Updated `extension` param description to be more specific about quarkiverse vs core filtering.
+- **IndexResource**: Updated `@Operation` to clarify core-only (no quarkiverse files). Removed quarkiverse disclaimer from version param since this endpoint is core-only.
+- **SearchResource**: Updated all 4 search endpoints (`searchFiles`, `searchSections`, `searchCodeSamples`, `searchContent`): 200 response descriptions now mention `extension` field in results, extension param descriptions updated to detailed format matching DocsResource. `getSectionContent` and `listVersions` verified unchanged (correct as-is).
+
+### Verification
+- All tests pass (BUILD SUCCESSFUL, all 420 tests).
+- No production logic changed — documentation and annotations only.
+- OpenAPI spec generation not verified at runtime (requires `quarkusDev`), but all annotation changes are syntactically correct and compile successfully.

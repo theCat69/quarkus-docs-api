@@ -27,7 +27,9 @@ public class IndexResource {
     @GET
     @Operation(
             summary = "Get file index",
-            description = "Returns the file index for a Quarkus documentation version. Lists all available documentation files with their paths and SHA hashes."
+            description = "Returns the file index for a Quarkus documentation version. "
+                    + "Lists all available documentation files with their paths and SHA hashes. "
+                    + "This endpoint returns core docs only (not quarkiverse extension files)."
     )
     @APIResponse(
             responseCode = "200",
@@ -46,7 +48,7 @@ public class IndexResource {
     )
     public List<GithubApiIndex> getIndex(
             @Parameter(
-                    description = "Quarkus version branch or tag. Defaults to 'main' if omitted. When using 'main', results may include quarkiverse extension docs.",
+                    description = "Quarkus version branch or tag. Defaults to 'main' if omitted.",
                     required = false,
                     example = "3.27",
                     schema = @Schema(defaultValue = "main")

@@ -12,8 +12,11 @@ Those RULES are CRITICAL you must follow them.
 ## Project summary
 - Quarkus REST API using Gradle (wrapper only), with OpenAPI annotations.
 - Java 21 source/target compatibility.
-- Caches Quarkus docs by version and provides search across keyword indexes.
+- Sources docs from the `quarkusio.github.io` website repository (not the Quarkus source repo).
+- Caches Quarkus docs by version and provides search across keyword, section, code-sample, and full-text indexes.
 - SQLite-backed keyword and code sample indexes.
+- Supports quarkiverse extension docs via Antora playbook parsing (Jackson YAML).
+- `version` query parameter is optional on all endpoints; defaults to `main`.
 - Tests are JUnit 5 with QuarkusTest, RestAssured, AssertJ, Mockito.
 - Lombok is available; use it to reduce boilerplate when possible.
 
@@ -65,6 +68,7 @@ Short descriptions of every folder at repo root and under `src/`.
 - `src/main/java/com/fvd/docs`: Docs API resources, doc services, and doc storage.
 - `src/main/java/com/fvd/github`: GitHub API client, zip download, and upstream error mapping.
 - `src/main/java/com/fvd/indexs`: Indexing services, index stores, and keyword/code-sample index models.
+- `src/main/java/com/fvd/quarkiverse`: Quarkiverse extension doc ingestion — playbook parsing, zip extraction, and extension management (subpackages: `models`, `parser`, `services`).
 - `src/main/java/com/fvd/search`: Search services and response DTOs for file/section/code-sample searches.
 
 ### Common subpackages (generic guide)
@@ -173,12 +177,19 @@ consistent.
 ## Configuration
 - `src/main/resources/application.properties` is the default config.
 - Prefer configuration keys in properties rather than hardcoding values.
+- Notable config keys added in v1.0.2:
+  - `app.github.branch` (default `main`) — branch to fetch from the website repository.
+  - `app.quarkiverse.enabled` (default `true`) — enable quarkiverse extension doc ingestion.
+  - `app.quarkiverse.playbook-repo` (default `quarkiverse/quarkiverse-docs`) — Antora playbook repository.
+  - `app.quarkiverse.playbook-branch` (default `main`) — branch for the playbook repository.
+  - `app.quarkiverse.download-concurrency` (default `4`) — max concurrent extension downloads.
 
 ## Dependencies of note
 - Quarkus REST, REST client, Jackson.
 - Quarkus Scheduler, SmallRye Health, OpenAPI.
 - Quarkus ARC (CDI).
 - Quarkus Agroal + SQLite (quarkiverse JDBC).
+- Jackson YAML (com.fasterxml.jackson.dataformat:jackson-dataformat-yaml) for Antora playbook parsing.
 - Lombok (io.freefair.lombok plugin).
 - WireMock (test support).
 - AssertJ, RestAssured, Mockito for testing.
@@ -206,7 +217,7 @@ Use these examples as reference for structure, imports, and Lombok usage.
 ### POJO/DTO example
 
 ```java
-package com.fvd.search.resources;
+package com.fvd.search.services;
 
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
@@ -215,9 +226,12 @@ import java.util.List;
 
 @NoArgsConstructor
 @AllArgsConstructor
-public class SearchResponse<T> {
+public class FileSearchResult {
 
-    public List<T> results;
+    public String path;
+    public double score;
+    public List<String> matchedKeywords;
+    public String extension;
 
 }
 ```
@@ -266,18 +280,19 @@ public class DocStore {
 ```java
 package com.fvd.search.services;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.stores.KeywordIndexStore;
+import com.fvd.search.SearchConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @ApplicationScoped
@@ -285,40 +300,32 @@ import java.util.Optional;
 public class SearchService {
 
     private final KeywordIndexStore keywordIndexStore;
-    private final ObjectMapper objectMapper;
-    private final ZipDownloadService zipDownloadService;
-    private final KeywordIndexer keywordIndexer;
     private final DocStore docStore;
+    private final CacheService cacheService;
+    private final SearchConfig searchConfig;
+
+    private final Map<String, KeywordIndex> indexCache = new ConcurrentHashMap<>();
 
     public List<FileSearchResult> searchFiles(String version, List<String> keywords) {
-        ensureIndex(version);
-        KeywordIndex index = loadIndex(version);
+        KeywordIndex index = getOrBuildIndex(version);
         if (index == null) {
             return List.of();
         }
+        // ... scoring logic ...
         return List.of();
     }
 
-    private void ensureIndex(String version) {
-        Optional<String> existing = keywordIndexStore.read(version);
-        if (existing.isPresent()) {
-            return;
+    private KeywordIndex getOrBuildIndex(String version) {
+        KeywordIndex cached = indexCache.get(version);
+        if (cached != null) {
+            return cached;
         }
-        if (zipDownloadService == null || keywordIndexer == null || docStore == null) {
-            return;
+        Optional<KeywordIndex> index = keywordIndexStore.read(version);
+        if (index.isPresent()) {
+            indexCache.put(version, index.get());
+            return index.get();
         }
-    }
-
-    private KeywordIndex loadIndex(String version) {
-        Optional<String> json = keywordIndexStore.read(version);
-        if (json.isEmpty()) {
-            return null;
-        }
-        try {
-            return objectMapper.readValue(json.get(), KeywordIndex.class);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to parse keyword index for version: " + version, e);
-        }
+        return null;
     }
 }
 ```
@@ -337,6 +344,8 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import lombok.RequiredArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import java.util.Arrays;
 import java.util.List;
@@ -349,9 +358,15 @@ public class SearchResource {
 
     @GET
     @Path("/files")
-    public SearchResponse<FileSearchResult> searchFiles(@QueryParam("version") String version,
-                                                        @QueryParam("keywords") String keywords) {
-        InputValidator.validateVersion(version);
+    public SearchResponse<FileSearchResult> searchFiles(
+            @Parameter(description = "Quarkus version branch or tag. Defaults to 'main' if omitted.",
+                    required = false, example = "3.27", schema = @Schema(defaultValue = "main"))
+            @QueryParam("version") String version,
+            @Parameter(description = "Comma-separated list of search keywords", required = true, example = "security,oidc")
+            @QueryParam("keywords") String keywords,
+            @Parameter(description = "Optional extension name filter", required = false, example = "quarkus-core")
+            @QueryParam("extension") String extension) {
+        version = InputValidator.resolveVersion(version);
         InputValidator.validateKeywords(keywords);
         List<String> keywordList = Arrays.asList(keywords.split(","));
         List<FileSearchResult> results = searchService.searchFiles(version, keywordList);

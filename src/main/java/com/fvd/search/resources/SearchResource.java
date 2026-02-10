@@ -52,7 +52,7 @@ public class SearchResource {
     )
     @APIResponse(
             responseCode = "200",
-            description = "Search results returned successfully. Includes queriedKeywords (echo of parsed input keywords) and searchTimeMs (wall-clock milliseconds).",
+            description = "Search results returned successfully. Each result includes an extension field. Includes queriedKeywords (echo of parsed input keywords) and searchTimeMs (wall-clock milliseconds).",
             content = @Content(schema = @Schema(implementation = SearchResponse.class))
     )
     @APIResponse(
@@ -70,7 +70,7 @@ public class SearchResource {
             @QueryParam("limit") Integer limit,
             @Parameter(description = "Number of results to skip (default 0)", example = "0")
             @QueryParam("offset") Integer offset,
-            @Parameter(description = "Optional extension name filter", required = false, example = "quarkus-core")
+            @Parameter(description = "Optional extension name to filter results (e.g. quarkus-openapi-generator for quarkiverse, or quarkus-core for core docs)", required = false, example = "quarkus-core")
             @QueryParam("extension") String extension) {
         version = InputValidator.resolveVersion(version);
         InputValidator.validateKeywords(keywords);
@@ -95,7 +95,7 @@ public class SearchResource {
     )
     @APIResponse(
             responseCode = "200",
-            description = "Section search results returned successfully. Includes queriedKeywords and searchTimeMs.",
+            description = "Section search results returned successfully. Each result includes an extension field. Includes queriedKeywords and searchTimeMs.",
             content = @Content(schema = @Schema(implementation = SearchResponse.class))
     )
     @APIResponse(
@@ -115,7 +115,7 @@ public class SearchResource {
             @QueryParam("limit") Integer limit,
             @Parameter(description = "Number of results to skip (default 0)", example = "0")
             @QueryParam("offset") Integer offset,
-            @Parameter(description = "Optional extension name filter", required = false, example = "quarkus-core")
+            @Parameter(description = "Optional extension name to filter results (e.g. quarkus-openapi-generator for quarkiverse, or quarkus-core for core docs)", required = false, example = "quarkus-core")
             @QueryParam("extension") String extension) {
         version = InputValidator.resolveVersion(version);
         InputValidator.validateKeywords(keywords);
@@ -188,7 +188,7 @@ public class SearchResource {
     )
     @APIResponse(
             responseCode = "200",
-            description = "Code sample search results returned successfully. Includes queriedKeywords and searchTimeMs.",
+            description = "Code sample search results returned successfully. Each result includes an extension field. Includes queriedKeywords and searchTimeMs.",
             content = @Content(schema = @Schema(implementation = SearchResponse.class))
     )
     @APIResponse(
@@ -210,7 +210,7 @@ public class SearchResource {
             @QueryParam("limit") Integer limit,
             @Parameter(description = "Number of results to skip (default 0)", example = "0")
             @QueryParam("offset") Integer offset,
-            @Parameter(description = "Optional extension name filter", required = false, example = "quarkus-core")
+            @Parameter(description = "Optional extension name to filter results (e.g. quarkus-openapi-generator for quarkiverse, or quarkus-core for core docs)", required = false, example = "quarkus-core")
             @QueryParam("extension") String extension) {
         version = InputValidator.resolveVersion(version);
         InputValidator.validateKeywords(keywords);
@@ -242,7 +242,7 @@ public class SearchResource {
     )
     @APIResponse(
             responseCode = "200",
-            description = "Content search results returned successfully. Includes queriedKeywords and searchTimeMs.",
+            description = "Content search results returned successfully. Each result includes an extension field. Includes queriedKeywords and searchTimeMs.",
             content = @Content(schema = @Schema(implementation = SearchResponse.class))
     )
     @APIResponse(
@@ -262,7 +262,7 @@ public class SearchResource {
             @QueryParam("limit") Integer limit,
             @Parameter(description = "Number of results to skip (default 0)", example = "0")
             @QueryParam("offset") Integer offset,
-            @Parameter(description = "Optional extension name filter", required = false, example = "quarkus-core")
+            @Parameter(description = "Optional extension name to filter results (e.g. quarkus-openapi-generator for quarkiverse, or quarkus-core for core docs)", required = false, example = "quarkus-core")
             @QueryParam("extension") String extension) {
         version = InputValidator.resolveVersion(version);
         InputValidator.validateKeywords(keywords);

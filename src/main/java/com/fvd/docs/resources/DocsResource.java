@@ -25,11 +25,14 @@ public class DocsResource {
     @GET
     @Operation(
             summary = "Get document content",
-            description = "Retrieves the raw content of a Quarkus documentation file for a specific version. Returns cached content or fetches from GitHub if not cached."
+            description = "Retrieves the raw content of a Quarkus documentation file for a specific version. "
+                    + "Returns cached content or fetches from GitHub if not cached. "
+                    + "Sources docs from the quarkusio.github.io website repository. "
+                    + "For quarkiverse extensions (version 'main' only), use the quarkiverse path pattern."
     )
     @APIResponse(
             responseCode = "200",
-            description = "Document content returned successfully",
+            description = "Document content returned successfully. Response includes path, content, format, and extension fields.",
             content = @Content(schema = @Schema(implementation = DocResponse.class))
     )
     @APIResponse(
@@ -56,13 +59,14 @@ public class DocsResource {
             )
             @QueryParam("version") String version,
             @Parameter(
-                    description = "Full file path in the GitHub repository (e.g. _versions/3.27/guides/security-overview.adoc)",
+                    description = "File path relative to the docs directory (e.g. security-overview.adoc). "
+                            + "For quarkiverse extensions, use quarkiverse/<ext-name>/<file>.adoc",
                     required = true,
-                    example = "_versions/3.27/guides/security-overview.adoc"
+                    example = "security-overview.adoc"
             )
             @QueryParam("path") String path,
             @Parameter(
-                    description = "Optional extension name filter",
+                    description = "Optional extension name to filter results (e.g. quarkus-openapi-generator for quarkiverse, or quarkus-core for core docs)",
                     required = false,
                     example = "quarkus-core"
             )
