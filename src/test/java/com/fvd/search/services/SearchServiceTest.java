@@ -54,7 +54,7 @@ class SearchServiceTest {
         cacheService = new CacheService(tempDir.toString());
         SearchConfig searchConfig = new TestSearchConfig();
         FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
-        searchService = new SearchService(keywordIndexStore, codeSampleIndexStore, null, null, null, docParser, cacheService, searchConfig, fuzzyMatcher);
+        searchService = new SearchService(keywordIndexStore, codeSampleIndexStore, null, null, null, null, null, docParser, cacheService, searchConfig, fuzzyMatcher);
     }
 
     private void seedIndex(String version, KeywordIndex index) {
@@ -523,7 +523,7 @@ class SearchServiceTest {
             SearchConfig searchConfig = new TestSearchConfig();
             FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
             sectionSearchService = new SearchService(
-                    keywordIndexStore, codeSampleIndexStore, null, null, realDocStore, docParser, cacheService, searchConfig, fuzzyMatcher);
+                    keywordIndexStore, codeSampleIndexStore, null, null, null, null, realDocStore, docParser, cacheService, searchConfig, fuzzyMatcher);
         }
 
         @Test
@@ -721,7 +721,7 @@ class SearchServiceTest {
             SearchConfig searchConfig = new TestSearchConfig();
             FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
             lazySearchService = new SearchService(lazyKeywordIndexStore, lazyCodeSampleIndexStore,
-                    zipDownloadService, keywordIndexer, docStore, docParser, cacheService, searchConfig, fuzzyMatcher);
+                    null, zipDownloadService, keywordIndexer, null, docStore, docParser, cacheService, searchConfig, fuzzyMatcher);
         }
 
         @Test
@@ -1014,7 +1014,7 @@ class SearchServiceTest {
             SearchConfig searchConfig = new TestSearchConfig();
             FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
             contentSearchService = new SearchService(
-                    keywordIndexStore, codeSampleIndexStore, null, null, realDocStore, docParser, contentCacheService, searchConfig, fuzzyMatcher);
+                    keywordIndexStore, codeSampleIndexStore, null, null, null, null, realDocStore, docParser, contentCacheService, searchConfig, fuzzyMatcher);
         }
 
         @Test

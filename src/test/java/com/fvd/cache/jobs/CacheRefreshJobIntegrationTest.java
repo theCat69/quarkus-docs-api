@@ -63,7 +63,7 @@ class CacheRefreshJobIntegrationTest {
         if (cachePath.exists()) {
             FileUtils.cleanDirectory(cachePath);
         }
-        schemaInitializer.initSchema();
+        schemaInitializer.resetSchema();
     }
 
     @Test

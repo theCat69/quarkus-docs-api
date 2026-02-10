@@ -6,8 +6,18 @@ import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.services.ZipDownloadService;
-import com.fvd.indexs.indexers.*;
+import com.fvd.indexs.indexers.CodeSampleEntry;
+import com.fvd.indexs.indexers.CodeSampleIndex;
+import com.fvd.indexs.indexers.ContentIndex;
+import com.fvd.indexs.indexers.ContentIndexer;
+import com.fvd.indexs.indexers.ContentOccurrence;
+import com.fvd.indexs.indexers.FileKeywordEntry;
+import com.fvd.indexs.indexers.KeywordIndex;
+import com.fvd.indexs.indexers.KeywordIndexer;
+import com.fvd.indexs.indexers.KeywordScore;
+import com.fvd.indexs.indexers.SectionKeywordEntry;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
+import com.fvd.indexs.stores.ContentIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.search.SearchConfig;
 import jakarta.annotation.Nonnull;
@@ -15,7 +25,15 @@ import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -25,8 +43,10 @@ public class SearchService {
 
     private final KeywordIndexStore keywordIndexStore;
     private final CodeSampleIndexStore codeSampleIndexStore;
+    private final ContentIndexStore contentIndexStore;
     private final ZipDownloadService zipDownloadService;
     private final KeywordIndexer keywordIndexer;
+    private final ContentIndexer contentIndexer;
     private final DocStore docStore;
     private final DocParser docParser;
     private final CacheService cacheService;
@@ -35,6 +55,7 @@ public class SearchService {
 
     private final Map<String, KeywordIndex> indexCache = new ConcurrentHashMap<>();
     private final Map<String, CodeSampleIndex> codeSampleIndexCache = new ConcurrentHashMap<>();
+    private final Map<String, ContentIndex> contentIndexCache = new ConcurrentHashMap<>();
 
     public List<String> listVersions() {
         return cacheService.listCachedVersions();
@@ -202,6 +223,72 @@ public class SearchService {
 
     public PaginatedResult<ContentSearchResult> searchContent(String version, List<String> keywords,
                                                                int limit, int offset) {
+        ContentIndex contentIndex = getOrLoadContentIndex(version);
+        if (contentIndex == null) {
+            log.warn("Content index not available for version {}, falling back to brute-force scan", version);
+            return searchContentBruteForce(version, keywords, limit, offset);
+        }
+
+        Set<String> keywordSet = new HashSet<>(keywords.stream()
+                .map(String::toLowerCase).toList());
+        double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
+
+        // Aggregate scores per file from the inverted index
+        Map<String, Double> fileScores = new HashMap<>();
+        Map<String, Set<String>> fileMatchedKeywords = new HashMap<>();
+        Map<String, Integer> fileFirstMatchOffset = new HashMap<>();
+
+        for (String keyword : keywordSet) {
+            List<ContentOccurrence> occurrences = contentIndex.wordOccurrences.get(keyword);
+            if (occurrences == null || occurrences.isEmpty()) {
+                continue;
+            }
+
+            // Group occurrences by file
+            Map<String, List<ContentOccurrence>> byFile = new HashMap<>();
+            for (ContentOccurrence occ : occurrences) {
+                byFile.computeIfAbsent(occ.filePath, k -> new ArrayList<>()).add(occ);
+            }
+
+            for (Map.Entry<String, List<ContentOccurrence>> entry : byFile.entrySet()) {
+                String filePath = entry.getKey();
+                int matchCount = entry.getValue().size();
+                fileScores.merge(filePath, (double) matchCount, Double::sum);
+                fileMatchedKeywords.computeIfAbsent(filePath, k -> new HashSet<>()).add(keyword);
+
+                // Track earliest match offset per file
+                int earliestOffset = entry.getValue().stream()
+                        .mapToInt(o -> o.charOffset)
+                        .min().orElse(Integer.MAX_VALUE);
+                fileFirstMatchOffset.merge(filePath, earliestOffset, Math::min);
+            }
+        }
+
+        List<ContentSearchResult> results = new ArrayList<>();
+        for (Map.Entry<String, Double> entry : fileScores.entrySet()) {
+            String filePath = entry.getKey();
+            double score = entry.getValue();
+            int matchedCount = fileMatchedKeywords.get(filePath).size();
+            if (matchedCount > 1) {
+                score *= multiKeywordBoost;
+            }
+
+            int firstOffset = fileFirstMatchOffset.get(filePath);
+            Optional<String> content = docStore.read(version, filePath);
+            if (content.isEmpty()) {
+                continue;
+            }
+            int matchLine = computeLineNumber(content.get(), firstOffset);
+            String snippet = generateSnippet(content.get(), firstOffset);
+            results.add(new ContentSearchResult(filePath, snippet, firstOffset, matchLine, score));
+        }
+
+        results.sort(Comparator.comparingDouble((ContentSearchResult r) -> r.score).reversed());
+        return paginate(results, limit, offset);
+    }
+
+    private PaginatedResult<ContentSearchResult> searchContentBruteForce(String version, List<String> keywords,
+                                                                          int limit, int offset) {
         List<String> files = docStore.listDocFiles(version);
         if (files.isEmpty()) {
             return new PaginatedResult<>(List.of(), 0);
@@ -220,11 +307,9 @@ public class SearchService {
             }
             String text = content.get();
             String lowerText = text.toLowerCase();
-            String[] lines = text.split("\n", -1);
 
             double fileScore = 0;
             int firstMatchOffset = -1;
-            int firstMatchLine = -1;
             int matchedKeywordCount = 0;
 
             for (String keyword : keywordSet) {
@@ -247,7 +332,7 @@ public class SearchService {
                 if (matchedKeywordCount > 1) {
                     fileScore *= multiKeywordBoost;
                 }
-                firstMatchLine = computeLineNumber(text, firstMatchOffset);
+                int firstMatchLine = computeLineNumber(text, firstMatchOffset);
                 String snippet = generateSnippet(text, firstMatchOffset);
                 results.add(new ContentSearchResult(filePath, snippet, firstMatchOffset, firstMatchLine, fileScore));
             }
@@ -264,6 +349,7 @@ public class SearchService {
     public void invalidateCache(String version) {
         indexCache.remove(version);
         codeSampleIndexCache.remove(version);
+        contentIndexCache.remove(version);
     }
 
     private <T> PaginatedResult<T> paginate(List<T> all, int limit, int offset) {
@@ -386,6 +472,23 @@ public class SearchService {
         Optional<CodeSampleIndex> index = codeSampleIndexStore.read(version);
         if (index.isPresent()) {
             codeSampleIndexCache.put(version, index.get());
+            return index.get();
+        }
+        return null;
+    }
+
+    private ContentIndex getOrLoadContentIndex(String version) {
+        if (contentIndexStore == null) {
+            return null;
+        }
+        ContentIndex cached = contentIndexCache.get(version);
+        if (cached != null) {
+            return cached;
+        }
+
+        Optional<ContentIndex> index = contentIndexStore.read(version);
+        if (index.isPresent()) {
+            contentIndexCache.put(version, index.get());
             return index.get();
         }
         return null;

@@ -52,22 +52,41 @@ No change to `ContentSearchResult`:
 
 ## Tasks
 
-- [ ] Design `content_words` and `content_word_positions` SQLite tables; add to `SqliteSchemaInitializer`.
-- [ ] Create `ContentOccurrence` model: `(filePath, offset, lineNumber)`.
-- [ ] Create `ContentIndex` model: `Map<String, List<ContentOccurrence>>` wrapper with lookup methods.
-- [ ] Implement `ContentIndexer.build()` — tokenize full file content (whitespace split, strip, lowercase, filter), record character offsets and line numbers.
-- [ ] Implement `ContentIndexStore` with `write()`, `read()`, `exists()`, `deleteVersion()` following `KeywordIndexStore` patterns.
-- [ ] Add `contentIndexCache` (`ConcurrentHashMap`) to `SearchService`; add `getOrLoadContentIndex()`.
-- [ ] Refactor `SearchService.searchContent()` to use inverted index for keyword lookup, then read files only for snippet generation.
-- [ ] Update `SearchService.invalidateCache()` to also clear `contentIndexCache`.
-- [ ] Integrate `ContentIndexer.build()` into `CacheWarmupJob.warmupVersion()` after code sample indexer.
-- [ ] Integrate `ContentIndexer.build()` into `CacheRefreshJob.refreshVersion()` after code sample indexer.
-- [ ] Add unit tests for `ContentIndexer.build()` — correct word positions, stop word filtering, multi-file indexing.
-- [ ] Add unit tests for `ContentIndexStore` read/write round-trip.
-- [ ] Add unit tests for refactored `searchContent()` — verify word-level matching (not substring) and relevance ordering.
-- [ ] Add integration test via `/api/search/content` endpoint confirming correct results.
-- [ ] Add test verifying word-boundary behavior: "rest" matches "REST" token but not inside "forest" or "interest".
-- [ ] Performance validation: verify no per-request file reads except for snippet generation on matched files.
+- [x] Design `content_words` and `content_word_positions` SQLite tables; add to `SqliteSchemaInitializer`.
+- [x] Create `ContentOccurrence` model: `(filePath, offset, lineNumber)`.
+- [x] Create `ContentIndex` model: `Map<String, List<ContentOccurrence>>` wrapper with lookup methods.
+- [x] Implement `ContentIndexer.build()` — tokenize full file content (whitespace split, strip, lowercase, filter), record character offsets and line numbers.
+- [x] Implement `ContentIndexStore` with `write()`, `read()`, `exists()`, `deleteVersion()` following `KeywordIndexStore` patterns.
+- [x] Add `contentIndexCache` (`ConcurrentHashMap`) to `SearchService`; add `getOrLoadContentIndex()`.
+- [x] Refactor `SearchService.searchContent()` to use inverted index for keyword lookup, then read files only for snippet generation.
+- [x] Update `SearchService.invalidateCache()` to also clear `contentIndexCache`.
+- [x] Integrate `ContentIndexer.build()` into `CacheWarmupJob.warmupVersion()` after code sample indexer.
+- [x] Integrate `ContentIndexer.build()` into `CacheRefreshJob.refreshVersion()` after code sample indexer.
+- [x] Add unit tests for `ContentIndexer.build()` — correct word positions, stop word filtering, multi-file indexing.
+- [x] Add unit tests for `ContentIndexStore` read/write round-trip.
+- [x] Add unit tests for refactored `searchContent()` — verify word-level matching (not substring) and relevance ordering.
+- [x] Add integration test via `/api/search/content` endpoint confirming correct results.
+- [x] Add test verifying word-boundary behavior: "rest" matches "REST" token but not inside "forest" or "interest".
+- [x] Performance validation: verify no per-request file reads except for snippet generation on matched files.
+
+## Implementation notes
+
+### Architecture
+- Two-table SQLite design: `content_words` (version, word, file_path) + `content_word_positions` (word_id, char_offset, line_number) with FK and ON DELETE CASCADE.
+- Tokenization regex: `[a-zA-Z0-9-]+` — matches word characters including hyphens.
+- Full text tokenization: Unlike `KeywordIndexer` which strips code blocks, `ContentIndexer` tokenizes the FULL text including code blocks.
+- Word-level matching replaces substring matching — intentional precision improvement.
+
+### Key files
+- `ContentOccurrence.java` — Model record: `(filePath, charOffset, lineNumber)`.
+- `ContentIndex.java` — Model: `Map<String, List<ContentOccurrence>> wordOccurrences`.
+- `ContentIndexStore.java` — SQLite persistence with `exists()`, `read()`, `write()`, `deleteVersion()`.
+- `ContentIndexer.java` — `@ApplicationScoped` bean, builds inverted word index from doc files.
+- `SearchService.java` — Added `contentIndexStore`, `contentIndexer`, `contentIndexCache`; refactored `searchContent()` with `searchContentBruteForce()` fallback.
+- `SqliteSchemaInitializer.java` — Added `content_words` and `content_word_positions` tables; added `resetSchema()` method for test cleanup.
+
+### Test fix: SQLite connection pool stale data
+Integration tests that call `FileUtils.cleanDirectory(build/test-cache)` delete the SQLite DB file, but the Agroal connection pool holds open file descriptors to the old (unlinked) file. `initSchema()` with `CREATE TABLE IF NOT EXISTS` on a pooled connection to the old file leaves stale data intact. Fixed by adding `resetSchema()` which drops all tables before recreating them, ensuring a clean database state across test classes.
 
 ## Operational notes
 

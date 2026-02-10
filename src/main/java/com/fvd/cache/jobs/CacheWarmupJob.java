@@ -4,6 +4,7 @@ import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.CodeSampleIndexer;
+import com.fvd.indexs.indexers.ContentIndexer;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.services.IndexService;
 import io.quarkus.runtime.StartupEvent;
@@ -27,6 +28,7 @@ public class CacheWarmupJob {
     private final IndexService indexService;
     private final KeywordIndexer keywordIndexer;
     private final CodeSampleIndexer codeSampleIndexer;
+    private final ContentIndexer contentIndexer;
     private final CacheService cacheService;
 
     @ConfigProperty(name = "app.versions")
@@ -74,5 +76,8 @@ public class CacheWarmupJob {
 
         codeSampleIndexer.build(version, extractedFiles);
         log.info("Code sample index built for version {}", version);
+
+        contentIndexer.build(version, extractedFiles);
+        log.info("Content index built for version {}", version);
     }
 }

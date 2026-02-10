@@ -45,7 +45,7 @@ class SearchResourceTest {
             FileUtils.cleanDirectory(cachePath);
         }
         // Re-initialize schema after cleaning (DB file was deleted)
-        schemaInitializer.initSchema();
+        schemaInitializer.resetSchema();
         // Invalidate in-memory caches to avoid cross-test pollution
         searchService.invalidateCache("3.27");
     }

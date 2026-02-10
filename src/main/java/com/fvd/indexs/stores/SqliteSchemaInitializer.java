@@ -30,6 +30,34 @@ public class SqliteSchemaInitializer {
     }
 
     public void initSchema() {
+        ensureCacheDir();
+        createTables();
+    }
+
+    /**
+     * Drops all tables and recreates the schema. Used in tests to ensure
+     * a clean database after the cache directory has been wiped.
+     */
+    public void resetSchema() {
+        ensureCacheDir();
+        try (Connection conn = dataSource.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("DROP TABLE IF EXISTS content_word_positions");
+            stmt.execute("DROP TABLE IF EXISTS content_words");
+            stmt.execute("DROP TABLE IF EXISTS code_sample_keywords");
+            stmt.execute("DROP TABLE IF EXISTS code_samples");
+            stmt.execute("DROP TABLE IF EXISTS section_keywords");
+            stmt.execute("DROP TABLE IF EXISTS sections");
+            stmt.execute("DROP TABLE IF EXISTS file_keywords");
+            stmt.execute("DROP TABLE IF EXISTS files");
+            stmt.execute("DROP TABLE IF EXISTS github_index");
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to drop SQLite tables", e);
+        }
+        createTables();
+    }
+
+    private void ensureCacheDir() {
         if (cacheDir != null) {
             Path cacheDirPath = Path.of(cacheDir);
             try {
@@ -38,6 +66,9 @@ public class SqliteSchemaInitializer {
                 throw new RuntimeException("Failed to create cache directory: " + cacheDir, e);
             }
         }
+    }
+
+    private void createTables() {
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement()) {
 
@@ -120,6 +151,26 @@ public class SqliteSchemaInitializer {
                     )
                     """);
 
+            stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS content_words (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        version TEXT NOT NULL,
+                        word TEXT NOT NULL,
+                        file_path TEXT NOT NULL,
+                        UNIQUE(version, word, file_path)
+                    )
+                    """);
+
+            stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS content_word_positions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        word_id INTEGER NOT NULL,
+                        char_offset INTEGER NOT NULL,
+                        line_number INTEGER NOT NULL,
+                        FOREIGN KEY (word_id) REFERENCES content_words(id) ON DELETE CASCADE
+                    )
+                    """);
+
             // Create indexes for efficient lookups
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_files_version ON files(version)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_keywords_file_id ON file_keywords(file_id)");
@@ -131,6 +182,9 @@ public class SqliteSchemaInitializer {
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_code_samples_version ON code_samples(version)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_code_sample_keywords_sample_id ON code_sample_keywords(sample_id)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_code_sample_keywords_word ON code_sample_keywords(word)");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_content_words_version ON content_words(version)");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_content_words_word ON content_words(word)");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_content_word_positions_word_id ON content_word_positions(word_id)");
 
             log.info("SQLite schema initialized successfully");
         } catch (SQLException e) {

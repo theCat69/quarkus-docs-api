@@ -26,7 +26,7 @@ class DocsResourceTest {
             FileUtils.cleanDirectory(cachePath);
         }
         // Re-initialize schema after cleaning (DB file was deleted)
-        schemaInitializer.initSchema();
+        schemaInitializer.resetSchema();
     }
 
     @Test

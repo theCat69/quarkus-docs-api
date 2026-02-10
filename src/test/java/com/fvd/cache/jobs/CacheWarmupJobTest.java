@@ -7,6 +7,8 @@ import com.fvd.github.exceptions.UpstreamException;
 import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.CodeSampleIndex;
 import com.fvd.indexs.indexers.CodeSampleIndexer;
+import com.fvd.indexs.indexers.ContentIndex;
+import com.fvd.indexs.indexers.ContentIndexer;
 import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.services.IndexService;
@@ -17,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -42,13 +45,16 @@ class CacheWarmupJobTest {
     private CodeSampleIndexer codeSampleIndexer;
 
     @Mock
+    private ContentIndexer contentIndexer;
+
+    @Mock
     private CacheService cacheService;
 
     private CacheWarmupJob job;
 
     @BeforeEach
     void setUp() {
-        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, cacheService);
+        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, contentIndexer, cacheService);
         job.configuredVersions = Optional.of(List.of("3.17", "3.27"));
         job.fullReset = Optional.empty();
     }
@@ -65,6 +71,8 @@ class CacheWarmupJobTest {
         when(keywordIndexer.build(eq("3.27"), any())).thenReturn(new KeywordIndex(List.of()));
         when(codeSampleIndexer.build(eq("3.17"), any())).thenReturn(new CodeSampleIndex(List.of()));
         when(codeSampleIndexer.build(eq("3.27"), any())).thenReturn(new CodeSampleIndex(List.of()));
+        when(contentIndexer.build(eq("3.17"), any())).thenReturn(new ContentIndex(Map.of()));
+        when(contentIndexer.build(eq("3.27"), any())).thenReturn(new ContentIndex(Map.of()));
 
         job.onStartup(null);
 
@@ -76,6 +84,8 @@ class CacheWarmupJobTest {
         verify(keywordIndexer).build(eq("3.27"), eq(List.of("config.adoc")));
         verify(codeSampleIndexer).build(eq("3.17"), eq(List.of("security.adoc")));
         verify(codeSampleIndexer).build(eq("3.27"), eq(List.of("config.adoc")));
+        verify(contentIndexer).build(eq("3.17"), eq(List.of("security.adoc")));
+        verify(contentIndexer).build(eq("3.27"), eq(List.of("config.adoc")));
     }
 
     @Test
@@ -86,6 +96,7 @@ class CacheWarmupJobTest {
         when(indexService.getOrFetchIndex("3.27")).thenReturn(List.of());
         when(keywordIndexer.build(eq("3.27"), any())).thenReturn(new KeywordIndex(List.of()));
         when(codeSampleIndexer.build(eq("3.27"), any())).thenReturn(new CodeSampleIndex(List.of()));
+        when(contentIndexer.build(eq("3.27"), any())).thenReturn(new ContentIndex(Map.of()));
 
         job.onStartup(null);
 
@@ -103,6 +114,7 @@ class CacheWarmupJobTest {
         verify(zipDownloadService, never()).streamAndExtract(any());
         verify(keywordIndexer, never()).build(any(), any());
         verify(codeSampleIndexer, never()).build(any(), any());
+        verify(contentIndexer, never()).build(any(), any());
     }
 
     @Test
@@ -114,6 +126,7 @@ class CacheWarmupJobTest {
         when(indexService.getOrFetchIndex("3.27")).thenReturn(List.of());
         when(keywordIndexer.build(eq("3.27"), any())).thenReturn(new KeywordIndex(List.of()));
         when(codeSampleIndexer.build(eq("3.27"), any())).thenReturn(new CodeSampleIndex(List.of()));
+        when(contentIndexer.build(eq("3.27"), any())).thenReturn(new ContentIndex(Map.of()));
 
         job.onStartup(null);
 
@@ -121,11 +134,12 @@ class CacheWarmupJobTest {
         verify(zipDownloadService).streamAndExtract("3.27");
         verify(keywordIndexer).build(eq("3.27"), eq(List.of("config.adoc")));
         verify(codeSampleIndexer).build(eq("3.27"), eq(List.of("config.adoc")));
+        verify(contentIndexer).build(eq("3.27"), eq(List.of("config.adoc")));
     }
 
     @Test
     void warmupDoesNothingWhenNoVersionsConfigured() {
-        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, cacheService);
+        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, contentIndexer, cacheService);
         job.configuredVersions = Optional.empty();
         job.fullReset = Optional.empty();
 
@@ -135,11 +149,12 @@ class CacheWarmupJobTest {
         verify(indexService, never()).getOrFetchIndex(any());
         verify(keywordIndexer, never()).build(any(), any());
         verify(codeSampleIndexer, never()).build(any(), any());
+        verify(contentIndexer, never()).build(any(), any());
     }
 
     @Test
     void warmupDoesNothingWhenVersionsListIsEmpty() {
-        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, cacheService);
+        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, contentIndexer, cacheService);
         job.configuredVersions = Optional.of(List.of());
         job.fullReset = Optional.empty();
 
@@ -159,8 +174,9 @@ class CacheWarmupJobTest {
         when(indexService.getOrFetchIndex("3.17")).thenReturn(index);
         when(keywordIndexer.build(eq("3.17"), any())).thenReturn(new KeywordIndex(List.of()));
         when(codeSampleIndexer.build(eq("3.17"), any())).thenReturn(new CodeSampleIndex(List.of()));
+        when(contentIndexer.build(eq("3.17"), any())).thenReturn(new ContentIndex(Map.of()));
 
-        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, cacheService);
+        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, contentIndexer, cacheService);
         job.configuredVersions = Optional.of(List.of("3.17"));
         job.fullReset = Optional.empty();
 
@@ -169,5 +185,6 @@ class CacheWarmupJobTest {
         verify(indexService).getOrFetchIndex("3.17");
         verify(keywordIndexer).build("3.17", List.of("a.adoc", "b.adoc"));
         verify(codeSampleIndexer).build("3.17", List.of("a.adoc", "b.adoc"));
+        verify(contentIndexer).build("3.17", List.of("a.adoc", "b.adoc"));
     }
 }
