@@ -65,19 +65,13 @@ public class SearchService {
         Map<String, Double> scores = new HashMap<>();
 
         for (FileKeywordEntry file : index.files) {
-            double score = 0;
-            int matchedCount = 0;
-            for (KeywordScore ks : file.keywords) {
-                if (keywordSet.contains(ks.word)) {
-                    score += ks.score;
-                    matchedCount++;
+            MatchAccumulator acc = computeMatchingScore(file.keywords, keywordSet);
+            if (acc.score > 0) {
+                double finalScore = acc.score;
+                if (acc.matchedCount > 1) {
+                    finalScore *= multiKeywordBoost;
                 }
-            }
-            if (score > 0) {
-                if (matchedCount > 1) {
-                    score *= multiKeywordBoost;
-                }
-                scores.put(file.path, score);
+                scores.put(file.path, finalScore);
             }
         }
         return scores;
@@ -102,20 +96,14 @@ public class SearchService {
                 continue;
             }
             for (SectionKeywordEntry section : file.sections) {
-                double score = 0;
-                int matchedCount = 0;
-                for (KeywordScore ks : section.keywords) {
-                    if (keywordSet.contains(ks.word)) {
-                        score += ks.score;
-                        matchedCount++;
-                    }
-                }
-                if (score > 0) {
-                    if (matchedCount > 1) {
-                        score *= multiKeywordBoost;
+                MatchAccumulator acc = computeMatchingScore(section.keywords, keywordSet);
+                if (acc.score > 0) {
+                    double finalScore = acc.score;
+                    if (acc.matchedCount > 1) {
+                        finalScore *= multiKeywordBoost;
                     }
                     results.add(new SectionSearchResult(
-                            file.path, section.title, section.start, section.end, score));
+                            file.path, section.title, section.start, section.end, finalScore));
                 }
             }
         }
@@ -196,21 +184,15 @@ public class SearchService {
                 continue;
             }
 
-            double score = 0;
-            int matchedCount = 0;
-            for (KeywordScore ks : sample.keywords) {
-                if (keywordSet.contains(ks.word)) {
-                    score += ks.score;
-                    matchedCount++;
-                }
-            }
-            if (score > 0) {
-                if (matchedCount > 1) {
-                    score *= multiKeywordBoost;
+            MatchAccumulator acc = computeMatchingScore(sample.keywords, keywordSet);
+            if (acc.score > 0) {
+                double finalScore = acc.score;
+                if (acc.matchedCount > 1) {
+                    finalScore *= multiKeywordBoost;
                 }
                 results.add(new CodeSampleSearchResult(
                         sample.filePath, sample.sectionTitle, sample.language,
-                        sample.content, sample.startLine, sample.endLine, score));
+                        sample.content, sample.startLine, sample.endLine, finalScore));
             }
         }
 
@@ -291,6 +273,47 @@ public class SearchService {
         }
         int end = Math.min(offset + limit, total);
         return new PaginatedResult<>(all.subList(offset, end), total);
+    }
+
+    record MatchAccumulator(double score, int matchedCount) {}
+
+    /**
+     * Computes the total matching score for a list of indexed keywords against a set of query keywords.
+     * Supports both exact matches (full score) and prefix matches (discounted by PREFIX_MATCH_MULTIPLIER).
+     * Exact matches take precedence over prefix matches for the same indexed keyword.
+     */
+    MatchAccumulator computeMatchingScore(List<KeywordScore> indexedKeywords, Set<String> queryKeywords) {
+        double prefixMultiplier = searchConfig.boost().prefixMatchMultiplier();
+        double totalScore = 0;
+        Set<String> matchedQueryKeywords = new HashSet<>();
+
+        for (KeywordScore ks : indexedKeywords) {
+            double bestScore = 0;
+            String bestQueryKeyword = null;
+
+            for (String query : queryKeywords) {
+                if (ks.word.equals(query)) {
+                    // Exact match — full score, takes precedence
+                    bestScore = ks.score;
+                    bestQueryKeyword = query;
+                    break;
+                } else if (ks.word.startsWith(query)) {
+                    // Prefix match — discounted score
+                    double prefixScore = ks.score * prefixMultiplier;
+                    if (prefixScore > bestScore) {
+                        bestScore = prefixScore;
+                        bestQueryKeyword = query;
+                    }
+                }
+            }
+
+            if (bestQueryKeyword != null) {
+                totalScore += bestScore;
+                matchedQueryKeywords.add(bestQueryKeyword);
+            }
+        }
+
+        return new MatchAccumulator(totalScore, matchedQueryKeywords.size());
     }
 
     int computeLineNumber(String text, int charOffset) {

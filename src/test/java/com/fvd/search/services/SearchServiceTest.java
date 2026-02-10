@@ -191,6 +191,115 @@ class SearchServiceTest {
         assertThat(result.total()).isEqualTo(0);
     }
 
+    // --- Prefix matching tests ---
+
+    @Test
+    void searchFilesPrefixMatchReturnsResults() {
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("security.adoc",
+                        List.of(new KeywordScore("security", 10)), List.of())
+        ));
+        seedIndex("3.27", index);
+
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("secur"), 10, 0);
+
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.items().get(0).path).isEqualTo("security.adoc");
+    }
+
+    @Test
+    void searchFilesPrefixMatchDoesNotMatchNonPrefix() {
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("obscure.adoc",
+                        List.of(new KeywordScore("obscure", 10)), List.of())
+        ));
+        seedIndex("3.27", index);
+
+        // "secur" should NOT match "obscure"
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("secur"), 10, 0);
+
+        assertThat(result.items()).isEmpty();
+    }
+
+    @Test
+    void searchFilesPrefixMatchAppliesDiscount() {
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("test.adoc",
+                        List.of(new KeywordScore("security", 10)), List.of())
+        ));
+        seedIndex("3.27", index);
+
+        PaginatedResult<FileSearchResult> exactResult = searchService.searchFiles("3.27", List.of("security"), 10, 0);
+        PaginatedResult<FileSearchResult> prefixResult = searchService.searchFiles("3.27", List.of("secur"), 10, 0);
+
+        // Exact match: score = 10.0, Prefix match: score = 10.0 * 0.8 = 8.0
+        assertThat(exactResult.items().get(0).score).isEqualTo(10.0);
+        assertThat(prefixResult.items().get(0).score).isEqualTo(8.0);
+    }
+
+    @Test
+    void searchFilesExactMatchTakesPrecedenceOverPrefix() {
+        // "security" is both exact match for query "security" and prefix match
+        // Exact should win with full score
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("test.adoc",
+                        List.of(new KeywordScore("security", 10)), List.of())
+        ));
+        seedIndex("3.27", index);
+
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("security"), 10, 0);
+
+        assertThat(result.items().get(0).score).isEqualTo(10.0); // full score, not discounted
+    }
+
+    @Test
+    void searchFilesQueryKeywordLongerThanIndexedDoesNotMatch() {
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("test.adoc",
+                        List.of(new KeywordScore("sec", 10)), List.of())
+        ));
+        seedIndex("3.27", index);
+
+        // "security" is longer than "sec", so "sec".startsWith("security") is false
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("security"), 10, 0);
+
+        assertThat(result.items()).isEmpty();
+    }
+
+    @Test
+    void searchSectionsPrefixMatchReturnsResults() {
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("test.adoc", List.of(), List.of(
+                        new SectionKeywordEntry("Auth Section", 1, 10,
+                                List.of(new KeywordScore("authentication", 8)))
+                ))
+        ));
+        seedIndex("3.27", index);
+
+        PaginatedResult<SectionSearchResult> result = searchService.searchSections(
+                "3.27", List.of("auth"), null, 10, 0);
+
+        assertThat(result.items()).hasSize(1);
+        // Prefix discount: 8 * 0.8 = 6.4
+        assertThat(result.items().get(0).score).isEqualTo(6.4);
+    }
+
+    @Test
+    void searchCodeSamplesPrefixMatchReturnsResults() {
+        CodeSampleIndex index = new CodeSampleIndex(List.of(
+                new CodeSampleEntry("test.adoc", "Section A", "java", "code1", 1, 5,
+                        List.of(new KeywordScore("security", 10)))
+        ));
+        codeSampleIndexStore.write("3.27", index);
+
+        PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
+                "3.27", List.of("secur"), null, null, 10, 0);
+
+        assertThat(result.items()).hasSize(1);
+        // Prefix discount: 10 * 0.8 = 8.0
+        assertThat(result.items().get(0).score).isEqualTo(8.0);
+    }
+
     // --- Section search tests ---
 
     @Test
