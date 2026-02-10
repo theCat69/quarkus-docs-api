@@ -36,7 +36,7 @@ public class CacheRefreshJob {
     private final SearchService searchService;
     private final DocParser docParser;
 
-    @Scheduled(every = "${app.refresh.interval:6h}", delayed = "10m")
+    @Scheduled(every = "${app.refresh.interval:6h}", delayed = "${app.refresh.interval:6h}")
     public void refresh() {
         List<String> versions = cacheService.listCachedVersions();
         if (versions.isEmpty()) {
