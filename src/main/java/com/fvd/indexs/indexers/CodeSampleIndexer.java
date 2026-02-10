@@ -3,6 +3,7 @@ package com.fvd.indexs.indexers;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
+import com.fvd.search.SearchConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,14 +17,12 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class CodeSampleIndexer {
 
-    private static final int IMPORT_BOOST = 5;
-    private static final int FILENAME_BOOST = 10;
-    private static final int SECTION_TITLE_BOOST = 5;
     private static final Pattern IMPORT_PATTERN = Pattern.compile("^\\s*import\\s+(?:static\\s+)?([a-zA-Z][a-zA-Z0-9_.]+)\\s*;");
 
     private final DocStore docStore;
     private final CodeSampleIndexStore codeSampleIndexStore;
     private final DocParser parser;
+    private final SearchConfig searchConfig;
 
     public CodeSampleIndex build(String version, List<String> filePaths) {
         List<CodeSampleEntry> entries = new ArrayList<>();
@@ -91,6 +90,7 @@ public class CodeSampleIndexer {
     }
 
     void applyImportBoost(String codeContent, Map<String, Integer> keywords) {
+        int boost = searchConfig.boost().importBoost();
         for (String line : codeContent.split("\n")) {
             Matcher matcher = IMPORT_PATTERN.matcher(line);
             if (matcher.matches()) {
@@ -100,7 +100,7 @@ public class CodeSampleIndexer {
                 for (String part : parts) {
                     String token = part.toLowerCase();
                     if (token.length() >= 3 && !KeywordIndexer.WORD_INDEX_BLACK_LIST.contains(token)) {
-                        keywords.merge(token, IMPORT_BOOST, Integer::sum);
+                        keywords.merge(token, boost, Integer::sum);
                     }
                 }
             }
@@ -116,9 +116,10 @@ public class CodeSampleIndexer {
         if (filename.endsWith(parser.fileSuffix())) {
             filename = filename.substring(0, filename.length() - parser.fileSuffix().length());
         }
+        int boost = searchConfig.boost().filenameBoost();
         List<String> filenameTokens = parser.tokenize(filename.replace("-", " ").replace("_", " "));
         for (String token : filenameTokens) {
-            keywords.merge(token, FILENAME_BOOST, Integer::sum);
+            keywords.merge(token, boost, Integer::sum);
         }
     }
 
@@ -126,9 +127,10 @@ public class CodeSampleIndexer {
         if (sectionTitle == null || sectionTitle.isBlank()) {
             return;
         }
+        int boost = searchConfig.boost().sectionTitleBoost();
         List<String> titleTokens = parser.tokenize(sectionTitle);
         for (String token : titleTokens) {
-            keywords.merge(token, SECTION_TITLE_BOOST, Integer::sum);
+            keywords.merge(token, boost, Integer::sum);
         }
     }
 

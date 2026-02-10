@@ -2,6 +2,7 @@ package com.fvd.search.services;
 
 import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.cache.services.CacheService;
+import com.fvd.common.matchers.FuzzyMatcher;
 import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
@@ -10,6 +11,8 @@ import com.fvd.indexs.indexers.*;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.indexs.stores.SqliteSchemaInitializer;
+import com.fvd.search.SearchConfig;
+import com.fvd.search.TestSearchConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -47,9 +50,11 @@ class SearchServiceTest {
         initializer.initSchema();
         keywordIndexStore = new KeywordIndexStore(ds);
         codeSampleIndexStore = new CodeSampleIndexStore(ds);
-        docParser = new AsciidocParser();
+        docParser = new AsciidocParser(new TestSearchConfig());
         cacheService = new CacheService(tempDir.toString());
-        searchService = new SearchService(keywordIndexStore, codeSampleIndexStore, null, null, null, docParser, cacheService);
+        SearchConfig searchConfig = new TestSearchConfig();
+        FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
+        searchService = new SearchService(keywordIndexStore, codeSampleIndexStore, null, null, null, docParser, cacheService, searchConfig, fuzzyMatcher);
     }
 
     private void seedIndex(String version, KeywordIndex index) {
@@ -348,8 +353,10 @@ class SearchServiceTest {
         void setUpSectionContent() {
             CacheService cacheService = new CacheService(tempDir.toString());
             realDocStore = new DocStore(cacheService);
+            SearchConfig searchConfig = new TestSearchConfig();
+            FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
             sectionSearchService = new SearchService(
-                    keywordIndexStore, codeSampleIndexStore, null, null, realDocStore, docParser, cacheService);
+                    keywordIndexStore, codeSampleIndexStore, null, null, realDocStore, docParser, cacheService, searchConfig, fuzzyMatcher);
         }
 
         @Test
@@ -544,8 +551,10 @@ class SearchServiceTest {
             initializer.initSchema();
             lazyKeywordIndexStore = new KeywordIndexStore(ds);
             CodeSampleIndexStore lazyCodeSampleIndexStore = new CodeSampleIndexStore(ds);
+            SearchConfig searchConfig = new TestSearchConfig();
+            FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
             lazySearchService = new SearchService(lazyKeywordIndexStore, lazyCodeSampleIndexStore,
-                    zipDownloadService, keywordIndexer, docStore, docParser, cacheService);
+                    zipDownloadService, keywordIndexer, docStore, docParser, cacheService, searchConfig, fuzzyMatcher);
         }
 
         @Test
@@ -835,8 +844,10 @@ class SearchServiceTest {
         void setUpContentSearch() {
             CacheService contentCacheService = new CacheService(tempDir.toString());
             realDocStore = new DocStore(contentCacheService);
+            SearchConfig searchConfig = new TestSearchConfig();
+            FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
             contentSearchService = new SearchService(
-                    keywordIndexStore, codeSampleIndexStore, null, null, realDocStore, docParser, contentCacheService);
+                    keywordIndexStore, codeSampleIndexStore, null, null, realDocStore, docParser, contentCacheService, searchConfig, fuzzyMatcher);
         }
 
         @Test

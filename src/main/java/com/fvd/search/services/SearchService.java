@@ -9,6 +9,7 @@ import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.*;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
+import com.fvd.search.SearchConfig;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +23,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class SearchService {
 
-    private static final double MULTI_KEYWORD_BOOST = 1.5;
-
     private final KeywordIndexStore keywordIndexStore;
     private final CodeSampleIndexStore codeSampleIndexStore;
     private final ZipDownloadService zipDownloadService;
@@ -31,6 +30,8 @@ public class SearchService {
     private final DocStore docStore;
     private final DocParser docParser;
     private final CacheService cacheService;
+    private final SearchConfig searchConfig;
+    private final FuzzyMatcher fuzzyMatcher;
 
     private final Map<String, KeywordIndex> indexCache = new ConcurrentHashMap<>();
     private final Map<String, CodeSampleIndex> codeSampleIndexCache = new ConcurrentHashMap<>();
@@ -59,7 +60,8 @@ public class SearchService {
     }
 
     @Nonnull
-    private static Map<String, Double> getScores(KeywordIndex index, Set<String> keywordSet) {
+    private Map<String, Double> getScores(KeywordIndex index, Set<String> keywordSet) {
+        double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
         Map<String, Double> scores = new HashMap<>();
 
         for (FileKeywordEntry file : index.files) {
@@ -73,7 +75,7 @@ public class SearchService {
             }
             if (score > 0) {
                 if (matchedCount > 1) {
-                    score *= MULTI_KEYWORD_BOOST;
+                    score *= multiKeywordBoost;
                 }
                 scores.put(file.path, score);
             }
@@ -139,7 +141,7 @@ public class SearchService {
                 .filter(t -> !t.isEmpty())
                 .toList();
 
-        Optional<FuzzyMatcher.MatchResult> fuzzyMatch = FuzzyMatcher.bestMatch(sectionTitle, titles);
+        Optional<FuzzyMatcher.MatchResult> fuzzyMatch = fuzzyMatcher.bestMatch(sectionTitle, titles);
         if (fuzzyMatch.isPresent()) {
             FuzzyMatcher.MatchResult match = fuzzyMatch.get();
             for (DocParser.Section section : sections) {
@@ -176,6 +178,7 @@ public class SearchService {
 
         Set<String> keywordSet = new HashSet<>(keywords.stream()
                 .map(String::toLowerCase).toList());
+        double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
 
         List<CodeSampleSearchResult> results = new ArrayList<>();
         for (CodeSampleEntry sample : index.samples) {
@@ -197,7 +200,7 @@ public class SearchService {
             }
             if (score > 0) {
                 if (matchedCount > 1) {
-                    score *= MULTI_KEYWORD_BOOST;
+                    score *= multiKeywordBoost;
                 }
                 results.add(new CodeSampleSearchResult(
                         sample.filePath, sample.sectionTitle, sample.language,
@@ -218,6 +221,7 @@ public class SearchService {
 
         Set<String> keywordSet = new HashSet<>(keywords.stream()
                 .map(String::toLowerCase).toList());
+        double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
 
         List<ContentSearchResult> results = new ArrayList<>();
 
@@ -249,7 +253,7 @@ public class SearchService {
 
             if (fileScore > 0 && firstMatchOffset >= 0) {
                 if (keywordSet.size() > 1) {
-                    fileScore *= MULTI_KEYWORD_BOOST;
+                    fileScore *= multiKeywordBoost;
                 }
                 firstMatchLine = computeLineNumber(text, firstMatchOffset);
                 String snippet = generateSnippet(text, firstMatchOffset);
@@ -279,9 +283,7 @@ public class SearchService {
         return new PaginatedResult<>(all.subList(offset, end), total);
     }
 
-    private static final int SNIPPET_CONTEXT = 100;
-
-    static int computeLineNumber(String text, int charOffset) {
+    int computeLineNumber(String text, int charOffset) {
         int line = 1;
         for (int i = 0; i < charOffset && i < text.length(); i++) {
             if (text.charAt(i) == '\n') {
@@ -291,9 +293,10 @@ public class SearchService {
         return line;
     }
 
-    static String generateSnippet(String text, int matchOffset) {
-        int start = Math.max(0, matchOffset - SNIPPET_CONTEXT);
-        int end = Math.min(text.length(), matchOffset + SNIPPET_CONTEXT);
+    String generateSnippet(String text, int matchOffset) {
+        int contextSize = searchConfig.snippet().contextSize();
+        int start = Math.max(0, matchOffset - contextSize);
+        int end = Math.min(text.length(), matchOffset + contextSize);
         String snippet = text.substring(start, end).replaceAll("\\s+", " ").trim();
         if (start > 0) {
             snippet = "..." + snippet;

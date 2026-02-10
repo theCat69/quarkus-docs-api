@@ -6,6 +6,7 @@ import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.indexs.stores.SqliteSchemaInitializer;
+import com.fvd.search.TestSearchConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -35,9 +36,8 @@ class KeywordIndexerTest {
         SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
         initializer.initSchema();
         keywordIndexStore = new KeywordIndexStore(ds);
-        DocParser parser = new AsciidocParser();
-        indexer = new KeywordIndexer(docStore, keywordIndexStore, parser);
-        indexer.fileEntryKeywordMinimalScore = 2;
+        DocParser parser = new AsciidocParser(new TestSearchConfig());
+        indexer = new KeywordIndexer(docStore, keywordIndexStore, parser, new TestSearchConfig());
     }
 
     @Test

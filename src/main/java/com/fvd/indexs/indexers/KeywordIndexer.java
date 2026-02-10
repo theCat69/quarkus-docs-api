@@ -3,9 +3,9 @@ package com.fvd.indexs.indexers;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
+import com.fvd.search.SearchConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.*;
 
@@ -51,15 +51,10 @@ public class KeywordIndexer {
             "your"
     );
 
-    private static final int FILENAME_BOOST = 10;
-    private static final int TITLE_BOOST = 5;
-
     private final DocStore docStore;
     private final KeywordIndexStore keywordIndexStore;
     private final DocParser parser;
-
-    @ConfigProperty(name = "keywords.file.minimal.score", defaultValue = "2")
-    Integer fileEntryKeywordMinimalScore;
+    private final SearchConfig searchConfig;
 
     public KeywordIndex build(String version, List<String> filePaths) {
         List<FileKeywordEntry> fileEntries = new ArrayList<>();
@@ -79,9 +74,10 @@ public class KeywordIndexer {
     }
 
     private Map<String, Integer> filterFileEntries(Map<String, Integer> originalFileKeywords) {
+        int minScore = searchConfig.index().minKeywordScore();
         Map<String, Integer> filteredFileKeywords = new HashMap<>();
         for (Map.Entry<String, Integer> fileEntry : originalFileKeywords.entrySet()) {
-            if (fileEntry.getValue() >= fileEntryKeywordMinimalScore) {
+            if (fileEntry.getValue() >= minScore) {
                 filteredFileKeywords.put(fileEntry.getKey(), fileEntry.getValue());
             }
         }
@@ -118,9 +114,10 @@ public class KeywordIndexer {
         if (filename.endsWith(parser.fileSuffix())) {
             filename = filename.substring(0, filename.length() - parser.fileSuffix().length());
         }
+        int boost = searchConfig.boost().filenameBoost();
         List<String> filenameTokens = parser.tokenize(filename.replace("-", " ").replace("_", " "));
         for (String token : filenameTokens) {
-            keywords.merge(token, FILENAME_BOOST, Integer::sum);
+            keywords.merge(token, boost, Integer::sum);
         }
     }
 
@@ -128,9 +125,10 @@ public class KeywordIndexer {
         if (title == null || title.isBlank()) {
             return;
         }
+        int boost = searchConfig.boost().titleBoost();
         List<String> titleTokens = parser.tokenize(title);
         for (String token : titleTokens) {
-            keywords.merge(token, TITLE_BOOST, Integer::sum);
+            keywords.merge(token, boost, Integer::sum);
         }
     }
 

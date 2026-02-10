@@ -6,6 +6,7 @@ import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.SqliteSchemaInitializer;
+import com.fvd.search.TestSearchConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -40,8 +41,8 @@ class CodeSampleIndexerTest {
         schemaInitializer.initSchema();
 
         store = new CodeSampleIndexStore(ds);
-        DocParser parser = new AsciidocParser();
-        indexer = new CodeSampleIndexer(docStore, store, parser);
+        DocParser parser = new AsciidocParser(new TestSearchConfig());
+        indexer = new CodeSampleIndexer(docStore, store, parser, new TestSearchConfig());
     }
 
     private void writeDoc(String version, String filePath, String content) throws IOException {

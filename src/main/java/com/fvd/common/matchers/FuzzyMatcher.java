@@ -1,6 +1,9 @@
 package com.fvd.common.matchers;
 
-import java.util.Arrays;
+import com.fvd.search.SearchConfig;
+import jakarta.enterprise.context.ApplicationScoped;
+import lombok.RequiredArgsConstructor;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -8,18 +11,18 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * Utility for fuzzy string matching used in section title lookups.
+ * CDI bean for fuzzy string matching used in section title lookups.
  * Combines Levenshtein similarity, substring containment, and word overlap
  * to score candidates and select the best match above a configurable threshold.
  */
-public final class FuzzyMatcher {
+@ApplicationScoped
+@RequiredArgsConstructor
+public class FuzzyMatcher {
 
     private static final Pattern NON_WORD = Pattern.compile("[^a-zA-Z0-9]");
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
-    private static final double DEFAULT_THRESHOLD = 0.3;
 
-    private FuzzyMatcher() {
-    }
+    private final SearchConfig searchConfig;
 
     /**
      * Result of a fuzzy match containing the matched value, score, and match type.
@@ -57,7 +60,7 @@ public final class FuzzyMatcher {
      * Returns a similarity score (0.0-1.0) based on Levenshtein distance.
      * 1.0 means identical strings.
      */
-    public static double levenshteinSimilarity(String a, String b) {
+    public double levenshteinSimilarity(String a, String b) {
         if (a == null || b == null) {
             return 0.0;
         }
@@ -78,7 +81,7 @@ public final class FuzzyMatcher {
      * Returns a containment score (0.0-1.0).
      * 1.0 if one string fully contains the other; proportional otherwise based on length ratio.
      */
-    public static double containmentScore(String query, String candidate) {
+    public double containmentScore(String query, String candidate) {
         if (query == null || candidate == null) {
             return 0.0;
         }
@@ -98,7 +101,7 @@ public final class FuzzyMatcher {
      * Returns a word overlap score (0.0-1.0) based on shared words between query and candidate.
      * Tokenizes both strings, counts shared words, divides by total unique words.
      */
-    public static double wordOverlapScore(String query, String candidate) {
+    public double wordOverlapScore(String query, String candidate) {
         if (query == null || candidate == null) {
             return 0.0;
         }
@@ -123,24 +126,26 @@ public final class FuzzyMatcher {
 
     /**
      * Computes a combined fuzzy score from Levenshtein similarity, containment, and word overlap.
-     * Weights: Levenshtein 0.4, containment 0.35, word overlap 0.25.
+     * Weights are sourced from SearchConfig.
      */
-    public static double combinedScore(String query, String candidate) {
+    public double combinedScore(String query, String candidate) {
         double lev = levenshteinSimilarity(query, candidate);
         double cont = containmentScore(query, candidate);
         double overlap = wordOverlapScore(query, candidate);
-        return 0.4 * lev + 0.35 * cont + 0.25 * overlap;
+        return searchConfig.fuzzy().levenshteinWeight() * lev
+                + searchConfig.fuzzy().containmentWeight() * cont
+                + searchConfig.fuzzy().wordOverlapWeight() * overlap;
     }
 
     /**
-     * Finds the best fuzzy match from a list of candidates above the default threshold (0.3).
+     * Finds the best fuzzy match from a list of candidates above the default threshold.
      *
      * @param query      the search query
      * @param candidates list of candidate strings to match against
      * @return the best match result, or empty if no candidate exceeds the threshold
      */
-    public static Optional<MatchResult> bestMatch(String query, List<String> candidates) {
-        return bestMatch(query, candidates, DEFAULT_THRESHOLD);
+    public Optional<MatchResult> bestMatch(String query, List<String> candidates) {
+        return bestMatch(query, candidates, searchConfig.fuzzy().defaultThreshold());
     }
 
     /**
@@ -151,7 +156,7 @@ public final class FuzzyMatcher {
      * @param threshold  minimum combined score to accept (0.0-1.0)
      * @return the best match result, or empty if no candidate exceeds the threshold
      */
-    public static Optional<MatchResult> bestMatch(String query, List<String> candidates, double threshold) {
+    public Optional<MatchResult> bestMatch(String query, List<String> candidates, double threshold) {
         if (query == null || candidates == null || candidates.isEmpty()) {
             return Optional.empty();
         }
@@ -181,14 +186,14 @@ public final class FuzzyMatcher {
         return Optional.ofNullable(best);
     }
 
-    private static String determineMatchType(String query, String candidate, double score) {
+    private String determineMatchType(String query, String candidate, double score) {
         double cont = containmentScore(query, candidate);
         double overlap = wordOverlapScore(query, candidate);
 
-        if (cont > 0.5) {
+        if (cont > searchConfig.fuzzy().containmentPartialThreshold()) {
             return "partial";
         }
-        if (overlap > 0.3) {
+        if (overlap > searchConfig.fuzzy().wordOverlapKeywordThreshold()) {
             return "keyword";
         }
         return "partial";

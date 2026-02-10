@@ -12,6 +12,8 @@ import com.fvd.indexs.indexers.CodeSampleIndexer;
 import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.stores.IndexStore;
+import com.fvd.search.SearchConfig;
+import com.fvd.search.TestSearchConfig;
 import com.fvd.search.services.SearchService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,7 +52,7 @@ class CacheRefreshJobTest {
     @Mock
     private SearchService searchService;
 
-    private final DocParser docParser = new AsciidocParser();
+    private final DocParser docParser = new AsciidocParser(new TestSearchConfig());
 
     private CacheRefreshJob job;
 

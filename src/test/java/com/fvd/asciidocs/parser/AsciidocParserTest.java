@@ -1,6 +1,7 @@
 package com.fvd.asciidocs.parser;
 
 import com.fvd.docs.parser.DocParser;
+import com.fvd.search.TestSearchConfig;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -10,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AsciidocParserTest {
 
-    private final AsciidocParser parser = new AsciidocParser();
+    private final AsciidocParser parser = new AsciidocParser(new TestSearchConfig());
 
     @Test
     void tokenizeReturnsLowercaseWords() {

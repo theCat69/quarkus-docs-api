@@ -5,6 +5,7 @@ import com.fvd.cache.services.CacheService;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.exceptions.UpstreamException;
+import com.fvd.search.TestSearchConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,7 +36,7 @@ class ZipDownloadServiceTest {
     private DocStore docStore;
     private CacheService cacheService;
     private ZipDownloadService service;
-    private final DocParser docParser = new AsciidocParser();
+    private final DocParser docParser = new AsciidocParser(new TestSearchConfig());
 
     @TempDir
     Path tempDir;

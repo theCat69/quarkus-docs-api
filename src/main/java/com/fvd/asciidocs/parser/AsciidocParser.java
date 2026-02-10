@@ -2,33 +2,38 @@ package com.fvd.asciidocs.parser;
 
 import com.fvd.docs.parser.DocParser;
 import com.fvd.indexs.indexers.KeywordIndexer;
+import com.fvd.search.SearchConfig;
 import jakarta.enterprise.context.ApplicationScoped;
+import lombok.RequiredArgsConstructor;
 
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class AsciidocParser implements DocParser {
 
     private static final String DOCS_PREFIX = "docs/src/main/asciidoc/";
     private static final String FILE_SUFFIX = ".adoc";
-    private static final int MIN_TOKEN_LENGTH = 3;
     private static final Pattern SECTION_HEADER = Pattern.compile("^(={1,5})\\s+(.+)$");
     private static final Pattern CODE_BLOCK_DELIMITER = Pattern.compile("^-{4,}$");
     private static final Pattern SOURCE_ATTRIBUTE = Pattern.compile("^\\[source(?:,\\s*([^\\]]+))?\\]$");
     private static final Pattern NON_WORD = Pattern.compile("[^a-zA-Z0-9-]");
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
+    private final SearchConfig searchConfig;
+
     @Override
     public List<String> tokenize(String text) {
         if (text == null || text.isBlank()) {
             return List.of();
         }
+        int minTokenLength = searchConfig.index().minTokenLength();
         return Arrays.stream(WHITESPACE.split(text.trim()))
                 .map(word -> NON_WORD.matcher(word).replaceAll(""))
                 .map(String::toLowerCase)
-                .filter(w -> w.length() >= MIN_TOKEN_LENGTH)
+                .filter(w -> w.length() >= minTokenLength)
                 .toList();
     }
 
