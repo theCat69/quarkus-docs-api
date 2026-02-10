@@ -6,15 +6,12 @@ import com.fvd.common.matchers.FuzzyMatcher;
 import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.CodeSampleEntry;
 import com.fvd.indexs.indexers.CodeSampleIndex;
 import com.fvd.indexs.indexers.ContentIndex;
-import com.fvd.indexs.indexers.ContentIndexer;
 import com.fvd.indexs.indexers.ContentOccurrence;
 import com.fvd.indexs.indexers.FileKeywordEntry;
 import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.indexs.indexers.SectionKeywordEntry;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
@@ -45,9 +42,6 @@ public class SearchService {
     private final KeywordIndexStore keywordIndexStore;
     private final CodeSampleIndexStore codeSampleIndexStore;
     private final ContentIndexStore contentIndexStore;
-    private final ZipDownloadService zipDownloadService;
-    private final KeywordIndexer keywordIndexer;
-    private final ContentIndexer contentIndexer;
     private final DocStore docStore;
     private final DocParser docParser;
     private final CacheService cacheService;
@@ -90,7 +84,7 @@ public class SearchService {
                     finalScore *= multiKeywordBoost;
                 }
                 results.add(new FileSearchResult(file.path, finalScore,
-                        List.copyOf(acc.matchedKeywords)));
+                        List.copyOf(acc.matchedKeywords), file.extension));
             }
         }
         return results;
@@ -123,7 +117,7 @@ public class SearchService {
                     }
                     results.add(new SectionSearchResult(
                             file.path, section.title, section.start, section.end, finalScore,
-                            List.copyOf(acc.matchedKeywords)));
+                            List.copyOf(acc.matchedKeywords), file.extension));
                 }
             }
         }
@@ -232,7 +226,7 @@ public class SearchService {
                 results.add(new CodeSampleSearchResult(
                         sample.filePath, sample.sectionTitle, matchedTitle, matchScore,
                         sample.language, sample.content, sample.startLine, sample.endLine, finalScore,
-                        List.copyOf(acc.matchedKeywords)));
+                        List.copyOf(acc.matchedKeywords), sample.extension));
             }
         }
 
@@ -309,7 +303,7 @@ public class SearchService {
             int matchLine = computeLineNumber(content.get(), firstOffset);
             String snippet = generateSnippet(content.get(), firstOffset);
             results.add(new ContentSearchResult(filePath, snippet, firstOffset, matchLine, score,
-                    List.copyOf(matched), fileTotalMatchCount.get(filePath)));
+                    List.copyOf(matched), fileTotalMatchCount.get(filePath), "quarkus-core"));
         }
 
         results.sort(Comparator.comparingDouble((ContentSearchResult r) -> r.score).reversed());
@@ -372,7 +366,7 @@ public class SearchService {
                 int firstMatchLine = computeLineNumber(text, firstMatchOffset);
                 String snippet = generateSnippet(text, firstMatchOffset);
                 results.add(new ContentSearchResult(filePath, snippet, firstMatchOffset, firstMatchLine, fileScore,
-                        List.copyOf(matchedKws), totalMatchCount));
+                        List.copyOf(matchedKws), totalMatchCount, "quarkus-core"));
             }
         }
 
@@ -470,11 +464,6 @@ public class SearchService {
             return cached;
         }
 
-        // Check if index exists in SQLite without loading it fully
-        if (!keywordIndexStore.exists(version)) {
-            buildIndex(version);
-        }
-
         // Load from SQLite and cache
         Optional<KeywordIndex> index = keywordIndexStore.read(version);
         if (index.isPresent()) {
@@ -482,23 +471,6 @@ public class SearchService {
             return index.get();
         }
         return null;
-    }
-
-    private void buildIndex(String version) {
-        if (zipDownloadService == null || keywordIndexer == null || docStore == null) {
-            return;
-        }
-        try {
-            List<String> files;
-            if (docStore.docsExist(version)) {
-                files = docStore.listDocFiles(version);
-            } else {
-                files = zipDownloadService.streamAndExtract(version);
-            }
-            keywordIndexer.build(version, files);
-        } catch (Exception e) {
-            log.warn("Failed to lazily build keyword index for version {}", version, e);
-        }
     }
 
     private CodeSampleIndex getOrLoadCodeSampleIndex(String version) {

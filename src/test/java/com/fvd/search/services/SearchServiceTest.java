@@ -6,7 +6,6 @@ import com.fvd.common.matchers.FuzzyMatcher;
 import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.*;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
@@ -16,10 +15,7 @@ import com.fvd.search.TestSearchConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.sqlite.SQLiteDataSource;
 
 import java.nio.file.Path;
@@ -27,9 +23,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
 
 class SearchServiceTest {
 
@@ -54,7 +47,7 @@ class SearchServiceTest {
         cacheService = new CacheService(tempDir.toString());
         SearchConfig searchConfig = new TestSearchConfig();
         FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
-        searchService = new SearchService(keywordIndexStore, codeSampleIndexStore, null, null, null, null, null, docParser, cacheService, searchConfig, fuzzyMatcher);
+        searchService = new SearchService(keywordIndexStore, codeSampleIndexStore, null, null, docParser, cacheService, searchConfig, fuzzyMatcher);
     }
 
     private void seedIndex(String version, KeywordIndex index) {
@@ -530,7 +523,7 @@ class SearchServiceTest {
             SearchConfig searchConfig = new TestSearchConfig();
             FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
             sectionSearchService = new SearchService(
-                    keywordIndexStore, codeSampleIndexStore, null, null, null, null, realDocStore, docParser, cacheService, searchConfig, fuzzyMatcher);
+                    keywordIndexStore, codeSampleIndexStore, null, realDocStore, docParser, cacheService, searchConfig, fuzzyMatcher);
         }
 
         @Test
@@ -698,115 +691,6 @@ class SearchServiceTest {
             assertThat(result.content).contains("Exact match content.");
             assertThat(result.matchScore).isEqualTo(1.0);
             assertThat(result.matchType).isEqualTo("exact");
-        }
-    }
-
-    @Nested
-    @ExtendWith(MockitoExtension.class)
-    class LazyInitTests {
-
-        @Mock
-        private ZipDownloadService zipDownloadService;
-
-        @Mock
-        private KeywordIndexer keywordIndexer;
-
-        @Mock
-        private DocStore docStore;
-
-        private SearchService lazySearchService;
-        private KeywordIndexStore lazyKeywordIndexStore;
-
-        @BeforeEach
-        void setUpLazy() {
-            SQLiteDataSource ds = new SQLiteDataSource();
-            ds.setUrl("jdbc:sqlite:" + tempDir.resolve("lazy-test.db"));
-            SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
-            initializer.initSchema();
-            lazyKeywordIndexStore = new KeywordIndexStore(ds);
-            CodeSampleIndexStore lazyCodeSampleIndexStore = new CodeSampleIndexStore(ds);
-            SearchConfig searchConfig = new TestSearchConfig();
-            FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
-            lazySearchService = new SearchService(lazyKeywordIndexStore, lazyCodeSampleIndexStore,
-                    null, zipDownloadService, keywordIndexer, null, docStore, docParser, cacheService, searchConfig, fuzzyMatcher);
-        }
-
-        @Test
-        void searchFilesTriggersDownloadWhenNoIndexAndNoCache() {
-            when(docStore.docsExist("3.27")).thenReturn(false);
-            when(zipDownloadService.streamAndExtract("3.27"))
-                    .thenReturn(List.of("security.adoc", "config.adoc"));
-            when(keywordIndexer.build(eq("3.27"), eq(List.of("security.adoc", "config.adoc"))))
-                    .thenReturn(new KeywordIndex(List.of()));
-
-            PaginatedResult<FileSearchResult> result = lazySearchService.searchFiles("3.27", List.of("security"), 10, 0);
-
-            verify(zipDownloadService).streamAndExtract("3.27");
-            verify(keywordIndexer).build("3.27", List.of("security.adoc", "config.adoc"));
-            assertThat(result.items()).isEmpty();
-        }
-
-        @Test
-        void searchFilesBuildsIndexFromExistingDocsWithoutDownload() {
-            when(docStore.docsExist("3.27")).thenReturn(true);
-            when(docStore.listDocFiles("3.27")).thenReturn(List.of("security.adoc"));
-            when(keywordIndexer.build(eq("3.27"), eq(List.of("security.adoc"))))
-                    .thenReturn(new KeywordIndex(List.of()));
-
-            lazySearchService.searchFiles("3.27", List.of("security"), 10, 0);
-
-            verify(zipDownloadService, never()).streamAndExtract("3.27");
-            verify(keywordIndexer).build("3.27", List.of("security.adoc"));
-        }
-
-        @Test
-        void searchFilesDoesNotTriggerDownloadWhenIndexExists() {
-            KeywordIndex index = new KeywordIndex(List.of(
-                    new FileKeywordEntry("test.adoc",
-                            List.of(new KeywordScore("secur", 10)), List.of())
-            ));
-            lazyKeywordIndexStore.write("3.27", index);
-
-            PaginatedResult<FileSearchResult> result = lazySearchService.searchFiles("3.27", List.of("security"), 10, 0);
-
-            verify(zipDownloadService, never()).streamAndExtract("3.27");
-            verify(keywordIndexer, never()).build(any(), any());
-            assertThat(result.items()).hasSize(1);
-            assertThat(result.items().get(0).path).isEqualTo("test.adoc");
-        }
-
-        @Test
-        void searchSectionsTriggersDownloadWhenNoIndexAndNoCache() {
-            when(docStore.docsExist("3.27")).thenReturn(false);
-            when(zipDownloadService.streamAndExtract("3.27"))
-                    .thenReturn(List.of("security.adoc"));
-            when(keywordIndexer.build(eq("3.27"), eq(List.of("security.adoc"))))
-                    .thenReturn(new KeywordIndex(List.of()));
-
-            PaginatedResult<SectionSearchResult> result = lazySearchService.searchSections(
-                    "3.27", List.of("security"), List.of("security.adoc"), 10, 0);
-
-            verify(zipDownloadService).streamAndExtract("3.27");
-            verify(keywordIndexer).build("3.27", List.of("security.adoc"));
-            assertThat(result.items()).isEmpty();
-        }
-
-        @Test
-        void searchSectionsDoesNotTriggerDownloadWhenIndexExists() {
-            KeywordIndex index = new KeywordIndex(List.of(
-                    new FileKeywordEntry("test.adoc", List.of(), List.of(
-                            new SectionKeywordEntry("Section 1", 1, 10,
-                                    List.of(new KeywordScore("secur", 5)))
-                    ))
-            ));
-            lazyKeywordIndexStore.write("3.27", index);
-
-            PaginatedResult<SectionSearchResult> result = lazySearchService.searchSections(
-                    "3.27", List.of("security"), List.of("test.adoc"), 10, 0);
-
-            verify(zipDownloadService, never()).streamAndExtract("3.27");
-            verify(keywordIndexer, never()).build(any(), any());
-            assertThat(result.items()).hasSize(1);
         }
     }
 
@@ -1111,7 +995,7 @@ class SearchServiceTest {
             SearchConfig searchConfig = new TestSearchConfig();
             FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
             contentSearchService = new SearchService(
-                    keywordIndexStore, codeSampleIndexStore, null, null, null, null, realDocStore, docParser, contentCacheService, searchConfig, fuzzyMatcher);
+                    keywordIndexStore, codeSampleIndexStore, null, realDocStore, docParser, contentCacheService, searchConfig, fuzzyMatcher);
         }
 
         @Test

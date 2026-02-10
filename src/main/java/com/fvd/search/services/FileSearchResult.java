@@ -12,5 +12,6 @@ public class FileSearchResult {
     public String path;
     public double score;
     public List<String> matchedKeywords;
+    public String extension;
 
 }

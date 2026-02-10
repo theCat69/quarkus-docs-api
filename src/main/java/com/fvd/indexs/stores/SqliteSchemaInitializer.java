@@ -83,6 +83,7 @@ public class SqliteSchemaInitializer {
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         version TEXT NOT NULL,
                         path TEXT NOT NULL,
+                        extension TEXT NOT NULL DEFAULT 'quarkus-core',
                         UNIQUE(version, path)
                     )
                     """);
@@ -137,7 +138,8 @@ public class SqliteSchemaInitializer {
                         language TEXT NOT NULL,
                         content TEXT NOT NULL,
                         start_line INTEGER NOT NULL,
-                        end_line INTEGER NOT NULL
+                        end_line INTEGER NOT NULL,
+                        extension TEXT NOT NULL DEFAULT 'quarkus-core'
                     )
                     """);
 
@@ -157,6 +159,7 @@ public class SqliteSchemaInitializer {
                         version TEXT NOT NULL,
                         word TEXT NOT NULL,
                         file_path TEXT NOT NULL,
+                        extension TEXT NOT NULL DEFAULT 'quarkus-core',
                         UNIQUE(version, word, file_path)
                     )
                     """);

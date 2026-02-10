@@ -374,4 +374,24 @@ class AsciidocParserTest {
         assertThat(blocks).hasSize(1);
         assertThat(blocks.get(0).content()).isEqualTo("line one\nline two\nline three");
     }
+
+    @Test
+    void docsPrefixWithVersionReturnsVersionedPath() {
+        assertThat(parser.docsPrefix("3.27")).isEqualTo("_versions/3.27/guides/");
+        assertThat(parser.docsPrefix("3.21")).isEqualTo("_versions/3.21/guides/");
+        assertThat(parser.docsPrefix("main")).isEqualTo("_versions/main/guides/");
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    void docsPrefixNoArgReturnsMainVersionPath() {
+        assertThat(parser.docsPrefix()).isEqualTo("_versions/main/guides/");
+    }
+
+    @Test
+    void docsPrefixDefaultMethodDelegatesToVersionedMethod() {
+        // Verify the DocParser default method delegates to docsPrefix("main")
+        DocParser docParser = parser;
+        assertThat(docParser.docsPrefix()).isEqualTo(docParser.docsPrefix("main"));
+    }
 }

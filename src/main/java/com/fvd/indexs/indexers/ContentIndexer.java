@@ -27,6 +27,10 @@ public class ContentIndexer {
     private final SearchConfig searchConfig;
 
     public ContentIndex build(String version, List<String> filePaths) {
+        return build(version, filePaths, "quarkus-core");
+    }
+
+    public ContentIndex build(String version, List<String> filePaths, String extension) {
         Map<String, List<ContentOccurrence>> wordOccurrences = new HashMap<>();
         int minTokenLength = searchConfig.index().minTokenLength();
 
@@ -35,7 +39,7 @@ public class ContentIndexer {
             if (content.isEmpty()) {
                 continue;
             }
-            tokenizeAndIndex(filePath, content.get(), wordOccurrences, minTokenLength);
+            tokenizeAndIndex(filePath, content.get(), wordOccurrences, minTokenLength, extension);
         }
 
         ContentIndex index = new ContentIndex(wordOccurrences);
@@ -46,7 +50,7 @@ public class ContentIndexer {
     }
 
     void tokenizeAndIndex(String filePath, String text, Map<String, List<ContentOccurrence>> wordOccurrences,
-                          int minTokenLength) {
+                          int minTokenLength, String extension) {
         int lineNumber = 1;
         int lineStart = 0;
 
@@ -70,7 +74,7 @@ public class ContentIndexer {
             }
 
             wordOccurrences.computeIfAbsent(token, k -> new ArrayList<>())
-                    .add(new ContentOccurrence(filePath, matchStart, lineNumber));
+                    .add(new ContentOccurrence(filePath, matchStart, lineNumber, extension));
         }
     }
 }

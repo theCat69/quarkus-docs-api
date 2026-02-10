@@ -26,6 +26,10 @@ public class CodeSampleIndexer {
     private final SearchConfig searchConfig;
 
     public CodeSampleIndex build(String version, List<String> filePaths) {
+        return build(version, filePaths, "quarkus-core");
+    }
+
+    public CodeSampleIndex build(String version, List<String> filePaths, String extension) {
         List<CodeSampleEntry> entries = new ArrayList<>();
 
         for (String filePath : filePaths) {
@@ -34,6 +38,9 @@ public class CodeSampleIndexer {
                 continue;
             }
             List<CodeSampleEntry> fileEntries = buildEntriesForFile(filePath, content.get());
+            for (CodeSampleEntry entry : fileEntries) {
+                entry.extension = extension;
+            }
             entries.addAll(fileEntries);
         }
 

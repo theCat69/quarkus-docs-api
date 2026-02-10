@@ -68,7 +68,9 @@ public class SearchResource {
             @Parameter(description = "Maximum number of results to return (default 10, max 100)", example = "10")
             @QueryParam("limit") Integer limit,
             @Parameter(description = "Number of results to skip (default 0)", example = "0")
-            @QueryParam("offset") Integer offset) {
+            @QueryParam("offset") Integer offset,
+            @Parameter(description = "Optional extension name filter", required = false, example = "quarkus-core")
+            @QueryParam("extension") String extension) {
         InputValidator.validateVersion(version);
         InputValidator.validateKeywords(keywords);
         int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
@@ -110,7 +112,9 @@ public class SearchResource {
             @Parameter(description = "Maximum number of results to return (default 10, max 100)", example = "10")
             @QueryParam("limit") Integer limit,
             @Parameter(description = "Number of results to skip (default 0)", example = "0")
-            @QueryParam("offset") Integer offset) {
+            @QueryParam("offset") Integer offset,
+            @Parameter(description = "Optional extension name filter", required = false, example = "quarkus-core")
+            @QueryParam("extension") String extension) {
         InputValidator.validateVersion(version);
         InputValidator.validateKeywords(keywords);
         int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
@@ -201,7 +205,9 @@ public class SearchResource {
             @Parameter(description = "Maximum number of results to return (default 10, max 100)", example = "10")
             @QueryParam("limit") Integer limit,
             @Parameter(description = "Number of results to skip (default 0)", example = "0")
-            @QueryParam("offset") Integer offset) {
+            @QueryParam("offset") Integer offset,
+            @Parameter(description = "Optional extension name filter", required = false, example = "quarkus-core")
+            @QueryParam("extension") String extension) {
         InputValidator.validateVersion(version);
         InputValidator.validateKeywords(keywords);
         int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
@@ -250,7 +256,9 @@ public class SearchResource {
             @Parameter(description = "Maximum number of results to return (default 10, max 100)", example = "10")
             @QueryParam("limit") Integer limit,
             @Parameter(description = "Number of results to skip (default 0)", example = "0")
-            @QueryParam("offset") Integer offset) {
+            @QueryParam("offset") Integer offset,
+            @Parameter(description = "Optional extension name filter", required = false, example = "quarkus-core")
+            @QueryParam("extension") String extension) {
         InputValidator.validateVersion(version);
         InputValidator.validateKeywords(keywords);
         int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);

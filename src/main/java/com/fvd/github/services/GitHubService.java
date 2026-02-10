@@ -29,6 +29,9 @@ public class GitHubService {
     @ConfigProperty(name = "app.github.repo")
     String repo;
 
+    @ConfigProperty(name = "app.github.branch", defaultValue = "main")
+    String branch;
+
     private final DocParser docParser;
 
     public GitHubService(DocParser docParser) {
@@ -36,16 +39,16 @@ public class GitHubService {
     }
 
     public List<GithubApiIndex> fetchIndex(String version) {
-        String docsPath = stripTrailingSlash(docParser.docsPrefix());
-        return githubApiClient.fetchIndex(owner, repo, docsPath, version);
+        String docsPath = stripTrailingSlash(docParser.docsPrefix(version));
+        return githubApiClient.fetchIndex(owner, repo, docsPath, branch);
     }
 
     public GithubApiFile fetchFileContent(String filePath, String version) {
-        return githubApiClient.fetchFile(owner, repo, filePath, version);
+        return githubApiClient.fetchFile(owner, repo, filePath, branch);
     }
 
-    public InputStream fetchZipStream(String version) {
-        return githubRepositoryClient.fetchZipStream(owner, repo, version);
+    public InputStream fetchZipStream() {
+        return githubRepositoryClient.fetchZipStream(owner, repo, branch);
     }
 
     private String stripTrailingSlash(String path) {

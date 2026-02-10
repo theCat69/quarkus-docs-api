@@ -1,10 +1,10 @@
 {
   "request": {
     "method": "GET",
-    "urlPath": "/repos/quarkusio/quarkus/contents/docs/src/main/asciidoc",
+    "urlPath": "/repos/quarkusio/quarkusio.github.io/contents/_versions/3.27/guides",
     "queryParameters": {
       "ref": {
-        "equalTo": "3.27"
+        "equalTo": "main"
       }
     }
   },

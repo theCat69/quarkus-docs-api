@@ -92,7 +92,7 @@ public class CodeSampleIndexStore {
         }
 
         try (PreparedStatement sampleStmt = conn.prepareStatement(
-                     "INSERT INTO code_samples (version, file_path, section_title, language, content, start_line, end_line) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                     "INSERT INTO code_samples (version, file_path, section_title, language, content, start_line, end_line, extension) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                      Statement.RETURN_GENERATED_KEYS);
              PreparedStatement kwStmt = conn.prepareStatement(
                      "INSERT INTO code_sample_keywords (sample_id, word, score) VALUES (?, ?, ?)")) {
@@ -105,6 +105,7 @@ public class CodeSampleIndexStore {
                 sampleStmt.setString(5, sample.content);
                 sampleStmt.setInt(6, sample.startLine);
                 sampleStmt.setInt(7, sample.endLine);
+                sampleStmt.setString(8, sample.extension != null ? sample.extension : "quarkus-core");
                 sampleStmt.executeUpdate();
 
                 long sampleId;
@@ -131,7 +132,7 @@ public class CodeSampleIndexStore {
 
         try (PreparedStatement stmt = conn.prepareStatement("""
                 SELECT cs.id AS sample_id, cs.file_path, cs.section_title, cs.language,
-                       cs.content, cs.start_line, cs.end_line,
+                       cs.content, cs.start_line, cs.end_line, cs.extension,
                        csk.word, csk.score
                 FROM code_samples cs
                 LEFT JOIN code_sample_keywords csk ON csk.sample_id = cs.id
@@ -151,7 +152,8 @@ public class CodeSampleIndexStore {
                                 rs.getString("content"),
                                 rs.getInt("start_line"),
                                 rs.getInt("end_line"),
-                                new ArrayList<>());
+                                new ArrayList<>(),
+                                rs.getString("extension"));
                         entriesById.put(sampleId, entry);
                     }
                     String word = rs.getString("word");

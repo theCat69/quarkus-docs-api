@@ -63,8 +63,8 @@ class CacheWarmupJobTest {
     void warmupDownloadsAndIndexesConfiguredVersions() {
         when(docStore.docsExist("3.17")).thenReturn(false);
         when(docStore.docsExist("3.27")).thenReturn(false);
-        when(zipDownloadService.streamAndExtract("3.17")).thenReturn(List.of("security.adoc"));
-        when(zipDownloadService.streamAndExtract("3.27")).thenReturn(List.of("config.adoc"));
+        when(zipDownloadService.streamAndExtractAll(List.of("3.17", "3.27")))
+                .thenReturn(Map.of("3.17", List.of("security.adoc"), "3.27", List.of("config.adoc")));
         when(indexService.getOrFetchIndex("3.17")).thenReturn(List.of());
         when(indexService.getOrFetchIndex("3.27")).thenReturn(List.of());
         when(keywordIndexer.build(eq("3.17"), any())).thenReturn(new KeywordIndex(List.of()));
@@ -76,8 +76,7 @@ class CacheWarmupJobTest {
 
         job.onStartup(null);
 
-        verify(zipDownloadService).streamAndExtract("3.17");
-        verify(zipDownloadService).streamAndExtract("3.27");
+        verify(zipDownloadService).streamAndExtractAll(List.of("3.17", "3.27"));
         verify(indexService).getOrFetchIndex("3.17");
         verify(indexService).getOrFetchIndex("3.27");
         verify(keywordIndexer).build(eq("3.17"), eq(List.of("security.adoc")));
@@ -92,7 +91,8 @@ class CacheWarmupJobTest {
     void warmupSkipsVersionsWithExistingDocs() {
         when(docStore.docsExist("3.17")).thenReturn(true);
         when(docStore.docsExist("3.27")).thenReturn(false);
-        when(zipDownloadService.streamAndExtract("3.27")).thenReturn(List.of("config.adoc"));
+        when(zipDownloadService.streamAndExtractAll(List.of("3.27")))
+                .thenReturn(Map.of("3.27", List.of("config.adoc")));
         when(indexService.getOrFetchIndex("3.27")).thenReturn(List.of());
         when(keywordIndexer.build(eq("3.27"), any())).thenReturn(new KeywordIndex(List.of()));
         when(codeSampleIndexer.build(eq("3.27"), any())).thenReturn(new CodeSampleIndex(List.of()));
@@ -100,8 +100,8 @@ class CacheWarmupJobTest {
 
         job.onStartup(null);
 
-        verify(zipDownloadService, never()).streamAndExtract("3.17");
-        verify(zipDownloadService).streamAndExtract("3.27");
+        verify(zipDownloadService, never()).streamAndExtractAll(List.of("3.17", "3.27"));
+        verify(zipDownloadService).streamAndExtractAll(List.of("3.27"));
     }
 
     @Test
@@ -111,18 +111,19 @@ class CacheWarmupJobTest {
 
         job.onStartup(null);
 
-        verify(zipDownloadService, never()).streamAndExtract(any());
+        verify(zipDownloadService, never()).streamAndExtractAll(any());
         verify(keywordIndexer, never()).build(any(), any());
         verify(codeSampleIndexer, never()).build(any(), any());
         verify(contentIndexer, never()).build(any(), any());
     }
 
     @Test
-    void warmupContinuesWhenOneVersionFails() {
+    void warmupContinuesWhenIndexBuildFailsForOneVersion() {
         when(docStore.docsExist("3.17")).thenReturn(false);
         when(docStore.docsExist("3.27")).thenReturn(false);
-        when(zipDownloadService.streamAndExtract("3.17")).thenThrow(new UpstreamException("GitHub down"));
-        when(zipDownloadService.streamAndExtract("3.27")).thenReturn(List.of("config.adoc"));
+        when(zipDownloadService.streamAndExtractAll(List.of("3.17", "3.27")))
+                .thenReturn(Map.of("3.17", List.of("security.adoc"), "3.27", List.of("config.adoc")));
+        when(indexService.getOrFetchIndex("3.17")).thenThrow(new UpstreamException("GitHub down"));
         when(indexService.getOrFetchIndex("3.27")).thenReturn(List.of());
         when(keywordIndexer.build(eq("3.27"), any())).thenReturn(new KeywordIndex(List.of()));
         when(codeSampleIndexer.build(eq("3.27"), any())).thenReturn(new CodeSampleIndex(List.of()));
@@ -130,8 +131,7 @@ class CacheWarmupJobTest {
 
         job.onStartup(null);
 
-        verify(zipDownloadService).streamAndExtract("3.17");
-        verify(zipDownloadService).streamAndExtract("3.27");
+        verify(zipDownloadService).streamAndExtractAll(List.of("3.17", "3.27"));
         verify(keywordIndexer).build(eq("3.27"), eq(List.of("config.adoc")));
         verify(codeSampleIndexer).build(eq("3.27"), eq(List.of("config.adoc")));
         verify(contentIndexer).build(eq("3.27"), eq(List.of("config.adoc")));
@@ -145,7 +145,7 @@ class CacheWarmupJobTest {
 
         job.onStartup(null);
 
-        verify(zipDownloadService, never()).streamAndExtract(any());
+        verify(zipDownloadService, never()).streamAndExtractAll(any());
         verify(indexService, never()).getOrFetchIndex(any());
         verify(keywordIndexer, never()).build(any(), any());
         verify(codeSampleIndexer, never()).build(any(), any());
@@ -160,13 +160,14 @@ class CacheWarmupJobTest {
 
         job.onStartup(null);
 
-        verify(zipDownloadService, never()).streamAndExtract(any());
+        verify(zipDownloadService, never()).streamAndExtractAll(any());
     }
 
     @Test
     void warmupFetchesIndexAndBuildsKeywordsForExtractedFiles() {
         when(docStore.docsExist("3.17")).thenReturn(false);
-        when(zipDownloadService.streamAndExtract("3.17")).thenReturn(List.of("a.adoc", "b.adoc"));
+        when(zipDownloadService.streamAndExtractAll(List.of("3.17")))
+                .thenReturn(Map.of("3.17", List.of("a.adoc", "b.adoc")));
         List<GithubApiIndex> index = List.of(
                 new GithubApiIndex("a.adoc", "path/a.adoc", "sha1"),
                 new GithubApiIndex("b.adoc", "path/b.adoc", "sha2")

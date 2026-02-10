@@ -15,5 +15,6 @@ public class SectionSearchResult {
     public int end;
     public double score;
     public List<String> matchedKeywords;
+    public String extension;
 
 }

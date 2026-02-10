@@ -53,28 +53,28 @@ class ZipDownloadServiceTest {
     @Test
     void extractRelativePathFindsAsciidocFiles() {
         String result = service.extractRelativePath(
-                "quarkus-3.27/docs/src/main/asciidoc/security-oidc.adoc");
+                "quarkusio.github.io-main/_versions/3.27/guides/security-oidc.adoc", "3.27");
         assertThat(result).isEqualTo("security-oidc.adoc");
     }
 
     @Test
     void extractRelativePathHandlesNestedPaths() {
         String result = service.extractRelativePath(
-                "quarkus-3.27/docs/src/main/asciidoc/guides/subdir/test.adoc");
-        assertThat(result).isEqualTo("guides/subdir/test.adoc");
+                "quarkusio.github.io-main/_versions/3.27/guides/subdir/test.adoc", "3.27");
+        assertThat(result).isEqualTo("subdir/test.adoc");
     }
 
     @Test
     void extractRelativePathReturnsNullForNonAsciidocFiles() {
         String result = service.extractRelativePath(
-                "quarkus-3.27/pom.xml");
+                "quarkusio.github.io-main/pom.xml", "3.27");
         assertThat(result).isNull();
     }
 
     @Test
     void extractRelativePathReturnsNullForDirectoryEntries() {
         String result = service.extractRelativePath(
-                "quarkus-3.27/docs/src/main/asciidoc/");
+                "quarkusio.github.io-main/_versions/3.27/guides/", "3.27");
         assertThat(result).isNull();
     }
 
@@ -83,11 +83,11 @@ class ZipDownloadServiceTest {
     @Test
     void streamAndExtractExtractsAsciidocFiles() throws IOException {
         byte[] zip = buildZip(
-                entry("quarkus-3.27/docs/src/main/asciidoc/security.adoc", "= Security"),
-                entry("quarkus-3.27/docs/src/main/asciidoc/config.adoc", "= Config"),
-                entry("quarkus-3.27/pom.xml", "<project/>")
+                entry("quarkusio.github.io-main/_versions/3.27/guides/security.adoc", "= Security"),
+                entry("quarkusio.github.io-main/_versions/3.27/guides/config.adoc", "= Config"),
+                entry("quarkusio.github.io-main/pom.xml", "<project/>")
         );
-        when(gitHubService.fetchZipStream("3.27")).thenReturn(new ByteArrayInputStream(zip));
+        when(gitHubService.fetchZipStream()).thenReturn(new ByteArrayInputStream(zip));
 
         List<String> extracted = service.streamAndExtract("3.27");
 
@@ -99,10 +99,10 @@ class ZipDownloadServiceTest {
     @Test
     void streamAndExtractReturnsEmptyListWhenNoAsciidocFiles() throws IOException {
         byte[] zip = buildZip(
-                entry("quarkus-3.27/pom.xml", "<project/>"),
-                entry("quarkus-3.27/src/main/java/Foo.java", "class Foo {}")
+                entry("quarkusio.github.io-main/pom.xml", "<project/>"),
+                entry("quarkusio.github.io-main/src/main/java/Foo.java", "class Foo {}")
         );
-        when(gitHubService.fetchZipStream("3.27")).thenReturn(new ByteArrayInputStream(zip));
+        when(gitHubService.fetchZipStream()).thenReturn(new ByteArrayInputStream(zip));
 
         List<String> extracted = service.streamAndExtract("3.27");
 
@@ -112,14 +112,14 @@ class ZipDownloadServiceTest {
     @Test
     void streamAndExtractHandlesNestedAsciidocPaths() throws IOException {
         byte[] zip = buildZip(
-                entry("quarkus-3.27/docs/src/main/asciidoc/guides/sub/deep.adoc", "= Deep Guide")
+                entry("quarkusio.github.io-main/_versions/3.27/guides/sub/deep.adoc", "= Deep Guide")
         );
-        when(gitHubService.fetchZipStream("3.27")).thenReturn(new ByteArrayInputStream(zip));
+        when(gitHubService.fetchZipStream()).thenReturn(new ByteArrayInputStream(zip));
 
         List<String> extracted = service.streamAndExtract("3.27");
 
-        assertThat(extracted).containsExactly("guides/sub/deep.adoc");
-        assertThat(docStore.read("3.27", "guides/sub/deep.adoc")).hasValue("= Deep Guide");
+        assertThat(extracted).containsExactly("sub/deep.adoc");
+        assertThat(docStore.read("3.27", "sub/deep.adoc")).hasValue("= Deep Guide");
     }
 
     @Test
@@ -134,7 +134,7 @@ class ZipDownloadServiceTest {
                 throw new IOException("Simulated stream failure");
             }
         };
-        when(gitHubService.fetchZipStream("3.27")).thenReturn(brokenStream);
+        when(gitHubService.fetchZipStream()).thenReturn(brokenStream);
 
         assertThatThrownBy(() -> service.streamAndExtract("3.27"))
                 .isInstanceOf(UpstreamException.class);
@@ -146,9 +146,9 @@ class ZipDownloadServiceTest {
     @Test
     void streamAndExtractWritesToCacheOnlyOnSuccess() throws IOException {
         byte[] zip = buildZip(
-                entry("quarkus-3.27/docs/src/main/asciidoc/new-file.adoc", "= New content")
+                entry("quarkusio.github.io-main/_versions/3.27/guides/new-file.adoc", "= New content")
         );
-        when(gitHubService.fetchZipStream("3.27")).thenReturn(new ByteArrayInputStream(zip));
+        when(gitHubService.fetchZipStream()).thenReturn(new ByteArrayInputStream(zip));
 
         service.streamAndExtract("3.27");
 
@@ -164,7 +164,7 @@ class ZipDownloadServiceTest {
         docStore.write("3.27", "existing.adoc", "= Existing");
 
         // Build a partial zip that will fail mid-stream by throwing during read
-        when(gitHubService.fetchZipStream("3.27")).thenReturn(new InputStream() {
+        when(gitHubService.fetchZipStream()).thenReturn(new InputStream() {
             private final byte[] corruptData = new byte[]{0x50, 0x4b, 0x03, 0x04}; // ZIP magic bytes
             private int pos = 0;
             @Override
@@ -184,6 +184,27 @@ class ZipDownloadServiceTest {
         assertThat(Files.exists(stagingDir)).isFalse();
         // Existing cache should be untouched
         assertThat(docStore.read("3.27", "existing.adoc")).hasValue("= Existing");
+    }
+
+    @Test
+    void streamAndExtractAllExtractsMultipleVersions() throws IOException {
+        byte[] zip = buildZip(
+                entry("quarkusio.github.io-main/_versions/3.21/guides/security.adoc", "= Security 3.21"),
+                entry("quarkusio.github.io-main/_versions/3.27/guides/security.adoc", "= Security 3.27"),
+                entry("quarkusio.github.io-main/_versions/3.27/guides/config.adoc", "= Config 3.27"),
+                entry("quarkusio.github.io-main/_versions/main/guides/other.adoc", "= Other main")
+        );
+        when(gitHubService.fetchZipStream()).thenReturn(new ByteArrayInputStream(zip));
+
+        var result = service.streamAndExtractAll(List.of("3.21", "3.27"));
+
+        assertThat(result).containsOnlyKeys("3.21", "3.27");
+        assertThat(result.get("3.21")).containsExactly("security.adoc");
+        assertThat(result.get("3.27")).containsExactlyInAnyOrder("security.adoc", "config.adoc");
+        assertThat(docStore.read("3.21", "security.adoc")).hasValue("= Security 3.21");
+        assertThat(docStore.read("3.27", "security.adoc")).hasValue("= Security 3.27");
+        // main version was not requested, should not be extracted
+        assertThat(docStore.read("main", "other.adoc")).isEmpty();
     }
 
     // -- Helpers --

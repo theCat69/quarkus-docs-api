@@ -1,7 +1,7 @@
 {
   "request": {
     "method": "GET",
-    "urlPath": "/quarkusio/quarkus/archive/refs/heads/3.27.zip"
+    "urlPath": "/quarkusio/quarkusio.github.io/archive/refs/heads/main.zip"
   },
   "response": {
     "status": 200,

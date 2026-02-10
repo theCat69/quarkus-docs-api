@@ -19,5 +19,6 @@ public class CodeSampleSearchResult {
     public int endLine;
     public double score;
     public List<String> matchedKeywords;
+    public String extension;
 
 }

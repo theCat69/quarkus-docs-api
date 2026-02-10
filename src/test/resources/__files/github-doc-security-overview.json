@@ -1,18 +1,18 @@
 {
   "name": "security-overview.adoc",
-  "path": "docs/src/main/asciidoc/security-overview.adoc",
+  "path": "_versions/3.27/guides/security-overview.adoc",
   "sha": "5750dbd9a897c382beb0a98543562c31045a53c7",
   "size": 7423,
-  "url": "https://api.github.com/repos/quarkusio/quarkus/contents/docs/src/main/asciidoc/security-overview.adoc?ref=3.27",
-  "html_url": "https://github.com/quarkusio/quarkus/blob/3.27/docs/src/main/asciidoc/security-overview.adoc",
-  "git_url": "https://api.github.com/repos/quarkusio/quarkus/git/blobs/5750dbd9a897c382beb0a98543562c31045a53c7",
-  "download_url": "https://raw.githubusercontent.com/quarkusio/quarkus/3.27/docs/src/main/asciidoc/security-overview.adoc",
+  "url": "https://api.github.com/repos/quarkusio/quarkusio.github.io/contents/_versions/3.27/guides/security-overview.adoc?ref=main",
+  "html_url": "https://github.com/quarkusio/quarkusio.github.io/blob/main/_versions/3.27/guides/security-overview.adoc",
+  "git_url": "https://api.github.com/repos/quarkusio/quarkusio.github.io/git/blobs/5750dbd9a897c382beb0a98543562c31045a53c7",
+  "download_url": "https://raw.githubusercontent.com/quarkusio/quarkusio.github.io/main/_versions/3.27/guides/security-overview.adoc",
   "type": "file",
   "content": "PSBRdWFya3VzIFNlY3VyaXR5IG92ZXJ2aWV3CgpRdWFya3VzIFNlY3VyaXR5IGlzIGEgZnJhbWV3b3JrIHRoYXQgcHJvdmlkZXMgdGhlIGFyY2hpdGVjdHVyZS4=",
   "encoding": "base64",
   "_links": {
-    "self": "https://api.github.com/repos/quarkusio/quarkus/contents/docs/src/main/asciidoc/security-overview.adoc?ref=3.27",
-    "git": "https://api.github.com/repos/quarkusio/quarkus/git/blobs/5750dbd9a897c382beb0a98543562c31045a53c7",
-    "html": "https://github.com/quarkusio/quarkus/blob/3.27/docs/src/main/asciidoc/security-overview.adoc"
+    "self": "https://api.github.com/repos/quarkusio/quarkusio.github.io/contents/_versions/3.27/guides/security-overview.adoc?ref=main",
+    "git": "https://api.github.com/repos/quarkusio/quarkusio.github.io/git/blobs/5750dbd9a897c382beb0a98543562c31045a53c7",
+    "html": "https://github.com/quarkusio/quarkusio.github.io/blob/main/_versions/3.27/guides/security-overview.adoc"
   }
 }

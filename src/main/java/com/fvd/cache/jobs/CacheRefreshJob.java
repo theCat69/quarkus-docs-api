@@ -57,11 +57,11 @@ public class CacheRefreshJob {
         log.info("Refreshing cache for version {}", version);
 
         List<GithubApiIndex> newIndex = gitHubService.fetchIndex(version);
-        Map<String, String> newShaByPath = buildShaMap(newIndex);
+        Map<String, String> newShaByPath = buildShaMap(newIndex, version);
 
         Optional<List<GithubApiIndex>> oldIndex = indexStore.read(version);
         Map<String, String> oldShaByPath = oldIndex
-                .map(this::buildShaMap)
+                .map(idx -> buildShaMap(idx, version))
                 .orElse(Map.of());
 
         // Find files that need re-fetching (changed SHA or new files)
@@ -84,10 +84,10 @@ public class CacheRefreshJob {
 
             // Strip the docs prefix from GitHub API paths to get relative paths
             // consistent with what ZipDownloadService produces during warmup.
-            // GitHub API returns paths like "docs/src/main/asciidoc/file.adoc"
+            // GitHub API returns paths like "_versions/3.27/guides/file.adoc"
             // but DocStore and indexers expect relative paths like "file.adoc".
             List<String> allFilePaths = newIndex.stream()
-                    .map(e -> stripDocsPrefix(e.path))
+                    .map(e -> stripDocsPrefix(e.path, version))
                     .toList();
             keywordIndexer.build(version, allFilePaths);
 
@@ -109,18 +109,18 @@ public class CacheRefreshJob {
         String content = file.decodeContent();
         // Strip the docs prefix so the file is stored at the same relative path
         // that ZipDownloadService uses during warmup
-        docStore.write(version, stripDocsPrefix(filePath), content);
+        docStore.write(version, stripDocsPrefix(filePath, version), content);
     }
 
-    String stripDocsPrefix(String path) {
-        String prefix = docParser.docsPrefix();
+    String stripDocsPrefix(String path, String version) {
+        String prefix = docParser.docsPrefix(version);
         if (path.startsWith(prefix)) {
             return path.substring(prefix.length());
         }
         return path;
     }
 
-    private Map<String, String> buildShaMap(List<GithubApiIndex> entries) {
+    private Map<String, String> buildShaMap(List<GithubApiIndex> entries, String version) {
         Map<String, String> shaByPath = new HashMap<>();
         for (GithubApiIndex entry : entries) {
             if (entry.path != null && entry.sha != null && entry.name.endsWith(docParser.fileSuffix())) {

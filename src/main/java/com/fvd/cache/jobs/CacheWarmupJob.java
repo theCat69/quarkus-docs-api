@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -45,39 +46,49 @@ public class CacheWarmupJob {
         List<String> versions = configuredVersions.get();
         log.info("Starting cache warmup for versions: {}", versions);
 
-        for (String version : versions) {
-            try {
-                warmupVersion(version);
-            } catch (Exception e) {
-                log.error("Failed to warm up cache for version {}, skipping", version, e);
-            }
-        }
-
-        log.info("Cache warmup completed");
-    }
-
-    private void warmupVersion(String version) {
         fullReset.ifPresent((bool) -> { if(bool) cacheService.deleteCache(); });
-        if (docStore.docsExist(version)) {
-            log.info("Version {} already cached, skipping warmup", version);
+
+        // Filter out versions that are already cached
+        List<String> versionsToWarm = versions.stream()
+                .filter(v -> !docStore.docsExist(v))
+                .toList();
+
+        if (versionsToWarm.isEmpty()) {
+            log.info("All versions already cached, skipping warmup");
             return;
         }
 
-        log.info("Warming up version {}", version);
+        log.info("Downloading zip and extracting {} versions: {}", versionsToWarm.size(), versionsToWarm);
 
-        List<String> extractedFiles = zipDownloadService.streamAndExtract(version);
-        log.info("Extracted {} files for version {}", extractedFiles.size(), version);
+        try {
+            Map<String, List<String>> extractedByVersion = zipDownloadService.streamAndExtractAll(versionsToWarm);
 
-        indexService.getOrFetchIndex(version);
-        log.info("Index fetched for version {}", version);
+            for (Map.Entry<String, List<String>> entry : extractedByVersion.entrySet()) {
+                String version = entry.getKey();
+                List<String> extractedFiles = entry.getValue();
 
-        keywordIndexer.build(version, extractedFiles);
-        log.info("Keyword index built for version {}", version);
+                try {
+                    log.info("Extracted {} files for version {}", extractedFiles.size(), version);
 
-        codeSampleIndexer.build(version, extractedFiles);
-        log.info("Code sample index built for version {}", version);
+                    indexService.getOrFetchIndex(version);
+                    log.info("Index fetched for version {}", version);
 
-        contentIndexer.build(version, extractedFiles);
-        log.info("Content index built for version {}", version);
+                    keywordIndexer.build(version, extractedFiles);
+                    log.info("Keyword index built for version {}", version);
+
+                    codeSampleIndexer.build(version, extractedFiles);
+                    log.info("Code sample index built for version {}", version);
+
+                    contentIndexer.build(version, extractedFiles);
+                    log.info("Content index built for version {}", version);
+                } catch (Exception e) {
+                    log.error("Failed to build indexes for version {}, skipping", version, e);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to download and extract zip for warmup", e);
+        }
+
+        log.info("Cache warmup completed");
     }
 }

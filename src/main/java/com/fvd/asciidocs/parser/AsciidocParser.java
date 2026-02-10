@@ -15,7 +15,6 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class AsciidocParser implements DocParser {
 
-    private static final String DOCS_PREFIX = "docs/src/main/asciidoc/";
     private static final String FILE_SUFFIX = ".adoc";
     private static final Pattern SECTION_HEADER = Pattern.compile("^(={1,5})\\s+(.+)$");
     private static final Pattern CODE_BLOCK_DELIMITER = Pattern.compile("^-{4,}$");
@@ -200,8 +199,14 @@ public class AsciidocParser implements DocParser {
     }
 
     @Override
+    public String docsPrefix(String version) {
+        return "_versions/" + version + "/guides/";
+    }
+
+    @Override
+    @Deprecated
     public String docsPrefix() {
-        return DOCS_PREFIX;
+        return docsPrefix("main");
     }
 
     @Override

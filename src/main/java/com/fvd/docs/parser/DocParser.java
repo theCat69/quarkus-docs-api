@@ -37,10 +37,19 @@ public interface DocParser {
     List<Section> parseSections(String text);
 
     /**
-     * Returns the path prefix used to locate documents within the repository zip archive.
-     * For example, AsciiDoc files in Quarkus live under "docs/src/main/asciidoc/".
+     * Returns the path prefix used to locate documents within the repository zip archive
+     * for a specific version.
+     * For example, docs from the website repo live under "_versions/3.27/guides/".
      */
-    String docsPrefix();
+    String docsPrefix(String version);
+
+    /**
+     * Returns the path prefix for the default version ("main").
+     * Delegates to {@link #docsPrefix(String)} with "main".
+     */
+    default String docsPrefix() {
+        return docsPrefix("main");
+    }
 
     /**
      * Returns the file suffix for this document type (e.g. ".adoc" for AsciiDoc).

@@ -93,7 +93,7 @@ public class KeywordIndexStore {
         }
 
         try (PreparedStatement fileStmt = conn.prepareStatement(
-                     "INSERT INTO files (version, path) VALUES (?, ?)",
+                     "INSERT INTO files (version, path, extension) VALUES (?, ?, ?)",
                      Statement.RETURN_GENERATED_KEYS);
              PreparedStatement fileKwStmt = conn.prepareStatement(
                      "INSERT INTO file_keywords (file_id, word, score) VALUES (?, ?, ?)");
@@ -106,6 +106,7 @@ public class KeywordIndexStore {
             for (FileKeywordEntry file : index.files) {
                 fileStmt.setString(1, version);
                 fileStmt.setString(2, file.path);
+                fileStmt.setString(3, file.extension != null ? file.extension : "quarkus-core");
                 fileStmt.executeUpdate();
 
                 long fileId;
@@ -161,7 +162,7 @@ public class KeywordIndexStore {
 
         // Query 1: files + file keywords via JOIN
         try (PreparedStatement stmt = conn.prepareStatement("""
-                SELECT f.id AS file_id, f.path, fk.word, fk.score
+                SELECT f.id AS file_id, f.path, f.extension, fk.word, fk.score
                 FROM files f
                 LEFT JOIN file_keywords fk ON fk.file_id = f.id
                 WHERE f.version = ?
@@ -174,7 +175,8 @@ public class KeywordIndexStore {
                     FileKeywordEntry entry = filesById.get(fileId);
                     if (entry == null) {
                         String path = rs.getString("path");
-                        entry = new FileKeywordEntry(path, new ArrayList<>(), new ArrayList<>());
+                        String extension = rs.getString("extension");
+                        entry = new FileKeywordEntry(path, new ArrayList<>(), new ArrayList<>(), extension);
                         filesById.put(fileId, entry);
                     }
                     String word = rs.getString("word");

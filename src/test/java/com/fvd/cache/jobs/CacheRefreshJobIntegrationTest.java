@@ -90,7 +90,7 @@ class CacheRefreshJobIntegrationTest {
                         && s.content.contains("SecurityIdentity"));
 
         // Step 2: Simulate refresh - call refreshVersion (like CacheRefreshJob does)
-        // This uses GitHub API index paths (docs/src/main/asciidoc/...) instead of relative paths
+        // This uses GitHub API index paths (_versions/3.27/guides/...) instead of relative paths
         cacheRefreshJob.refreshVersion("3.27");
 
         // Step 3: Verify code samples are preserved after refresh

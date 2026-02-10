@@ -18,7 +18,9 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -33,49 +35,81 @@ public class ZipDownloadService {
     private final DocParser docParser;
 
     /**
+     * Downloads the zip archive once and extracts asciidoc files for all specified versions.
+     * Matches entries against {@code _versions/<V>/guides/*.adoc} for each V in the versions list.
+     *
+     * @return map of version to list of extracted file names (relative paths within each version's docs)
+     */
+    public Map<String, List<String>> streamAndExtractAll(List<String> versions) {
+        Map<String, List<String>> result = new HashMap<>();
+        Map<String, Path> stagingDirs = new HashMap<>();
+
+        try {
+            // Prepare staging directories for each version
+            for (String version : versions) {
+                InputValidator.validateVersion(version);
+                cacheService.ensureVersionDir(version);
+                Path stagingDir = cacheService.versionDir(version).resolve("docs-staging");
+                Files.createDirectories(stagingDir);
+                stagingDirs.put(version, stagingDir);
+                result.put(version, new ArrayList<>());
+            }
+
+            // Download zip once and extract for all versions
+            extractToStagingAll(versions, stagingDirs, result);
+
+            // Move staging to cache for each version
+            for (String version : versions) {
+                Path stagingDir = stagingDirs.get(version);
+                List<String> extractedFiles = result.get(version);
+                moveStagingToCache(version, stagingDir, extractedFiles);
+                log.info("Extracted {} asciidoc files for version {}", extractedFiles.size(), version);
+            }
+        } catch (IOException e) {
+            stagingDirs.values().forEach(this::cleanupStagingDir);
+            throw new UpstreamException("Failed to extract zip for versions: " + versions, e);
+        } catch (UpstreamException e) {
+            stagingDirs.values().forEach(this::cleanupStagingDir);
+            throw e;
+        }
+
+        return result;
+    }
+
+    /**
      * Streams the zip archive for the given version, extracts asciidoc files
      * into a staging directory, then moves them to the real cache on success.
+     * Delegates to {@link #streamAndExtractAll(List)}.
      *
      * @return list of extracted file names (relative paths within the asciidoc subtree)
      */
     public List<String> streamAndExtract(String version) {
-        InputValidator.validateVersion(version);
-        cacheService.ensureVersionDir(version);
-        Path stagingDir = cacheService.versionDir(version).resolve("docs-staging");
-        List<String> extractedFiles = new ArrayList<>();
-
-        try {
-            Files.createDirectories(stagingDir);
-            extractToStaging(version, stagingDir, extractedFiles);
-            moveStagingToCache(version, stagingDir, extractedFiles);
-            log.info("Extracted {} asciidoc files for version {}", extractedFiles.size(), version);
-        } catch (IOException e) {
-            cleanupStagingDir(stagingDir);
-            throw new UpstreamException("Failed to extract zip for version: " + version, e);
-        } catch (UpstreamException e) {
-            cleanupStagingDir(stagingDir);
-            throw e;
-        }
-
-        return extractedFiles;
+        Map<String, List<String>> result = streamAndExtractAll(List.of(version));
+        return result.getOrDefault(version, List.of());
     }
 
-    private void extractToStaging(String version, Path stagingDir, List<String> extractedFiles)
-            throws IOException {
-        try (InputStream zipStream = gitHubService.fetchZipStream(version);
+    private void extractToStagingAll(List<String> versions, Map<String, Path> stagingDirs,
+                                     Map<String, List<String>> result) throws IOException {
+        try (InputStream zipStream = gitHubService.fetchZipStream();
              ZipInputStream zis = new ZipInputStream(zipStream)) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
                 if (entry.isDirectory() || !entry.getName().endsWith(docParser.fileSuffix())) {
+                    zis.closeEntry();
                     continue;
                 }
                 String entryName = entry.getName();
-                String relativePath = extractRelativePath(entryName);
-                if (relativePath != null) {
-                    Path targetFile = stagingDir.resolve(relativePath);
-                    Files.createDirectories(targetFile.getParent());
-                    Files.writeString(targetFile, new String(zis.readAllBytes()));
-                    extractedFiles.add(relativePath);
+                byte[] content = zis.readAllBytes();
+
+                for (String version : versions) {
+                    String relativePath = extractRelativePath(entryName, version);
+                    if (relativePath != null) {
+                        Path stagingDir = stagingDirs.get(version);
+                        Path targetFile = stagingDir.resolve(relativePath);
+                        Files.createDirectories(targetFile.getParent());
+                        Files.writeString(targetFile, new String(content));
+                        result.get(version).add(relativePath);
+                    }
                 }
                 zis.closeEntry();
             }
@@ -125,8 +159,8 @@ public class ZipDownloadService {
         streamAndExtract(version);
     }
 
-    String extractRelativePath(String entryName) {
-        String prefix = docParser.docsPrefix();
+    String extractRelativePath(String entryName, String version) {
+        String prefix = docParser.docsPrefix(version);
         int prefixIdx = entryName.indexOf(prefix);
         if (prefixIdx < 0) {
             return null;

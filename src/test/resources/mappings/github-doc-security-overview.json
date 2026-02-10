@@ -1,10 +1,10 @@
 {
   "request": {
     "method": "GET",
-    "urlPath": "/repos/quarkusio/quarkus/contents/docs/src/main/asciidoc/security-overview.adoc",
+    "urlPath": "/repos/quarkusio/quarkusio.github.io/contents/_versions/3.27/guides/security-overview.adoc",
     "queryParameters": {
       "ref": {
-        "equalTo": "3.27"
+        "equalTo": "main"
       }
     }
   },

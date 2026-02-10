@@ -16,5 +16,6 @@ public class ContentSearchResult {
     public double score;
     public List<String> matchedKeywords;
     public int matchCount;
+    public String extension;
 
 }

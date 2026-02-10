@@ -92,14 +92,14 @@ class CacheRefreshJobTest {
         when(indexStore.read("3.27")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.27")).thenReturn(newIndexWithChangedSha());
         GithubApiFile docFile = githubDocFile("updated content");
-        when(gitHubService.fetchFileContent("docs/src/main/asciidoc/security-overview.adoc", "3.27")).thenReturn(docFile);
+        when(gitHubService.fetchFileContent("_versions/3.27/guides/security-overview.adoc", "3.27")).thenReturn(docFile);
         when(keywordIndexer.build(eq("3.27"), any())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
         // security-overview.adoc has a changed SHA, should be re-fetched and written
         // The full GitHub API path is used for fetching, but the docs prefix is stripped for storage
-        verify(gitHubService).fetchFileContent("docs/src/main/asciidoc/security-overview.adoc", "3.27");
+        verify(gitHubService).fetchFileContent("_versions/3.27/guides/security-overview.adoc", "3.27");
         verify(docStore).write(eq("3.27"), eq("security-overview.adoc"), eq("updated content"));
         // config.adoc has the same SHA, should NOT be re-fetched
         verify(gitHubService, never()).fetchFileContent(eq("config.adoc"), anyString());
@@ -112,7 +112,7 @@ class CacheRefreshJobTest {
         List<GithubApiIndex> newIndex = newIndexWithChangedSha();
         when(gitHubService.fetchIndex("3.27")).thenReturn(newIndex);
         GithubApiFile docFile = githubDocFile("updated content");
-        when(gitHubService.fetchFileContent("docs/src/main/asciidoc/security-overview.adoc", "3.27")).thenReturn(docFile);
+        when(gitHubService.fetchFileContent("_versions/3.27/guides/security-overview.adoc", "3.27")).thenReturn(docFile);
         when(keywordIndexer.build(eq("3.27"), any())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
@@ -126,7 +126,7 @@ class CacheRefreshJobTest {
         when(indexStore.read("3.27")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.27")).thenReturn(newIndexWithChangedSha());
         GithubApiFile docFile = githubDocFile("updated content");
-        when(gitHubService.fetchFileContent("docs/src/main/asciidoc/security-overview.adoc", "3.27")).thenReturn(docFile);
+        when(gitHubService.fetchFileContent("_versions/3.27/guides/security-overview.adoc", "3.27")).thenReturn(docFile);
         when(keywordIndexer.build(eq("3.27"), any())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
@@ -143,13 +143,13 @@ class CacheRefreshJobTest {
         when(indexStore.read("3.27")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.27")).thenReturn(newIndexWithAddedFile());
         GithubApiFile docFile = githubDocFile("new file content");
-        when(gitHubService.fetchFileContent("docs/src/main/asciidoc/new-file.adoc", "3.27")).thenReturn(docFile);
+        when(gitHubService.fetchFileContent("_versions/3.27/guides/new-file.adoc", "3.27")).thenReturn(docFile);
         when(keywordIndexer.build(eq("3.27"), any())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
         // new-file.adoc is not in the old index, should be fetched
-        verify(gitHubService).fetchFileContent("docs/src/main/asciidoc/new-file.adoc", "3.27");
+        verify(gitHubService).fetchFileContent("_versions/3.27/guides/new-file.adoc", "3.27");
         verify(docStore).write(eq("3.27"), eq("new-file.adoc"), eq("new file content"));
     }
 
@@ -173,15 +173,15 @@ class CacheRefreshJobTest {
         when(gitHubService.fetchIndex("3.27")).thenReturn(oldIndex());
         GithubApiFile docFile1 = githubDocFile("security content");
         GithubApiFile docFile2 = githubDocFile("config content");
-        when(gitHubService.fetchFileContent("docs/src/main/asciidoc/security-overview.adoc", "3.27")).thenReturn(docFile1);
-        when(gitHubService.fetchFileContent("docs/src/main/asciidoc/config.adoc", "3.27")).thenReturn(docFile2);
+        when(gitHubService.fetchFileContent("_versions/3.27/guides/security-overview.adoc", "3.27")).thenReturn(docFile1);
+        when(gitHubService.fetchFileContent("_versions/3.27/guides/config.adoc", "3.27")).thenReturn(docFile2);
         when(keywordIndexer.build(eq("3.27"), any())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
         // All files should be fetched since there's no old index to compare
-        verify(gitHubService).fetchFileContent("docs/src/main/asciidoc/security-overview.adoc", "3.27");
-        verify(gitHubService).fetchFileContent("docs/src/main/asciidoc/config.adoc", "3.27");
+        verify(gitHubService).fetchFileContent("_versions/3.27/guides/security-overview.adoc", "3.27");
+        verify(gitHubService).fetchFileContent("_versions/3.27/guides/config.adoc", "3.27");
         verify(docStore).write(eq("3.27"), eq("security-overview.adoc"), eq("security content"));
         verify(docStore).write(eq("3.27"), eq("config.adoc"), eq("config content"));
     }
@@ -254,36 +254,36 @@ class CacheRefreshJobTest {
     private List<GithubApiIndex> oldIndex() {
         return List.of(
                 new GithubApiIndex("security-overview.adoc",
-                        "docs/src/main/asciidoc/security-overview.adoc", "aaa111"),
+                        "_versions/3.27/guides/security-overview.adoc", "aaa111"),
                 new GithubApiIndex("config.adoc",
-                        "docs/src/main/asciidoc/config.adoc", "bbb222")
+                        "_versions/3.27/guides/config.adoc", "bbb222")
         );
     }
 
     private List<GithubApiIndex> newIndexWithChangedSha() {
         return List.of(
                 new GithubApiIndex("security-overview.adoc",
-                        "docs/src/main/asciidoc/security-overview.adoc", "ccc333"),
+                        "_versions/3.27/guides/security-overview.adoc", "ccc333"),
                 new GithubApiIndex("config.adoc",
-                        "docs/src/main/asciidoc/config.adoc", "bbb222")
+                        "_versions/3.27/guides/config.adoc", "bbb222")
         );
     }
 
     private List<GithubApiIndex> newIndexWithAddedFile() {
         return List.of(
                 new GithubApiIndex("security-overview.adoc",
-                        "docs/src/main/asciidoc/security-overview.adoc", "aaa111"),
+                        "_versions/3.27/guides/security-overview.adoc", "aaa111"),
                 new GithubApiIndex("config.adoc",
-                        "docs/src/main/asciidoc/config.adoc", "bbb222"),
+                        "_versions/3.27/guides/config.adoc", "bbb222"),
                 new GithubApiIndex("new-file.adoc",
-                        "docs/src/main/asciidoc/new-file.adoc", "ddd444")
+                        "_versions/3.27/guides/new-file.adoc", "ddd444")
         );
     }
 
     private List<GithubApiIndex> newIndexWithRemovedFile() {
         return List.of(
                 new GithubApiIndex("config.adoc",
-                        "docs/src/main/asciidoc/config.adoc", "bbb222")
+                        "_versions/3.27/guides/config.adoc", "bbb222")
         );
     }
 

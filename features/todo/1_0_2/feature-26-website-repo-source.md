@@ -96,43 +96,43 @@ GitHub Contents API response example for `_versions/3.27/guides`:
 
 ## Tasks
 
-- [ ] Add unit tests for `DocParser.docsPrefix(String version)` default method behavior: calls `docsPrefix("main")`.
-- [ ] Add unit tests for `AsciidocParser.docsPrefix(String version)`: returns `"_versions/3.27/guides/"` for version `"3.27"`, `"_versions/main/guides/"` for version `"main"`.
-- [ ] Add unit tests for deprecated `AsciidocParser.docsPrefix()`: returns `"_versions/main/guides/"`.
-- [ ] Update `DocParser` interface: add `String docsPrefix(String version)` as abstract, change zero-arg to `default` delegating to `docsPrefix("main")`.
-- [ ] Implement `AsciidocParser.docsPrefix(String version)`. Mark zero-arg `docsPrefix()` `@Deprecated`. Remove `DOCS_PREFIX` constant.
-- [ ] Add unit tests for `ZipDownloadService.extractRelativePath(String entryName, String version)`: correctly strips `_versions/<version>/guides/` prefix.
-- [ ] Add unit tests for `ZipDownloadService.streamAndExtractAll(List<String> versions)`: extracts files for multiple versions from a single zip, ignores versions not in the list, returns correct `Map<String, List<String>>`.
-- [ ] Refactor `ZipDownloadService.extractRelativePath()` to accept a version parameter.
-- [ ] Implement `ZipDownloadService.streamAndExtractAll(List<String> versions)`.
-- [ ] Refactor `ZipDownloadService.streamAndExtract(String version)` to delegate to `streamAndExtractAll`.
-- [ ] Add unit tests for `GitHubService.fetchZipStream()` (no version param): calls `githubRepositoryClient.fetchZipStream(owner, repo, branch)`.
-- [ ] Add unit tests for `GitHubService.fetchIndex(String version)`: calls `githubApiClient.fetchIndex(owner, repo, "_versions/<version>/guides", branch)`.
-- [ ] Update `GitHubService`: add `branch` config property, refactor `fetchZipStream()` to no-arg, update `fetchIndex()` to use version-specific docs path and branch as ref.
-- [ ] Add unit tests for `CacheWarmupJob`: downloads zip once via `streamAndExtractAll(versions)`, builds indexes per version from result map.
-- [ ] Refactor `CacheWarmupJob.onStartup()` to call `streamAndExtractAll(versions)` once, loop result map.
-- [ ] Add unit tests for `CacheRefreshJob.stripDocsPrefix(String path, String version)`: strips `_versions/<version>/guides/` prefix correctly.
-- [ ] Add unit tests for `CacheRefreshJob.refreshVersion()`: SHA comparison works with new docs path structure and branch ref.
-- [ ] Update `CacheRefreshJob`: change `stripDocsPrefix(String path)` to `stripDocsPrefix(String path, String version)`, update all call sites, verify `fetchIndex()` works with new paths.
-- [ ] Remove `SearchService.buildIndex(String version)` method. Update `getOrBuildIndex()` to return null when index is absent.
-- [ ] Add unit tests verifying `SearchService.getOrBuildIndex()` returns null when no index exists (no lazy download).
-- [ ] Add `extension` field to `FileSearchResult`, `SectionSearchResult`, `CodeSampleSearchResult`, `ContentSearchResult`, `SectionContentResult`, `DocResponse`. Update constructors.
-- [ ] Add `extension TEXT` column to SQLite schema (`keyword_files`, `keyword_sections`, `code_samples`, `content_words`) in `SqliteSchemaInitializer`.
-- [ ] Update `KeywordIndexer.build()`, `CodeSampleIndexer.build()`, `ContentIndexer.build()` to accept `String extension` parameter and store it.
-- [ ] Add optional `@QueryParam("extension")` to search endpoints in `SearchResource`. Pass to service methods for filtering.
-- [ ] Add optional `@QueryParam("extension") String extension` to `DocsResource.getDoc()`. Add `@Parameter(description = "Optional extension name filter", required = false, example = "quarkus-core")`. Populate `extension` field in `DocResponse` (default `"quarkus-core"`).
-- [ ] Update `application.properties`: change `app.github.repo` to `quarkusio.github.io`, add `app.github.branch=main`, add `app.versions=main` as non-profile default.
-- [ ] Update WireMock stubs in test resources to serve a zip with `_versions/<version>/guides/` structure instead of `docs/src/main/asciidoc/`.
-- [ ] Update all breaking tests:
+- [x] Add unit tests for `DocParser.docsPrefix(String version)` default method behavior: calls `docsPrefix("main")`.
+- [x] Add unit tests for `AsciidocParser.docsPrefix(String version)`: returns `"_versions/3.27/guides/"` for version `"3.27"`, `"_versions/main/guides/"` for version `"main"`.
+- [x] Add unit tests for deprecated `AsciidocParser.docsPrefix()`: returns `"_versions/main/guides/"`.
+- [x] Update `DocParser` interface: add `String docsPrefix(String version)` as abstract, change zero-arg to `default` delegating to `docsPrefix("main")`.
+- [x] Implement `AsciidocParser.docsPrefix(String version)`. Mark zero-arg `docsPrefix()` `@Deprecated`. Remove `DOCS_PREFIX` constant.
+- [x] Add unit tests for `ZipDownloadService.extractRelativePath(String entryName, String version)`: correctly strips `_versions/<version>/guides/` prefix.
+- [x] Add unit tests for `ZipDownloadService.streamAndExtractAll(List<String> versions)`: extracts files for multiple versions from a single zip, ignores versions not in the list, returns correct `Map<String, List<String>>`.
+- [x] Refactor `ZipDownloadService.extractRelativePath()` to accept a version parameter.
+- [x] Implement `ZipDownloadService.streamAndExtractAll(List<String> versions)`.
+- [x] Refactor `ZipDownloadService.streamAndExtract(String version)` to delegate to `streamAndExtractAll`.
+- [x] Add unit tests for `GitHubService.fetchZipStream()` (no version param): calls `githubRepositoryClient.fetchZipStream(owner, repo, branch)`.
+- [x] Add unit tests for `GitHubService.fetchIndex(String version)`: calls `githubApiClient.fetchIndex(owner, repo, "_versions/<version>/guides", branch)`.
+- [x] Update `GitHubService`: add `branch` config property, refactor `fetchZipStream()` to no-arg, update `fetchIndex()` to use version-specific docs path and branch as ref.
+- [x] Add unit tests for `CacheWarmupJob`: downloads zip once via `streamAndExtractAll(versions)`, builds indexes per version from result map.
+- [x] Refactor `CacheWarmupJob.onStartup()` to call `streamAndExtractAll(versions)` once, loop result map.
+- [x] Add unit tests for `CacheRefreshJob.stripDocsPrefix(String path, String version)`: strips `_versions/<version>/guides/` prefix correctly.
+- [x] Add unit tests for `CacheRefreshJob.refreshVersion()`: SHA comparison works with new docs path structure and branch ref.
+- [x] Update `CacheRefreshJob`: change `stripDocsPrefix(String path)` to `stripDocsPrefix(String path, String version)`, update all call sites, verify `fetchIndex()` works with new paths.
+- [x] Remove `SearchService.buildIndex(String version)` method. Update `getOrBuildIndex()` to return null when index is absent.
+- [x] Add unit tests verifying `SearchService.getOrBuildIndex()` returns null when no index exists (no lazy download).
+- [x] Add `extension` field to `FileSearchResult`, `SectionSearchResult`, `CodeSampleSearchResult`, `ContentSearchResult`, `SectionContentResult`, `DocResponse`. Update constructors.
+- [x] Add `extension TEXT` column to SQLite schema (`keyword_files`, `keyword_sections`, `code_samples`, `content_words`) in `SqliteSchemaInitializer`.
+- [x] Update `KeywordIndexer.build()`, `CodeSampleIndexer.build()`, `ContentIndexer.build()` to accept `String extension` parameter and store it.
+- [x] Add optional `@QueryParam("extension")` to search endpoints in `SearchResource`. Pass to service methods for filtering.
+- [x] Add optional `@QueryParam("extension") String extension` to `DocsResource.getDoc()`. Add `@Parameter(description = "Optional extension name filter", required = false, example = "quarkus-core")`. Populate `extension` field in `DocResponse` (default `"quarkus-core"`).
+- [x] Update `application.properties`: change `app.github.repo` to `quarkusio.github.io`, add `app.github.branch=main`, add `app.versions=main` as non-profile default.
+- [x] Update WireMock stubs in test resources to serve a zip with `_versions/<version>/guides/` structure instead of `docs/src/main/asciidoc/`.
+- [x] Update all breaking tests:
   - `ZipDownloadServiceTest` — zip entries now use `quarkusio.github.io-main/_versions/<version>/guides/` prefix; mock `gitHubService.fetchZipStream()` (no version arg).
   - `CacheWarmupJobTest` — mock `zipDownloadService.streamAndExtractAll(versions)` instead of per-version `streamAndExtract(version)`.
   - `CacheWarmupJobIntegrationTest` — WireMock zip structure changes to `_versions/<version>/guides/`; single zip download for all versions.
   - `CacheRefreshJobTest` — `GithubApiIndex.path` values change from `docs/src/main/asciidoc/file.adoc` to `_versions/<version>/guides/file.adoc`; `stripDocsPrefix` gains version param.
   - `CacheRefreshJobIntegrationTest` — same path changes as unit test.
   - `SearchServiceTest` — remove tests for lazy `buildIndex()` behavior; add tests confirming null return when index absent.
-- [ ] Add integration tests confirming warmup extracts docs from the website repo zip structure.
-- [ ] Add integration tests confirming refresh SHA comparison and selective re-fetch works with new paths.
-- [ ] Verify all existing search integration tests still pass.
+- [x] Add integration tests confirming warmup extracts docs from the website repo zip structure.
+- [x] Add integration tests confirming refresh SHA comparison and selective re-fetch works with new paths.
+- [x] Verify all existing search integration tests still pass.
 
 ## Operational notes
 
@@ -144,4 +144,28 @@ GitHub Contents API response example for `_versions/3.27/guides`:
 
 ## Implementation notes
 
-_(To be filled during implementation)_
+### Summary
+
+Switched the documentation source from `quarkusio/quarkus` (per-version branch zips) to `quarkusio/quarkusio.github.io` (single `main` branch zip containing all versions under `_versions/<version>/guides/`).
+
+### Key decisions
+
+- **Single zip download for all versions**: `ZipDownloadService.streamAndExtractAll(List<String> versions)` downloads the website repo zip once and extracts entries for all requested versions in a single pass. Individual `streamAndExtract(version)` delegates to the batch method.
+- **Branch config**: Added `app.github.branch` property (default `main`) to `GitHubService`. All GitHub API calls (zip, contents, file fetch) use this branch as `ref`.
+- **Extension field**: Added `extension` field (default `"quarkus-core"`) to all DTOs (`FileSearchResult`, `SectionSearchResult`, `CodeSampleSearchResult`, `ContentSearchResult`, `SectionContentResult`, `DocResponse`) and index models (`FileKeywordEntry`, `CodeSampleEntry`, `ContentOccurrence`). Backward-compatible constructors default to `"quarkus-core"`.
+- **SQLite schema**: Added `extension TEXT NOT NULL DEFAULT 'quarkus-core'` to `files`, `code_samples`, and `content_words` tables. `SqliteSchemaInitializer` handles this in `CREATE TABLE` statements with defaults.
+- **DocParser.docsPrefix(version)**: New abstract method returning `"_versions/" + version + "/guides/"`. The zero-arg `docsPrefix()` became a default method delegating to `docsPrefix("main")`, and the old `AsciidocParser` override is `@Deprecated`.
+- **SearchService simplified**: Removed lazy index building (`buildIndex()` method) and the `zipDownloadService`/`keywordIndexer`/`contentIndexer` fields. `getOrBuildIndex()` now returns null when absent. Constructor takes exactly 8 fields.
+- **CacheWarmupJob**: Calls `streamAndExtractAll(versionsToWarm)` once, then iterates the result map to build all three indexes per version.
+- **CacheRefreshJob**: `stripDocsPrefix()` and `buildShaMap()` take a version parameter, using `docParser.docsPrefix(version)` for path operations.
+- **Indexer overloads**: All three indexers (`KeywordIndexer`, `CodeSampleIndexer`, `ContentIndexer`) gained overloads accepting an `extension` parameter; old signatures delegate with `"quarkus-core"`.
+- **Resource endpoints**: `SearchResource` and `DocsResource` accept an optional `@QueryParam("extension")` (unused filtering for now, prepares for F27).
+
+### Test updates
+
+- All WireMock stubs updated to target `quarkusio/quarkusio.github.io` URLs with `ref=main`.
+- Test zip file (`quarkus-3.27-zip.zip`) recreated with entries under `quarkusio.github.io-main/_versions/3.27/guides/`.
+- `SearchServiceTest` constructor calls updated to 8 args; lazy-init nested test class removed.
+- `CacheWarmupJobTest` updated from `streamAndExtract` to `streamAndExtractAll` with `Map` returns.
+- `CacheRefreshJobTest` paths changed to `_versions/3.27/guides/` prefix.
+- `AsciidocParserTest` covers new `docsPrefix(version)` method.

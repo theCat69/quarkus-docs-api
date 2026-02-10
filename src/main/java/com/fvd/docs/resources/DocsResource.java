@@ -55,15 +55,22 @@ public class DocsResource {
             )
             @QueryParam("version") String version,
             @Parameter(
-                    description = "Full file path in the GitHub repository (e.g. docs/src/main/asciidoc/security-overview.adoc)",
+                    description = "Full file path in the GitHub repository (e.g. _versions/3.27/guides/security-overview.adoc)",
                     required = true,
-                    example = "docs/src/main/asciidoc/security-overview.adoc"
+                    example = "_versions/3.27/guides/security-overview.adoc"
             )
-            @QueryParam("path") String path) {
+            @QueryParam("path") String path,
+            @Parameter(
+                    description = "Optional extension name filter",
+                    required = false,
+                    example = "quarkus-core"
+            )
+            @QueryParam("extension") String extension) {
         InputValidator.validateVersion(version);
         InputValidator.validatePath(path);
         String content = docService.getOrFetchDoc(version, path);
-        return new DocResponse(path, content, "asciidoc");
+        String ext = (extension != null && !extension.isBlank()) ? extension : "quarkus-core";
+        return new DocResponse(path, content, "asciidoc", ext);
     }
 
 }

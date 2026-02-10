@@ -32,7 +32,7 @@ class DocsResourceTest {
     @Test
     void testDocEndpointMissingVersion() {
         given()
-            .queryParam("path", "docs/src/main/asciidoc/security-overview.adoc")
+            .queryParam("path", "_versions/3.27/guides/security-overview.adoc")
             .when().get("/api/doc")
             .then()
                 .statusCode(400);
@@ -61,11 +61,11 @@ class DocsResourceTest {
     void testDocEndpointReturnsDecodedContent() {
         given()
             .queryParam("version", "3.27")
-            .queryParam("path", "docs/src/main/asciidoc/security-overview.adoc")
+            .queryParam("path", "_versions/3.27/guides/security-overview.adoc")
             .when().get("/api/doc")
             .then()
                 .statusCode(200)
-                .body("path", equalTo("docs/src/main/asciidoc/security-overview.adoc"))
+                .body("path", equalTo("_versions/3.27/guides/security-overview.adoc"))
                 .body("format", equalTo("asciidoc"))
                 .body("content", equalTo("= Quarkus Security overview\n\nQuarkus Security is a framework that provides the architecture."));
     }
@@ -74,7 +74,7 @@ class DocsResourceTest {
     void testDocEndpointNotFound() {
         given()
             .queryParam("version", "3.27")
-            .queryParam("path", "docs/src/main/asciidoc/nonexistent.adoc")
+            .queryParam("path", "_versions/3.27/guides/nonexistent.adoc")
             .when().get("/api/doc")
             .then()
                 .statusCode(404);

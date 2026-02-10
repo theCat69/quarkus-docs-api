@@ -58,6 +58,10 @@ public class KeywordIndexer {
     private final SearchConfig searchConfig;
 
     public KeywordIndex build(String version, List<String> filePaths) {
+        return build(version, filePaths, "quarkus-core");
+    }
+
+    public KeywordIndex build(String version, List<String> filePaths, String extension) {
         List<FileKeywordEntry> fileEntries = new ArrayList<>();
 
         for (String filePath : filePaths) {
@@ -66,6 +70,7 @@ public class KeywordIndexer {
                 continue;
             }
             FileKeywordEntry entry = buildFileEntry(filePath, content.get());
+            entry.extension = extension;
             fileEntries.add(entry);
         }
 

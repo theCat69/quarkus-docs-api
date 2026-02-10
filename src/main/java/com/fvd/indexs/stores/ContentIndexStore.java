@@ -106,7 +106,7 @@ public class ContentIndexStore {
         }
 
         try (PreparedStatement wordStmt = conn.prepareStatement(
-                     "INSERT INTO content_words (version, word, file_path) VALUES (?, ?, ?)",
+                     "INSERT INTO content_words (version, word, file_path, extension) VALUES (?, ?, ?, ?)",
                      Statement.RETURN_GENERATED_KEYS);
              PreparedStatement posStmt = conn.prepareStatement(
                      "INSERT INTO content_word_positions (word_id, char_offset, line_number) VALUES (?, ?, ?)")) {
@@ -122,9 +122,16 @@ public class ContentIndexStore {
                 }
 
                 for (Map.Entry<String, List<ContentOccurrence>> fileEntry : byFile.entrySet()) {
+                    // Determine extension from first occurrence in this file group
+                    String extension = fileEntry.getValue().stream()
+                            .map(o -> o.extension)
+                            .filter(e -> e != null)
+                            .findFirst()
+                            .orElse("quarkus-core");
                     wordStmt.setString(1, version);
                     wordStmt.setString(2, word);
                     wordStmt.setString(3, fileEntry.getKey());
+                    wordStmt.setString(4, extension);
                     wordStmt.executeUpdate();
 
                     long wordId;
@@ -149,7 +156,7 @@ public class ContentIndexStore {
         Map<String, List<ContentOccurrence>> result = new HashMap<>();
 
         try (PreparedStatement stmt = conn.prepareStatement("""
-                SELECT cw.word, cw.file_path, cwp.char_offset, cwp.line_number
+                SELECT cw.word, cw.file_path, cw.extension, cwp.char_offset, cwp.line_number
                 FROM content_words cw
                 JOIN content_word_positions cwp ON cwp.word_id = cw.id
                 WHERE cw.version = ?
@@ -160,10 +167,11 @@ public class ContentIndexStore {
                 while (rs.next()) {
                     String word = rs.getString("word");
                     String filePath = rs.getString("file_path");
+                    String extension = rs.getString("extension");
                     int charOffset = rs.getInt("char_offset");
                     int lineNumber = rs.getInt("line_number");
                     result.computeIfAbsent(word, k -> new ArrayList<>())
-                            .add(new ContentOccurrence(filePath, charOffset, lineNumber));
+                            .add(new ContentOccurrence(filePath, charOffset, lineNumber, extension));
                 }
             }
         }

@@ -1,50 +1,50 @@
 [
   {
     "name": "security-overview.adoc",
-    "path": "docs/src/main/asciidoc/security-overview.adoc",
+    "path": "_versions/3.27/guides/security-overview.adoc",
     "sha": "5750dbd9a897c382beb0a98543562c31045a53c7",
     "size": 7423,
-    "url": "https://api.github.com/repos/quarkusio/quarkus/contents/docs/src/main/asciidoc/security-overview.adoc?ref=3.27",
-    "html_url": "https://github.com/quarkusio/quarkus/blob/3.27/docs/src/main/asciidoc/security-overview.adoc",
-    "git_url": "https://api.github.com/repos/quarkusio/quarkus/git/blobs/5750dbd9a897c382beb0a98543562c31045a53c7",
-    "download_url": "https://raw.githubusercontent.com/quarkusio/quarkus/3.27/docs/src/main/asciidoc/security-overview.adoc",
+    "url": "https://api.github.com/repos/quarkusio/quarkusio.github.io/contents/_versions/3.27/guides/security-overview.adoc?ref=main",
+    "html_url": "https://github.com/quarkusio/quarkusio.github.io/blob/main/_versions/3.27/guides/security-overview.adoc",
+    "git_url": "https://api.github.com/repos/quarkusio/quarkusio.github.io/git/blobs/5750dbd9a897c382beb0a98543562c31045a53c7",
+    "download_url": "https://raw.githubusercontent.com/quarkusio/quarkusio.github.io/main/_versions/3.27/guides/security-overview.adoc",
     "type": "file",
     "_links": {
-      "self": "https://api.github.com/repos/quarkusio/quarkus/contents/docs/src/main/asciidoc/security-overview.adoc?ref=3.27",
-      "git": "https://api.github.com/repos/quarkusio/quarkus/git/blobs/5750dbd9a897c382beb0a98543562c31045a53c7",
-      "html": "https://github.com/quarkusio/quarkus/blob/3.27/docs/src/main/asciidoc/security-overview.adoc"
+      "self": "https://api.github.com/repos/quarkusio/quarkusio.github.io/contents/_versions/3.27/guides/security-overview.adoc?ref=main",
+      "git": "https://api.github.com/repos/quarkusio/quarkusio.github.io/git/blobs/5750dbd9a897c382beb0a98543562c31045a53c7",
+      "html": "https://github.com/quarkusio/quarkusio.github.io/blob/main/_versions/3.27/guides/security-overview.adoc"
     }
   },
   {
     "name": "config.adoc",
-    "path": "docs/src/main/asciidoc/config.adoc",
+    "path": "_versions/3.27/guides/config.adoc",
     "sha": "31c9bdbaa0d4e9bc8d9efa5717a735ae879ecc7e",
     "size": 9253,
-    "url": "https://api.github.com/repos/quarkusio/quarkus/contents/docs/src/main/asciidoc/config.adoc?ref=3.27",
-    "html_url": "https://github.com/quarkusio/quarkus/blob/3.27/docs/src/main/asciidoc/config.adoc",
-    "git_url": "https://api.github.com/repos/quarkusio/quarkus/git/blobs/31c9bdbaa0d4e9bc8d9efa5717a735ae879ecc7e",
-    "download_url": "https://raw.githubusercontent.com/quarkusio/quarkus/3.27/docs/src/main/asciidoc/config.adoc",
+    "url": "https://api.github.com/repos/quarkusio/quarkusio.github.io/contents/_versions/3.27/guides/config.adoc?ref=main",
+    "html_url": "https://github.com/quarkusio/quarkusio.github.io/blob/main/_versions/3.27/guides/config.adoc",
+    "git_url": "https://api.github.com/repos/quarkusio/quarkusio.github.io/git/blobs/31c9bdbaa0d4e9bc8d9efa5717a735ae879ecc7e",
+    "download_url": "https://raw.githubusercontent.com/quarkusio/quarkusio.github.io/main/_versions/3.27/guides/config.adoc",
     "type": "file",
     "_links": {
-      "self": "https://api.github.com/repos/quarkusio/quarkus/contents/docs/src/main/asciidoc/config.adoc?ref=3.27",
-      "git": "https://api.github.com/repos/quarkusio/quarkus/git/blobs/31c9bdbaa0d4e9bc8d9efa5717a735ae879ecc7e",
-      "html": "https://github.com/quarkusio/quarkus/blob/3.27/docs/src/main/asciidoc/config.adoc"
+      "self": "https://api.github.com/repos/quarkusio/quarkusio.github.io/contents/_versions/3.27/guides/config.adoc?ref=main",
+      "git": "https://api.github.com/repos/quarkusio/quarkusio.github.io/git/blobs/31c9bdbaa0d4e9bc8d9efa5717a735ae879ecc7e",
+      "html": "https://github.com/quarkusio/quarkusio.github.io/blob/main/_versions/3.27/guides/config.adoc"
     }
   },
   {
     "name": "cdi.adoc",
-    "path": "docs/src/main/asciidoc/cdi.adoc",
+    "path": "_versions/3.27/guides/cdi.adoc",
     "sha": "6c06a35c5e2d51dffa7a9fcb5b14af83700c7721",
     "size": 22566,
-    "url": "https://api.github.com/repos/quarkusio/quarkus/contents/docs/src/main/asciidoc/cdi.adoc?ref=3.27",
-    "html_url": "https://github.com/quarkusio/quarkus/blob/3.27/docs/src/main/asciidoc/cdi.adoc",
-    "git_url": "https://api.github.com/repos/quarkusio/quarkus/git/blobs/6c06a35c5e2d51dffa7a9fcb5b14af83700c7721",
-    "download_url": "https://raw.githubusercontent.com/quarkusio/quarkus/3.27/docs/src/main/asciidoc/cdi.adoc",
+    "url": "https://api.github.com/repos/quarkusio/quarkusio.github.io/contents/_versions/3.27/guides/cdi.adoc?ref=main",
+    "html_url": "https://github.com/quarkusio/quarkusio.github.io/blob/main/_versions/3.27/guides/cdi.adoc",
+    "git_url": "https://api.github.com/repos/quarkusio/quarkusio.github.io/git/blobs/6c06a35c5e2d51dffa7a9fcb5b14af83700c7721",
+    "download_url": "https://raw.githubusercontent.com/quarkusio/quarkusio.github.io/main/_versions/3.27/guides/cdi.adoc",
     "type": "file",
     "_links": {
-      "self": "https://api.github.com/repos/quarkusio/quarkus/contents/docs/src/main/asciidoc/cdi.adoc?ref=3.27",
-      "git": "https://api.github.com/repos/quarkusio/quarkus/git/blobs/6c06a35c5e2d51dffa7a9fcb5b14af83700c7721",
-      "html": "https://github.com/quarkusio/quarkus/blob/3.27/docs/src/main/asciidoc/cdi.adoc"
+      "self": "https://api.github.com/repos/quarkusio/quarkusio.github.io/contents/_versions/3.27/guides/cdi.adoc?ref=main",
+      "git": "https://api.github.com/repos/quarkusio/quarkusio.github.io/git/blobs/6c06a35c5e2d51dffa7a9fcb5b14af83700c7721",
+      "html": "https://github.com/quarkusio/quarkusio.github.io/blob/main/_versions/3.27/guides/cdi.adoc"
     }
   }
 ]
