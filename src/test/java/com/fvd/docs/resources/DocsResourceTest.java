@@ -1,5 +1,6 @@
 package com.fvd.docs.resources;
 
+import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -19,6 +20,9 @@ class DocsResourceTest {
     @Inject
     SqliteSchemaInitializer schemaInitializer;
 
+    @Inject
+    DocStore docStore;
+
     @BeforeEach
     void cleanTestCache() throws IOException {
         var cachePath = Path.of("build/test-cache").toFile();
@@ -35,7 +39,9 @@ class DocsResourceTest {
             .queryParam("path", "_versions/3.27/guides/security-overview.adoc")
             .when().get("/api/doc")
             .then()
-                .statusCode(400);
+                .statusCode(200)
+                .body("path", equalTo("_versions/3.27/guides/security-overview.adoc"))
+                .body("format", equalTo("asciidoc"));
     }
 
     @Test
@@ -78,6 +84,31 @@ class DocsResourceTest {
             .when().get("/api/doc")
             .then()
                 .statusCode(404);
+    }
+
+    @Test
+    void testDocEndpointDefaultsToMainVersionWithCachedDoc() {
+        docStore.write("main", "security.adoc", "= Security Guide\nContent for main version.");
+        given()
+            .queryParam("path", "security.adoc")
+            .when().get("/api/doc")
+            .then()
+                .statusCode(200)
+                .body("path", equalTo("security.adoc"))
+                .body("content", equalTo("= Security Guide\nContent for main version."))
+                .body("format", equalTo("asciidoc"));
+    }
+
+    @Test
+    void testDocEndpointExplicitVersionStillWorks() {
+        given()
+            .queryParam("version", "3.27")
+            .queryParam("path", "_versions/3.27/guides/security-overview.adoc")
+            .when().get("/api/doc")
+            .then()
+                .statusCode(200)
+                .body("path", equalTo("_versions/3.27/guides/security-overview.adoc"))
+                .body("format", equalTo("asciidoc"));
     }
 
 }

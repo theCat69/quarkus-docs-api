@@ -6,6 +6,16 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class InputValidator {
 
+    public static final String DEFAULT_VERSION = "main";
+
+    public static String resolveVersion(String version) {
+        if (version == null || version.isBlank()) {
+            version = DEFAULT_VERSION;
+        }
+        validateVersion(version);
+        return version;
+    }
+
     public static void requireNonEmpty(String value, String paramName) {
         if (value == null || value.isBlank()) {
             throw new InvalidInputException(paramName + " must not be empty");

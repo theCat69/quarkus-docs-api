@@ -48,6 +48,7 @@ class SearchResourceTest {
         schemaInitializer.resetSchema();
         // Invalidate in-memory caches to avoid cross-test pollution
         searchService.invalidateCache("3.27");
+        searchService.invalidateCache("main");
     }
 
     @Test
@@ -56,7 +57,20 @@ class SearchResourceTest {
                 .queryParam("keywords", "oidc")
                 .when().get("/api/search/files")
                 .then()
-                .statusCode(400);
+                .statusCode(200)
+                .body("results.size()", is(0));
+    }
+
+    @Test
+    void testSearchFilesEndpointDefaultsToMainVersion() {
+        seedKeywordIndexForMain();
+        given()
+                .queryParam("keywords", "security")
+                .when().get("/api/search/files")
+                .then()
+                .statusCode(200)
+                .body("results.size()", greaterThan(0))
+                .body("results[0].path", equalTo("security-overview.adoc"));
     }
 
     @Test
@@ -178,7 +192,8 @@ class SearchResourceTest {
                 .queryParam("filePaths", "docs/src/main/asciidoc/security-oidc.adoc")
                 .when().get("/api/search/sections")
                 .then()
-                .statusCode(400);
+                .statusCode(200)
+                .body("results.size()", is(0));
     }
 
     @Test
@@ -286,7 +301,7 @@ class SearchResourceTest {
                 .queryParam("sectionTitle", "Overview")
                 .when().get("/api/search/section-content")
                 .then()
-                .statusCode(400);
+                .statusCode(404);
     }
 
     @Test
@@ -407,7 +422,20 @@ class SearchResourceTest {
                 .queryParam("keywords", "security")
                 .when().get("/api/search/content")
                 .then()
-                .statusCode(400);
+                .statusCode(200)
+                .body("results.size()", is(0));
+    }
+
+    @Test
+    void testSearchContentEndpointDefaultsToMainVersion() {
+        seedDocFileForMain();
+        given()
+                .queryParam("keywords", "security")
+                .when().get("/api/search/content")
+                .then()
+                .statusCode(200)
+                .body("results.size()", greaterThan(0))
+                .body("results[0].path", equalTo("security.adoc"));
     }
 
     @Test
@@ -547,7 +575,8 @@ class SearchResourceTest {
                 .queryParam("keywords", "security")
                 .when().get("/api/search/code-samples")
                 .then()
-                .statusCode(400);
+                .statusCode(200)
+                .body("results.size()", is(0));
     }
 
     @Test
@@ -694,6 +723,21 @@ class SearchResourceTest {
         docStore.write("3.27", "security.adoc", docContent);
     }
 
+    private void seedDocFileForMain() {
+        String docContent = """
+                = Security Guide
+                Introduction text.
+                
+                == Overview
+                This is the overview section.
+                It covers security basics.
+                
+                == Configuration
+                Config details here.
+                """;
+        docStore.write("main", "security.adoc", docContent);
+    }
+
     private void seedKeywordIndex() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("security-overview.adoc",
@@ -705,6 +749,16 @@ class SearchResourceTest {
                         List.of())
         ));
         keywordIndexStore.write("3.27", index);
+    }
+
+    private void seedKeywordIndexForMain() {
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("security-overview.adoc",
+                        List.of(new KeywordScore("security", 15), new KeywordScore("quarkus", 8)),
+                        List.of(new SectionKeywordEntry("Security Overview", 1, 10,
+                                List.of(new KeywordScore("security", 12), new KeywordScore("overview", 5)))))
+        ));
+        keywordIndexStore.write("main", index);
     }
 
     private void seedCodeSampleIndex() {

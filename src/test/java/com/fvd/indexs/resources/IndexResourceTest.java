@@ -35,9 +35,7 @@ class IndexResourceTest {
         given()
                 .when().get("/api/index")
                 .then()
-                .statusCode(400)
-                .body("status", is(400))
-                .body("message", not(emptyOrNullString()));
+                .statusCode(404);
     }
 
     @Test
@@ -46,7 +44,7 @@ class IndexResourceTest {
                 .queryParam("version", "")
                 .when().get("/api/index")
                 .then()
-                .statusCode(400);
+                .statusCode(404);
     }
 
     @Test

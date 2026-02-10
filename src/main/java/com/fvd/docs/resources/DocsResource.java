@@ -49,9 +49,10 @@ public class DocsResource {
     )
     public DocResponse getDoc(
             @Parameter(
-                    description = "Quarkus version branch or tag",
-                    required = true,
-                    example = "3.27"
+                    description = "Quarkus version branch or tag. Defaults to 'main' if omitted. When using 'main', results may include quarkiverse extension docs.",
+                    required = false,
+                    example = "3.27",
+                    schema = @Schema(defaultValue = "main")
             )
             @QueryParam("version") String version,
             @Parameter(
@@ -66,7 +67,7 @@ public class DocsResource {
                     example = "quarkus-core"
             )
             @QueryParam("extension") String extension) {
-        InputValidator.validateVersion(version);
+        version = InputValidator.resolveVersion(version);
         InputValidator.validatePath(path);
         String content = docService.getOrFetchDoc(version, path);
         String ext = (extension != null && !extension.isBlank()) ? extension : "quarkus-core";

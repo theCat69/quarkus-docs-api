@@ -46,12 +46,13 @@ public class IndexResource {
     )
     public List<GithubApiIndex> getIndex(
             @Parameter(
-                    description = "Quarkus version branch or tag",
-                    required = true,
-                    example = "3.27"
+                    description = "Quarkus version branch or tag. Defaults to 'main' if omitted. When using 'main', results may include quarkiverse extension docs.",
+                    required = false,
+                    example = "3.27",
+                    schema = @Schema(defaultValue = "main")
             )
             @QueryParam("version") String version) {
-        InputValidator.validateVersion(version);
+        version = InputValidator.resolveVersion(version);
         return indexService.getOrFetchIndex(version);
     }
 }

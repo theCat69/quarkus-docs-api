@@ -61,7 +61,8 @@ public class SearchResource {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))
     )
     public SearchResponse<FileSearchResult> searchFiles(
-            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.27")
+            @Parameter(description = "Quarkus version branch or tag. Defaults to 'main' if omitted. When using 'main', results may include quarkiverse extension docs.",
+                    required = false, example = "3.27", schema = @Schema(defaultValue = "main"))
             @QueryParam("version") String version,
             @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in lowercase)", required = true, example = "security,oidc")
             @QueryParam("keywords") String keywords,
@@ -71,7 +72,7 @@ public class SearchResource {
             @QueryParam("offset") Integer offset,
             @Parameter(description = "Optional extension name filter", required = false, example = "quarkus-core")
             @QueryParam("extension") String extension) {
-        InputValidator.validateVersion(version);
+        version = InputValidator.resolveVersion(version);
         InputValidator.validateKeywords(keywords);
         int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
         int validOffset = InputValidator.validateOffset(offset);
@@ -103,7 +104,8 @@ public class SearchResource {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))
     )
     public SearchResponse<SectionSearchResult> searchSections(
-            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.27")
+            @Parameter(description = "Quarkus version branch or tag. Defaults to 'main' if omitted. When using 'main', results may include quarkiverse extension docs.",
+                    required = false, example = "3.27", schema = @Schema(defaultValue = "main"))
             @QueryParam("version") String version,
             @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in lowercase)", required = true, example = "security,oidc")
             @QueryParam("keywords") String keywords,
@@ -115,7 +117,7 @@ public class SearchResource {
             @QueryParam("offset") Integer offset,
             @Parameter(description = "Optional extension name filter", required = false, example = "quarkus-core")
             @QueryParam("extension") String extension) {
-        InputValidator.validateVersion(version);
+        version = InputValidator.resolveVersion(version);
         InputValidator.validateKeywords(keywords);
         int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
         int validOffset = InputValidator.validateOffset(offset);
@@ -160,14 +162,15 @@ public class SearchResource {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))
     )
     public SectionContentResult getSectionContent(
-            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.27")
+            @Parameter(description = "Quarkus version branch or tag. Defaults to 'main' if omitted. When using 'main', results may include quarkiverse extension docs.",
+                    required = false, example = "3.27", schema = @Schema(defaultValue = "main"))
             @QueryParam("version") String version,
             @Parameter(description = "File path relative to the docs directory", required = true, example = "security-overview.adoc")
             @QueryParam("filePath") String filePath,
             @Parameter(description = "Title of the section to retrieve. Supports fuzzy matching: partial titles, "
                     + "keywords, and minor misspellings will be matched to the closest section.", required = true, example = "Getting Started")
             @QueryParam("sectionTitle") String sectionTitle) {
-        InputValidator.validateVersion(version);
+        version = InputValidator.resolveVersion(version);
         InputValidator.validatePath(filePath);
         InputValidator.validateSectionTitle(sectionTitle);
         return searchService.getSectionContent(version, filePath, sectionTitle);
@@ -194,7 +197,8 @@ public class SearchResource {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))
     )
     public SearchResponse<CodeSampleSearchResult> searchCodeSamples(
-            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.27")
+            @Parameter(description = "Quarkus version branch or tag. Defaults to 'main' if omitted. When using 'main', results may include quarkiverse extension docs.",
+                    required = false, example = "3.27", schema = @Schema(defaultValue = "main"))
             @QueryParam("version") String version,
             @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in lowercase)", required = true, example = "security,oidc")
             @QueryParam("keywords") String keywords,
@@ -208,7 +212,7 @@ public class SearchResource {
             @QueryParam("offset") Integer offset,
             @Parameter(description = "Optional extension name filter", required = false, example = "quarkus-core")
             @QueryParam("extension") String extension) {
-        InputValidator.validateVersion(version);
+        version = InputValidator.resolveVersion(version);
         InputValidator.validateKeywords(keywords);
         int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
         int validOffset = InputValidator.validateOffset(offset);
@@ -247,7 +251,8 @@ public class SearchResource {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))
     )
     public SearchResponse<ContentSearchResult> searchContent(
-            @Parameter(description = "Quarkus version branch or tag", required = true, example = "3.27")
+            @Parameter(description = "Quarkus version branch or tag. Defaults to 'main' if omitted. When using 'main', results may include quarkiverse extension docs.",
+                    required = false, example = "3.27", schema = @Schema(defaultValue = "main"))
             @QueryParam("version") String version,
             @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in document body)", required = true, example = "security,oidc")
             @QueryParam("keywords") String keywords,
@@ -259,7 +264,7 @@ public class SearchResource {
             @QueryParam("offset") Integer offset,
             @Parameter(description = "Optional extension name filter", required = false, example = "quarkus-core")
             @QueryParam("extension") String extension) {
-        InputValidator.validateVersion(version);
+        version = InputValidator.resolveVersion(version);
         InputValidator.validateKeywords(keywords);
         int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
         int validOffset = InputValidator.validateOffset(offset);

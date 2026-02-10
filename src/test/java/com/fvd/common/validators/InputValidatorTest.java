@@ -174,4 +174,32 @@ class InputValidatorTest {
                 .isInstanceOf(InvalidInputException.class)
                 .hasMessageContaining("offset must not be negative");
     }
+
+    // --- resolveVersion tests ---
+
+    @Test
+    void resolveVersionReturnsMainWhenNull() {
+        assertThat(InputValidator.resolveVersion(null)).isEqualTo("main");
+    }
+
+    @Test
+    void resolveVersionReturnsMainWhenEmpty() {
+        assertThat(InputValidator.resolveVersion("")).isEqualTo("main");
+    }
+
+    @Test
+    void resolveVersionReturnsMainWhenBlank() {
+        assertThat(InputValidator.resolveVersion("  ")).isEqualTo("main");
+    }
+
+    @Test
+    void resolveVersionReturnsProvidedVersion() {
+        assertThat(InputValidator.resolveVersion("3.27")).isEqualTo("3.27");
+    }
+
+    @Test
+    void resolveVersionThrowsOnInvalidCharacters() {
+        assertThatThrownBy(() -> InputValidator.resolveVersion("invalid!version"))
+                .isInstanceOf(InvalidInputException.class);
+    }
 }
