@@ -94,6 +94,7 @@ public class SearchService {
                 .map(String::toLowerCase).toList());
         Set<String> filePathSet = (filePaths == null || filePaths.isEmpty())
                 ? null : new HashSet<>(filePaths);
+        double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
         List<SectionSearchResult> results = new ArrayList<>();
 
         for (FileKeywordEntry file : index.files) {
@@ -102,12 +103,17 @@ public class SearchService {
             }
             for (SectionKeywordEntry section : file.sections) {
                 double score = 0;
+                int matchedCount = 0;
                 for (KeywordScore ks : section.keywords) {
                     if (keywordSet.contains(ks.word)) {
                         score += ks.score;
+                        matchedCount++;
                     }
                 }
                 if (score > 0) {
+                    if (matchedCount > 1) {
+                        score *= multiKeywordBoost;
+                    }
                     results.add(new SectionSearchResult(
                             file.path, section.title, section.start, section.end, score));
                 }
@@ -237,6 +243,7 @@ public class SearchService {
             double fileScore = 0;
             int firstMatchOffset = -1;
             int firstMatchLine = -1;
+            int matchedKeywordCount = 0;
 
             for (String keyword : keywordSet) {
                 int idx = 0;
@@ -248,11 +255,14 @@ public class SearchService {
                     }
                     idx += keyword.length();
                 }
+                if (matchCount > 0) {
+                    matchedKeywordCount++;
+                }
                 fileScore += matchCount;
             }
 
             if (fileScore > 0 && firstMatchOffset >= 0) {
-                if (keywordSet.size() > 1) {
+                if (matchedKeywordCount > 1) {
                     fileScore *= multiKeywordBoost;
                 }
                 firstMatchLine = computeLineNumber(text, firstMatchOffset);

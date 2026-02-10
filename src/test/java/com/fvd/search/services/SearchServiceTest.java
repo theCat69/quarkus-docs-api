@@ -300,6 +300,64 @@ class SearchServiceTest {
     }
 
     @Test
+    void searchSectionsAppliesMultiKeywordBoostWhenBothMatch() {
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("test.adoc", List.of(), List.of(
+                        new SectionKeywordEntry("Both Keywords", 1, 10,
+                                List.of(new KeywordScore("security", 5), new KeywordScore("oidc", 5)))
+                ))
+        ));
+        seedIndex("3.27", index);
+
+        PaginatedResult<SectionSearchResult> result = searchService.searchSections(
+                "3.27", List.of("security", "oidc"), null, 10, 0);
+
+        assertThat(result.items()).hasSize(1);
+        // Raw sum is 10, with 1.5x boost should be 15
+        assertThat(result.items().get(0).score).isEqualTo(15.0);
+    }
+
+    @Test
+    void searchSectionsDoesNotApplyBoostWhenOnlyOneKeywordMatches() {
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("test.adoc", List.of(), List.of(
+                        new SectionKeywordEntry("One Match", 1, 10,
+                                List.of(new KeywordScore("security", 10)))
+                ))
+        ));
+        seedIndex("3.27", index);
+
+        PaginatedResult<SectionSearchResult> result = searchService.searchSections(
+                "3.27", List.of("security", "oidc"), null, 10, 0);
+
+        assertThat(result.items()).hasSize(1);
+        // Only one keyword matched, no boost — raw score of 10
+        assertThat(result.items().get(0).score).isEqualTo(10.0);
+    }
+
+    @Test
+    void searchSectionsMultiKeywordBoostIsConsistentWithSearchFiles() {
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("test.adoc",
+                        List.of(new KeywordScore("security", 5), new KeywordScore("oidc", 5)),
+                        List.of(
+                                new SectionKeywordEntry("Both Keywords", 1, 10,
+                                        List.of(new KeywordScore("security", 5), new KeywordScore("oidc", 5)))
+                        ))
+        ));
+        seedIndex("3.27", index);
+
+        PaginatedResult<FileSearchResult> fileResult = searchService.searchFiles(
+                "3.27", List.of("security", "oidc"), 10, 0);
+        PaginatedResult<SectionSearchResult> sectionResult = searchService.searchSections(
+                "3.27", List.of("security", "oidc"), null, 10, 0);
+
+        // Both should apply the same 1.5x boost to the same raw score of 10 → 15
+        assertThat(fileResult.items().get(0).score).isEqualTo(15.0);
+        assertThat(sectionResult.items().get(0).score).isEqualTo(15.0);
+    }
+
+    @Test
     void searchSectionsSearchesAllFilesWhenFilePathsIsNull() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("security.adoc", List.of(), List.of(
@@ -957,6 +1015,32 @@ class SearchServiceTest {
             ContentSearchResult oneResult = result.items().stream()
                     .filter(r -> r.path.equals("one.adoc")).findFirst().orElseThrow();
             assertThat(bothResult.score).isGreaterThan(oneResult.score);
+        }
+
+        @Test
+        void searchContentDoesNotApplyBoostWhenOnlyOneKeywordMatches() {
+            realDocStore.write("3.27", "one-match.adoc",
+                    "This has security but not the other keyword.");
+
+            PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
+                    "3.27", List.of("security", "oidc"), 10, 0);
+
+            assertThat(result.items()).hasSize(1);
+            // Only "security" matched, raw count is 1, no boost
+            assertThat(result.items().get(0).score).isEqualTo(1.0);
+        }
+
+        @Test
+        void searchContentDoesNotApplyBoostForSingleQueryKeyword() {
+            realDocStore.write("3.27", "multi-occur.adoc",
+                    "security security security");
+
+            PaginatedResult<ContentSearchResult> result = contentSearchService.searchContent(
+                    "3.27", List.of("security"), 10, 0);
+
+            assertThat(result.items()).hasSize(1);
+            // 3 occurrences, single keyword → no boost → score = 3.0
+            assertThat(result.items().get(0).score).isEqualTo(3.0);
         }
 
         @Test
