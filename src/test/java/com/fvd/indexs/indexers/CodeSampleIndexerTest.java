@@ -137,9 +137,9 @@ class CodeSampleIndexerTest {
 
         assertThat(index.samples).hasSize(1);
         Map<String, Integer> keywordMap = toMap(index.samples.get(0).keywords);
-        // Section keywords "oidc", "authentication", "setup" should be present
+        // Section keywords "oidc", "authentication" (stemmed to "authentic"), "setup" should be present
         assertThat(keywordMap).containsKey("oidc");
-        assertThat(keywordMap).containsKey("authentication");
+        assertThat(keywordMap).containsKey("authentic");
     }
 
     @Test
@@ -253,8 +253,8 @@ class CodeSampleIndexerTest {
 
         indexer.applyImportBoost(code, keywords);
 
-        // "restassured" appears twice (package + class): 2 * 5 = 10
-        assertThat(keywords.get("restassured")).isEqualTo(10);
+        // "restassured" stems to "restassur" (-ed); appears twice (package + class): 2 * 5 = 10
+        assertThat(keywords.get("restassur")).isEqualTo(10);
         assertThat(keywords.get("given")).isEqualTo(5);
     }
 
@@ -278,7 +278,7 @@ class CodeSampleIndexerTest {
 
         indexer.applyFilenameBoost("security-oidc.adoc", keywords);
 
-        assertThat(keywords.get("security")).isEqualTo(10);
+        assertThat(keywords.get("secur")).isEqualTo(10);
         assertThat(keywords.get("oidc")).isEqualTo(10);
     }
 
@@ -288,19 +288,19 @@ class CodeSampleIndexerTest {
 
         indexer.applyFilenameBoost("guides/security-oidc.adoc", keywords);
 
-        assertThat(keywords.get("security")).isEqualTo(10);
+        assertThat(keywords.get("secur")).isEqualTo(10);
         assertThat(keywords.get("oidc")).isEqualTo(10);
-        assertThat(keywords).doesNotContainKey("guides");
+        assertThat(keywords).doesNotContainKey("guid");
     }
 
     @Test
     void applyFilenameBoostMergesWithExistingKeywords() {
         Map<String, Integer> keywords = new HashMap<>();
-        keywords.put("security", 3);
+        keywords.put("secur", 3);
 
         indexer.applyFilenameBoost("security-oidc.adoc", keywords);
 
-        assertThat(keywords.get("security")).isEqualTo(13);
+        assertThat(keywords.get("secur")).isEqualTo(13);
         assertThat(keywords.get("oidc")).isEqualTo(10);
     }
 
@@ -311,7 +311,7 @@ class CodeSampleIndexerTest {
         indexer.applySectionTitleBoost("OIDC Authentication", keywords);
 
         assertThat(keywords.get("oidc")).isEqualTo(5);
-        assertThat(keywords.get("authentication")).isEqualTo(5);
+        assertThat(keywords.get("authentic")).isEqualTo(5);
     }
 
     @Test
@@ -322,7 +322,7 @@ class CodeSampleIndexerTest {
         indexer.applySectionTitleBoost("OIDC Configuration", keywords);
 
         assertThat(keywords.get("oidc")).isEqualTo(7);
-        assertThat(keywords.get("configuration")).isEqualTo(5);
+        assertThat(keywords.get("configur")).isEqualTo(5);
     }
 
     @Test
@@ -370,12 +370,12 @@ class CodeSampleIndexerTest {
 
         assertThat(index.samples).hasSize(1);
         Map<String, Integer> keywordMap = toMap(index.samples.get(0).keywords);
-        // "security" should have filename boost (10) + possibly section/content score
-        assertThat(keywordMap.get("security")).isGreaterThanOrEqualTo(10);
+        // "security" stems to "secur"; should have filename boost (10) + possibly section/content score
+        assertThat(keywordMap.get("secur")).isGreaterThanOrEqualTo(10);
         // "oidc" should have filename boost (10) + section title boost (5) + section keywords
         assertThat(keywordMap.get("oidc")).isGreaterThanOrEqualTo(15);
-        // "configuration" should have section title boost (5) + section keywords
-        assertThat(keywordMap.get("configuration")).isGreaterThanOrEqualTo(5);
+        // "configuration" stems to "configur"; should have section title boost (5) + section keywords
+        assertThat(keywordMap.get("configur")).isGreaterThanOrEqualTo(5);
         // "inject" should still have import boost
         assertThat(keywordMap.get("inject")).isGreaterThanOrEqualTo(5);
     }

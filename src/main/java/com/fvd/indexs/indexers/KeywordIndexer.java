@@ -1,5 +1,6 @@
 package com.fvd.indexs.indexers;
 
+import com.fvd.common.Stemmer;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
@@ -117,7 +118,7 @@ public class KeywordIndexer {
         int boost = searchConfig.boost().filenameBoost();
         List<String> filenameTokens = parser.tokenize(filename.replace("-", " ").replace("_", " "));
         for (String token : filenameTokens) {
-            keywords.merge(token, boost, Integer::sum);
+            keywords.merge(Stemmer.stem(token), boost, Integer::sum);
         }
     }
 
@@ -128,7 +129,7 @@ public class KeywordIndexer {
         int boost = searchConfig.boost().titleBoost();
         List<String> titleTokens = parser.tokenize(title);
         for (String token : titleTokens) {
-            keywords.merge(token, boost, Integer::sum);
+            keywords.merge(Stemmer.stem(token), boost, Integer::sum);
         }
     }
 

@@ -122,10 +122,10 @@ class CacheRefreshJobIntegrationTest {
         int warmupFileCount = storedAfterWarmup.get().files.size();
         assertThat(warmupFileCount).isGreaterThan(0);
 
-        // Verify specific keyword content
+        // Verify specific keyword content (stemmed: "security" → "secur")
         assertThat(storedAfterWarmup.get().files)
                 .anyMatch(f -> f.path.equals("security-overview.adoc")
-                        && f.keywords.stream().anyMatch(k -> k.word.equals("security")));
+                        && f.keywords.stream().anyMatch(k -> k.word.equals("secur")));
 
         // Step 2: Simulate refresh
         cacheRefreshJob.refreshVersion("3.27");
@@ -138,10 +138,10 @@ class CacheRefreshJobIntegrationTest {
                 .isNotEmpty();
         assertThat(storedAfterRefresh.get().files).hasSizeGreaterThanOrEqualTo(warmupFileCount);
 
-        // Verify the same keyword entry is still present
+        // Verify the same keyword entry is still present (stemmed)
         assertThat(storedAfterRefresh.get().files)
                 .anyMatch(f -> f.path.equals("security-overview.adoc")
-                        && f.keywords.stream().anyMatch(k -> k.word.equals("security")));
+                        && f.keywords.stream().anyMatch(k -> k.word.equals("secur")));
     }
 
     @Test

@@ -60,9 +60,9 @@ class KeywordIndexerTest {
         assertThat(entry.path).isEqualTo("security-overview.adoc");
         assertThat(entry.keywords).isNotEmpty();
 
-        // "security" appears in text + filename boost (+10)
+        // "security" stems to "secur"; appears in text + filename boost (+10)
         Optional<KeywordScore> securityScore = entry.keywords.stream()
-                .filter(k -> k.word.equals("security")).findFirst();
+                .filter(k -> k.word.equals("secur")).findFirst();
         assertThat(securityScore).isPresent();
         assertThat(securityScore.get().score).isGreaterThanOrEqualTo(11); // at least 1 occurrence + 10 filename boost
 
@@ -133,9 +133,9 @@ class KeywordIndexerTest {
                 .filter(s -> s.title.equals("Security Configuration")).findFirst();
         assertThat(section).isPresent();
 
-        // "security" appears in title (boosted) and in body text
+        // "security" stems to "secur"; appears in title (boosted) and in body text
         Optional<KeywordScore> securityScore = section.get().keywords.stream()
-                .filter(k -> k.word.equals("security")).findFirst();
+                .filter(k -> k.word.equals("secur")).findFirst();
         assertThat(securityScore).isPresent();
         // Title boost should make it higher than just the body count
         assertThat(securityScore.get().score).isGreaterThan(1);

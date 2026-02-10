@@ -1,6 +1,7 @@
 package com.fvd.search.services;
 
 import com.fvd.cache.services.CacheService;
+import com.fvd.common.Stemmer;
 import com.fvd.common.matchers.FuzzyMatcher;
 import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.docs.parser.DocParser;
@@ -69,7 +70,7 @@ public class SearchService {
         }
 
         Set<String> keywordSet = new HashSet<>(keywords.stream()
-                .map(String::toLowerCase).toList());
+                .map(k -> Stemmer.stem(k.toLowerCase())).toList());
         Map<String, Double> scores = getScores(index, keywordSet);
 
         List<FileSearchResult> all = scores.entrySet().stream()
@@ -106,7 +107,7 @@ public class SearchService {
         }
 
         Set<String> keywordSet = new HashSet<>(keywords.stream()
-                .map(String::toLowerCase).toList());
+                .map(k -> Stemmer.stem(k.toLowerCase())).toList());
         Set<String> filePathSet = (filePaths == null || filePaths.isEmpty())
                 ? null : new HashSet<>(filePaths);
         double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
@@ -192,7 +193,7 @@ public class SearchService {
         }
 
         Set<String> keywordSet = new HashSet<>(keywords.stream()
-                .map(String::toLowerCase).toList());
+                .map(k -> Stemmer.stem(k.toLowerCase())).toList());
         double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
 
         // Resolve fuzzy section title match if sectionTitle filter is provided

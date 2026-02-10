@@ -98,10 +98,10 @@ class CacheWarmupJobIntegrationTest {
         assertThat(storedKeywordIndex).isPresent();
         assertThat(storedKeywordIndex.get().files).isNotEmpty();
 
-        // security-overview.adoc should have keywords like "security", "quarkus"
+        // security-overview.adoc should have stemmed keyword "secur" (from "security")
         assertThat(storedKeywordIndex.get().files)
                 .anyMatch(entry -> entry.path.equals("security-overview.adoc")
-                        && entry.keywords.stream().anyMatch(k -> k.word.equals("security")));
+                        && entry.keywords.stream().anyMatch(k -> k.word.equals("secur")));
 
         // Step 5: Build code sample index from extracted files
         CodeSampleIndex codeSampleIndex = codeSampleIndexer.build("3.27", extractedFiles);

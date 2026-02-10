@@ -1,5 +1,6 @@
 package com.fvd.asciidocs.parser;
 
+import com.fvd.common.Stemmer;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.search.SearchConfig;
@@ -44,7 +45,7 @@ public class AsciidocParser implements DocParser {
         Map<String, Integer> counts = new HashMap<>();
         for (String token : tokens) {
             if(!KeywordIndexer.WORD_INDEX_BLACK_LIST.contains(token)) {
-                counts.merge(token, 1, Integer::sum);
+                counts.merge(Stemmer.stem(token), 1, Integer::sum);
             }
         }
         return counts;

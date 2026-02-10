@@ -41,7 +41,7 @@ class AsciidocParserTest {
     void extractKeywordsCountsOccurrences() {
         String text = "security oidc security security oidc";
         Map<String, Integer> keywords = parser.extractKeywords(text);
-        assertThat(keywords).containsEntry("security", 3);
+        assertThat(keywords).containsEntry("secur", 3);
         assertThat(keywords).containsEntry("oidc", 2);
     }
 
@@ -62,7 +62,7 @@ class AsciidocParserTest {
                 More oidc content.
                 """;
         Map<String, Integer> keywords = parser.extractKeywords(text);
-        assertThat(keywords).containsEntry("security", 1);
+        assertThat(keywords).containsEntry("secur", 1);
         assertThat(keywords).containsEntry("oidc", 1);
         assertThat(keywords).doesNotContainKey("class");
         assertThat(keywords).doesNotContainKey("securityfilter");
@@ -167,14 +167,14 @@ class AsciidocParserTest {
         assertThat(sections).hasSize(2);
 
         Map<String, Integer> titleKeywords = sections.get(0).keywords();
-        assertThat(titleKeywords).containsEntry("security", 1);
+        assertThat(titleKeywords).containsEntry("secur", 1);
         assertThat(titleKeywords).containsEntry("overview", 1);
 
         Map<String, Integer> sectionKeywords = sections.get(1).keywords();
         assertThat(sectionKeywords).containsEntry("configure", 1);
         assertThat(sectionKeywords).containsEntry("oidc", 1);
-        assertThat(sectionKeywords).containsEntry("provider", 1);
-        assertThat(sectionKeywords).containsEntry("settings", 1);
+        assertThat(sectionKeywords).containsEntry("provid", 1);
+        assertThat(sectionKeywords).containsEntry("setting", 1);
     }
 
     @Test

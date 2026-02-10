@@ -67,11 +67,11 @@ class SearchServiceTest {
     void searchFilesReturnsSortedByDescendingScore() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("low.adoc",
-                        List.of(new KeywordScore("security", 5)), List.of()),
+                        List.of(new KeywordScore("secur", 5)), List.of()),
                 new FileKeywordEntry("high.adoc",
-                        List.of(new KeywordScore("security", 20)), List.of()),
+                        List.of(new KeywordScore("secur", 20)), List.of()),
                 new FileKeywordEntry("mid.adoc",
-                        List.of(new KeywordScore("security", 12)), List.of())
+                        List.of(new KeywordScore("secur", 12)), List.of())
         ));
         seedIndex("3.27", index);
 
@@ -89,9 +89,9 @@ class SearchServiceTest {
     void searchFilesAggregatesScoresAcrossKeywords() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("both.adoc",
-                        List.of(new KeywordScore("security", 10), new KeywordScore("oidc", 8)), List.of()),
+                        List.of(new KeywordScore("secur", 10), new KeywordScore("oidc", 8)), List.of()),
                 new FileKeywordEntry("one.adoc",
-                        List.of(new KeywordScore("security", 15)), List.of())
+                        List.of(new KeywordScore("secur", 15)), List.of())
         ));
         seedIndex("3.27", index);
 
@@ -106,9 +106,9 @@ class SearchServiceTest {
     void searchFilesMultiKeywordBoostIncreasesScore() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("multi.adoc",
-                        List.of(new KeywordScore("security", 5), new KeywordScore("oidc", 5)), List.of()),
+                        List.of(new KeywordScore("secur", 5), new KeywordScore("oidc", 5)), List.of()),
                 new FileKeywordEntry("single.adoc",
-                        List.of(new KeywordScore("security", 10)), List.of())
+                        List.of(new KeywordScore("secur", 10)), List.of())
         ));
         seedIndex("3.27", index);
 
@@ -159,7 +159,7 @@ class SearchServiceTest {
     void searchFilesPaginationOffsetBeyondResults() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("test.adoc",
-                        List.of(new KeywordScore("security", 10)), List.of())
+                        List.of(new KeywordScore("secur", 10)), List.of())
         ));
         seedIndex("3.27", index);
 
@@ -173,7 +173,7 @@ class SearchServiceTest {
     void searchFilesReturnsEmptyForUnknownKeyword() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("test.adoc",
-                        List.of(new KeywordScore("security", 10)), List.of())
+                        List.of(new KeywordScore("secur", 10)), List.of())
         ));
         seedIndex("3.27", index);
 
@@ -197,7 +197,7 @@ class SearchServiceTest {
     void searchFilesPrefixMatchReturnsResults() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("security.adoc",
-                        List.of(new KeywordScore("security", 10)), List.of())
+                        List.of(new KeywordScore("secur", 10)), List.of())
         ));
         seedIndex("3.27", index);
 
@@ -223,31 +223,32 @@ class SearchServiceTest {
 
     @Test
     void searchFilesPrefixMatchAppliesDiscount() {
+        // Indexed word "configur" (stemmed form), query "config" is a prefix
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("test.adoc",
-                        List.of(new KeywordScore("security", 10)), List.of())
+                        List.of(new KeywordScore("configur", 10)), List.of())
         ));
         seedIndex("3.27", index);
 
-        PaginatedResult<FileSearchResult> exactResult = searchService.searchFiles("3.27", List.of("security"), 10, 0);
-        PaginatedResult<FileSearchResult> prefixResult = searchService.searchFiles("3.27", List.of("secur"), 10, 0);
+        PaginatedResult<FileSearchResult> exactResult = searchService.searchFiles("3.27", List.of("configuration"), 10, 0);
+        PaginatedResult<FileSearchResult> prefixResult = searchService.searchFiles("3.27", List.of("config"), 10, 0);
 
-        // Exact match: score = 10.0, Prefix match: score = 10.0 * 0.8 = 8.0
+        // "configuration" stems to "configur" → exact match: score = 10.0
         assertThat(exactResult.items().get(0).score).isEqualTo(10.0);
+        // "config" stems to "config" → prefix match of "configur": score = 10.0 * 0.8 = 8.0
         assertThat(prefixResult.items().get(0).score).isEqualTo(8.0);
     }
 
     @Test
     void searchFilesExactMatchTakesPrecedenceOverPrefix() {
-        // "security" is both exact match for query "security" and prefix match
-        // Exact should win with full score
+        // "configuration" stems to "configur" → exact match with indexed "configur"
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("test.adoc",
-                        List.of(new KeywordScore("security", 10)), List.of())
+                        List.of(new KeywordScore("configur", 10)), List.of())
         ));
         seedIndex("3.27", index);
 
-        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("security"), 10, 0);
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("configuration"), 10, 0);
 
         assertThat(result.items().get(0).score).isEqualTo(10.0); // full score, not discounted
     }
@@ -260,7 +261,8 @@ class SearchServiceTest {
         ));
         seedIndex("3.27", index);
 
-        // "security" is longer than "sec", so "sec".startsWith("security") is false
+        // "security" stems to "secur", which is longer than "sec"
+        // "sec".startsWith("secur") is false → no match
         PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("security"), 10, 0);
 
         assertThat(result.items()).isEmpty();
@@ -271,7 +273,7 @@ class SearchServiceTest {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("test.adoc", List.of(), List.of(
                         new SectionKeywordEntry("Auth Section", 1, 10,
-                                List.of(new KeywordScore("authentication", 8)))
+                                List.of(new KeywordScore("authentic", 8)))
                 ))
         ));
         seedIndex("3.27", index);
@@ -288,15 +290,15 @@ class SearchServiceTest {
     void searchCodeSamplesPrefixMatchReturnsResults() {
         CodeSampleIndex index = new CodeSampleIndex(List.of(
                 new CodeSampleEntry("test.adoc", "Section A", "java", "code1", 1, 5,
-                        List.of(new KeywordScore("security", 10)))
+                        List.of(new KeywordScore("configur", 10)))
         ));
         codeSampleIndexStore.write("3.27", index);
 
         PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
-                "3.27", List.of("secur"), null, null, 10, 0);
+                "3.27", List.of("config"), null, null, 10, 0);
 
         assertThat(result.items()).hasSize(1);
-        // Prefix discount: 10 * 0.8 = 8.0
+        // "config" stems to "config", prefix of "configur": 10 * 0.8 = 8.0
         assertThat(result.items().get(0).score).isEqualTo(8.0);
     }
 
@@ -307,9 +309,9 @@ class SearchServiceTest {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("security.adoc", List.of(), List.of(
                         new SectionKeywordEntry("Overview", 1, 10,
-                                List.of(new KeywordScore("security", 8))),
+                                List.of(new KeywordScore("secur", 8))),
                         new SectionKeywordEntry("OIDC Config", 11, 30,
-                                List.of(new KeywordScore("oidc", 12), new KeywordScore("security", 3)))
+                                List.of(new KeywordScore("oidc", 12), new KeywordScore("secur", 3)))
                 ))
         ));
         seedIndex("3.27", index);
@@ -328,11 +330,11 @@ class SearchServiceTest {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("included.adoc", List.of(), List.of(
                         new SectionKeywordEntry("Included", 1, 10,
-                                List.of(new KeywordScore("security", 5)))
+                                List.of(new KeywordScore("secur", 5)))
                 )),
                 new FileKeywordEntry("excluded.adoc", List.of(), List.of(
                         new SectionKeywordEntry("Excluded", 1, 10,
-                                List.of(new KeywordScore("security", 20)))
+                                List.of(new KeywordScore("secur", 20)))
                 ))
         ));
         seedIndex("3.27", index);
@@ -389,7 +391,7 @@ class SearchServiceTest {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("test.adoc", List.of(), List.of(
                         new SectionKeywordEntry("Section", 1, 10,
-                                List.of(new KeywordScore("security", 5)))
+                                List.of(new KeywordScore("secur", 5)))
                 ))
         ));
         seedIndex("3.27", index);
@@ -413,7 +415,7 @@ class SearchServiceTest {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("test.adoc", List.of(), List.of(
                         new SectionKeywordEntry("Both Keywords", 1, 10,
-                                List.of(new KeywordScore("security", 5), new KeywordScore("oidc", 5)))
+                                List.of(new KeywordScore("secur", 5), new KeywordScore("oidc", 5)))
                 ))
         ));
         seedIndex("3.27", index);
@@ -431,7 +433,7 @@ class SearchServiceTest {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("test.adoc", List.of(), List.of(
                         new SectionKeywordEntry("One Match", 1, 10,
-                                List.of(new KeywordScore("security", 10)))
+                                List.of(new KeywordScore("secur", 10)))
                 ))
         ));
         seedIndex("3.27", index);
@@ -448,10 +450,10 @@ class SearchServiceTest {
     void searchSectionsMultiKeywordBoostIsConsistentWithSearchFiles() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("test.adoc",
-                        List.of(new KeywordScore("security", 5), new KeywordScore("oidc", 5)),
+                        List.of(new KeywordScore("secur", 5), new KeywordScore("oidc", 5)),
                         List.of(
                                 new SectionKeywordEntry("Both Keywords", 1, 10,
-                                        List.of(new KeywordScore("security", 5), new KeywordScore("oidc", 5)))
+                                        List.of(new KeywordScore("secur", 5), new KeywordScore("oidc", 5)))
                         ))
         ));
         seedIndex("3.27", index);
@@ -471,11 +473,11 @@ class SearchServiceTest {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("security.adoc", List.of(), List.of(
                         new SectionKeywordEntry("Auth", 1, 10,
-                                List.of(new KeywordScore("security", 8)))
+                                List.of(new KeywordScore("secur", 8)))
                 )),
                 new FileKeywordEntry("config.adoc", List.of(), List.of(
                         new SectionKeywordEntry("Settings", 1, 10,
-                                List.of(new KeywordScore("security", 5)))
+                                List.of(new KeywordScore("secur", 5)))
                 ))
         ));
         seedIndex("3.27", index);
@@ -493,11 +495,11 @@ class SearchServiceTest {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("security.adoc", List.of(), List.of(
                         new SectionKeywordEntry("Auth", 1, 10,
-                                List.of(new KeywordScore("security", 8)))
+                                List.of(new KeywordScore("secur", 8)))
                 )),
                 new FileKeywordEntry("config.adoc", List.of(), List.of(
                         new SectionKeywordEntry("Settings", 1, 10,
-                                List.of(new KeywordScore("security", 5)))
+                                List.of(new KeywordScore("secur", 5)))
                 ))
         ));
         seedIndex("3.27", index);
@@ -756,7 +758,7 @@ class SearchServiceTest {
         void searchFilesDoesNotTriggerDownloadWhenIndexExists() {
             KeywordIndex index = new KeywordIndex(List.of(
                     new FileKeywordEntry("test.adoc",
-                            List.of(new KeywordScore("security", 10)), List.of())
+                            List.of(new KeywordScore("secur", 10)), List.of())
             ));
             lazyKeywordIndexStore.write("3.27", index);
 
@@ -789,7 +791,7 @@ class SearchServiceTest {
             KeywordIndex index = new KeywordIndex(List.of(
                     new FileKeywordEntry("test.adoc", List.of(), List.of(
                             new SectionKeywordEntry("Section 1", 1, 10,
-                                    List.of(new KeywordScore("security", 5)))
+                                    List.of(new KeywordScore("secur", 5)))
                     ))
             ));
             lazyKeywordIndexStore.write("3.27", index);
@@ -812,11 +814,11 @@ class SearchServiceTest {
         void searchCodeSamplesReturnsSortedByDescendingScore() {
             CodeSampleIndex index = new CodeSampleIndex(List.of(
                     new CodeSampleEntry("low.adoc", "Section A", "java", "code1", 1, 5,
-                            List.of(new KeywordScore("security", 3))),
+                            List.of(new KeywordScore("secur", 3))),
                     new CodeSampleEntry("high.adoc", "Section B", "java", "code2", 10, 15,
-                            List.of(new KeywordScore("security", 20))),
+                            List.of(new KeywordScore("secur", 20))),
                     new CodeSampleEntry("mid.adoc", "Section C", "java", "code3", 20, 25,
-                            List.of(new KeywordScore("security", 10)))
+                            List.of(new KeywordScore("secur", 10)))
             ));
             codeSampleIndexStore.write("3.27", index);
 
@@ -834,9 +836,9 @@ class SearchServiceTest {
         void searchCodeSamplesAppliesMultiKeywordBoost() {
             CodeSampleIndex index = new CodeSampleIndex(List.of(
                     new CodeSampleEntry("multi.adoc", "Section A", "java", "code1", 1, 5,
-                            List.of(new KeywordScore("security", 5), new KeywordScore("oidc", 5))),
+                            List.of(new KeywordScore("secur", 5), new KeywordScore("oidc", 5))),
                     new CodeSampleEntry("single.adoc", "Section B", "java", "code2", 10, 15,
-                            List.of(new KeywordScore("security", 10)))
+                            List.of(new KeywordScore("secur", 10)))
             ));
             codeSampleIndexStore.write("3.27", index);
 
@@ -854,9 +856,9 @@ class SearchServiceTest {
         void searchCodeSamplesFiltersToFilePath() {
             CodeSampleIndex index = new CodeSampleIndex(List.of(
                     new CodeSampleEntry("included.adoc", "Section A", "java", "code1", 1, 5,
-                            List.of(new KeywordScore("security", 5))),
+                            List.of(new KeywordScore("secur", 5))),
                     new CodeSampleEntry("excluded.adoc", "Section B", "java", "code2", 10, 15,
-                            List.of(new KeywordScore("security", 20)))
+                            List.of(new KeywordScore("secur", 20)))
             ));
             codeSampleIndexStore.write("3.27", index);
 
@@ -871,9 +873,9 @@ class SearchServiceTest {
         void searchCodeSamplesFiltersToSectionTitle() {
             CodeSampleIndex index = new CodeSampleIndex(List.of(
                     new CodeSampleEntry("test.adoc", "Authentication", "java", "code1", 1, 5,
-                            List.of(new KeywordScore("security", 5))),
+                            List.of(new KeywordScore("secur", 5))),
                     new CodeSampleEntry("test.adoc", "Authorization", "java", "code2", 10, 15,
-                            List.of(new KeywordScore("security", 8)))
+                            List.of(new KeywordScore("secur", 8)))
             ));
             codeSampleIndexStore.write("3.27", index);
 
@@ -888,11 +890,11 @@ class SearchServiceTest {
         void searchCodeSamplesFiltersBothFilePathAndSectionTitle() {
             CodeSampleIndex index = new CodeSampleIndex(List.of(
                     new CodeSampleEntry("a.adoc", "Overview", "java", "code1", 1, 5,
-                            List.of(new KeywordScore("security", 5))),
+                            List.of(new KeywordScore("secur", 5))),
                     new CodeSampleEntry("a.adoc", "Config", "java", "code2", 10, 15,
-                            List.of(new KeywordScore("security", 8))),
+                            List.of(new KeywordScore("secur", 8))),
                     new CodeSampleEntry("b.adoc", "Overview", "java", "code3", 1, 5,
-                            List.of(new KeywordScore("security", 12)))
+                            List.of(new KeywordScore("secur", 12)))
             ));
             codeSampleIndexStore.write("3.27", index);
 
@@ -908,7 +910,7 @@ class SearchServiceTest {
         void searchCodeSamplesReturnsEmptyForUnknownKeyword() {
             CodeSampleIndex index = new CodeSampleIndex(List.of(
                     new CodeSampleEntry("test.adoc", "Section A", "java", "code1", 1, 5,
-                            List.of(new KeywordScore("security", 10)))
+                            List.of(new KeywordScore("secur", 10)))
             ));
             codeSampleIndexStore.write("3.27", index);
 
@@ -967,7 +969,7 @@ class SearchServiceTest {
             CodeSampleIndex index = new CodeSampleIndex(List.of(
                     new CodeSampleEntry("security.adoc", "Authentication", "java",
                             "import io.quarkus.Security;", 5, 10,
-                            List.of(new KeywordScore("security", 15)))
+                            List.of(new KeywordScore("secur", 15)))
             ));
             codeSampleIndexStore.write("3.27", index);
 
@@ -991,7 +993,7 @@ class SearchServiceTest {
         void searchCodeSamplesSectionTitleFilterIsCaseInsensitive() {
             CodeSampleIndex index = new CodeSampleIndex(List.of(
                     new CodeSampleEntry("test.adoc", "Authentication", "java", "code1", 1, 5,
-                            List.of(new KeywordScore("security", 5)))
+                            List.of(new KeywordScore("secur", 5)))
             ));
             codeSampleIndexStore.write("3.27", index);
 
@@ -1006,9 +1008,9 @@ class SearchServiceTest {
         void searchCodeSamplesExactSectionTitleStillMatches() {
             CodeSampleIndex index = new CodeSampleIndex(List.of(
                     new CodeSampleEntry("test.adoc", "Authentication", "java", "code1", 1, 5,
-                            List.of(new KeywordScore("security", 5))),
+                            List.of(new KeywordScore("secur", 5))),
                     new CodeSampleEntry("test.adoc", "Authorization", "java", "code2", 10, 15,
-                            List.of(new KeywordScore("security", 8)))
+                            List.of(new KeywordScore("secur", 8)))
             ));
             codeSampleIndexStore.write("3.27", index);
 
@@ -1025,9 +1027,9 @@ class SearchServiceTest {
         void searchCodeSamplesFuzzySectionTitleMatchesPartial() {
             CodeSampleIndex index = new CodeSampleIndex(List.of(
                     new CodeSampleEntry("test.adoc", "Authentication", "java", "code1", 1, 5,
-                            List.of(new KeywordScore("security", 5))),
+                            List.of(new KeywordScore("secur", 5))),
                     new CodeSampleEntry("test.adoc", "Authorization", "java", "code2", 10, 15,
-                            List.of(new KeywordScore("security", 8)))
+                            List.of(new KeywordScore("secur", 8)))
             ));
             codeSampleIndexStore.write("3.27", index);
 
@@ -1045,7 +1047,7 @@ class SearchServiceTest {
         void searchCodeSamplesSectionTitleBelowThresholdReturnsEmpty() {
             CodeSampleIndex index = new CodeSampleIndex(List.of(
                     new CodeSampleEntry("test.adoc", "Authentication", "java", "code1", 1, 5,
-                            List.of(new KeywordScore("security", 5)))
+                            List.of(new KeywordScore("secur", 5)))
             ));
             codeSampleIndexStore.write("3.27", index);
 
@@ -1059,7 +1061,7 @@ class SearchServiceTest {
         void searchCodeSamplesMatchedSectionTitlePopulatedWhenFiltered() {
             CodeSampleIndex index = new CodeSampleIndex(List.of(
                     new CodeSampleEntry("test.adoc", "Authentication", "java", "code1", 1, 5,
-                            List.of(new KeywordScore("security", 5)))
+                            List.of(new KeywordScore("secur", 5)))
             ));
             codeSampleIndexStore.write("3.27", index);
 
@@ -1076,7 +1078,7 @@ class SearchServiceTest {
         void searchCodeSamplesMatchedSectionTitleNullWhenNoFilter() {
             CodeSampleIndex index = new CodeSampleIndex(List.of(
                     new CodeSampleEntry("test.adoc", "Authentication", "java", "code1", 1, 5,
-                            List.of(new KeywordScore("security", 5)))
+                            List.of(new KeywordScore("secur", 5)))
             ));
             codeSampleIndexStore.write("3.27", index);
 
@@ -1318,5 +1320,51 @@ class SearchServiceTest {
             assertThat(result.items()).isEmpty();
             assertThat(result.total()).isEqualTo(0);
         }
+    }
+
+    // --- Stemming equivalence tests ---
+
+    @Test
+    void searchFilesMorphologicalVariantsReturnSameResults() {
+        // "configuration" (stem: "configur"), "configurable" (stem: "configur"),
+        // "configured" (stem: "configur") — all stem to the same form
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("config.adoc",
+                        List.of(new KeywordScore("configur", 10)), List.of())
+        ));
+        seedIndex("3.27", index);
+
+        PaginatedResult<FileSearchResult> resultConfiguration = searchService.searchFiles("3.27", List.of("configuration"), 10, 0);
+        PaginatedResult<FileSearchResult> resultConfigurable = searchService.searchFiles("3.27", List.of("configurable"), 10, 0);
+        PaginatedResult<FileSearchResult> resultConfigured = searchService.searchFiles("3.27", List.of("configured"), 10, 0);
+
+        assertThat(resultConfiguration.items()).hasSize(1);
+        assertThat(resultConfigurable.items()).hasSize(1);
+        assertThat(resultConfigured.items()).hasSize(1);
+        assertThat(resultConfiguration.items().get(0).score)
+                .isEqualTo(resultConfigurable.items().get(0).score)
+                .isEqualTo(resultConfigured.items().get(0).score);
+    }
+
+    @Test
+    void searchSectionsMorphologicalVariantsReturnSameResults() {
+        // "security" (stem: "secur"), "secured" (stem: "secur") — both stem to "secur"
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("security.adoc",
+                        List.of(new KeywordScore("secur", 10)),
+                        List.of(new SectionKeywordEntry("Overview", 1, 10,
+                                List.of(new KeywordScore("secur", 8)))))
+        ));
+        seedIndex("3.27", index);
+
+        PaginatedResult<SectionSearchResult> resultSecurity = searchService.searchSections(
+                "3.27", List.of("security"), null, 10, 0);
+        PaginatedResult<SectionSearchResult> resultSecured = searchService.searchSections(
+                "3.27", List.of("secured"), null, 10, 0);
+
+        assertThat(resultSecurity.items()).hasSize(1);
+        assertThat(resultSecured.items()).hasSize(1);
+        assertThat(resultSecurity.items().get(0).score)
+                .isEqualTo(resultSecured.items().get(0).score);
     }
 }

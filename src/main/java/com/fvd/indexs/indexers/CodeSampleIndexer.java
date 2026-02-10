@@ -1,5 +1,6 @@
 package com.fvd.indexs.indexers;
 
+import com.fvd.common.Stemmer;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
@@ -53,7 +54,7 @@ public class CodeSampleIndexer {
             List<String> codeTokens = parser.tokenize(block.content());
             for (String token : codeTokens) {
                 if (!KeywordIndexer.WORD_INDEX_BLACK_LIST.contains(token)) {
-                    keywords.merge(token, 1, Integer::sum);
+                    keywords.merge(Stemmer.stem(token), 1, Integer::sum);
                 }
             }
 
@@ -100,7 +101,7 @@ public class CodeSampleIndexer {
                 for (String part : parts) {
                     String token = part.toLowerCase();
                     if (token.length() >= 3 && !KeywordIndexer.WORD_INDEX_BLACK_LIST.contains(token)) {
-                        keywords.merge(token, boost, Integer::sum);
+                        keywords.merge(Stemmer.stem(token), boost, Integer::sum);
                     }
                 }
             }
@@ -119,7 +120,7 @@ public class CodeSampleIndexer {
         int boost = searchConfig.boost().filenameBoost();
         List<String> filenameTokens = parser.tokenize(filename.replace("-", " ").replace("_", " "));
         for (String token : filenameTokens) {
-            keywords.merge(token, boost, Integer::sum);
+            keywords.merge(Stemmer.stem(token), boost, Integer::sum);
         }
     }
 
@@ -130,7 +131,7 @@ public class CodeSampleIndexer {
         int boost = searchConfig.boost().sectionTitleBoost();
         List<String> titleTokens = parser.tokenize(sectionTitle);
         for (String token : titleTokens) {
-            keywords.merge(token, boost, Integer::sum);
+            keywords.merge(Stemmer.stem(token), boost, Integer::sum);
         }
     }
 
