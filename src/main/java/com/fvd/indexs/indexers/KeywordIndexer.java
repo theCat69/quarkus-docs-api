@@ -1,6 +1,7 @@
 package com.fvd.indexs.indexers;
 
 import com.fvd.common.Stemmer;
+import com.fvd.common.StopWords;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
@@ -14,43 +15,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class KeywordIndexer {
 
-    public static final Set<String> WORD_INDEX_BLACK_LIST = Set.of(
-            "a",
-            "an",
-            "and",
-            "the",
-            "how",
-            "does",
-            "do",
-            "is",
-            "are",
-            "was",
-            "were",
-            "what",
-            "which",
-            "who",
-            "when",
-            "where",
-            "why",
-            "in",
-            "on",
-            "at",
-            "to",
-            "for",
-            "with",
-            "from",
-            "by",
-            "of",
-            "about",
-            "explain",
-            "show",
-            "me",
-            "work",
-            "works",
-            "working",
-            "please",
-            "your"
-    );
+    public static final Set<String> WORD_INDEX_BLACK_LIST = StopWords.DEFAULT;
 
     private final DocStore docStore;
     private final KeywordIndexStore keywordIndexStore;

@@ -1,5 +1,6 @@
 package com.fvd.indexs.indexers;
 
+import com.fvd.common.StopWords;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.ContentIndexStore;
 import com.fvd.search.SearchConfig;
@@ -93,7 +94,7 @@ public class ContentIndexer {
             if (token.length() < minTokenLength) {
                 continue;
             }
-            if (KeywordIndexer.WORD_INDEX_BLACK_LIST.contains(token)) {
+            if (StopWords.DEFAULT.contains(token)) {
                 continue;
             }
 

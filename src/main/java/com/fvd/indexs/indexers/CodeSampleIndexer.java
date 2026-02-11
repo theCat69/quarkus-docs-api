@@ -1,6 +1,7 @@
 package com.fvd.indexs.indexers;
 
 import com.fvd.common.Stemmer;
+import com.fvd.common.StopWords;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
@@ -83,7 +84,7 @@ public class CodeSampleIndexer {
             // Add keywords from the code content itself
             List<String> codeTokens = parser.tokenize(block.content());
             for (String token : codeTokens) {
-                if (!KeywordIndexer.WORD_INDEX_BLACK_LIST.contains(token)) {
+                if (!StopWords.DEFAULT.contains(token)) {
                     keywords.merge(Stemmer.stem(token), 1, Integer::sum);
                 }
             }
@@ -130,7 +131,7 @@ public class CodeSampleIndexer {
                 String[] parts = fqcn.split("\\.");
                 for (String part : parts) {
                     String token = part.toLowerCase();
-                    if (token.length() >= 3 && !KeywordIndexer.WORD_INDEX_BLACK_LIST.contains(token)) {
+                    if (token.length() >= 3 && !StopWords.DEFAULT.contains(token)) {
                         keywords.merge(Stemmer.stem(token), boost, Integer::sum);
                     }
                 }
