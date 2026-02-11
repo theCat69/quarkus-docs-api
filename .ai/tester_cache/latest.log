@@ -1,28 +1,13 @@
-=== Test Suite Run: 2026-02-11 ===
+=== Test Suite Run — 2026-02-11 ===
 Command: ./gradlew cleanTest test
-Duration: ~31s
+Compilation: SUCCESS (compileJava UP-TO-DATE, compileTestJava UP-TO-DATE)
+Build: SUCCESSFUL in 29s
 
-== Compilation ==
-Status: SUCCESS (compileJava UP-TO-DATE, compileTestJava UP-TO-DATE)
+Total test suites: 33
+Total tests:      387
+Passed:           387
+Failed:            0
+Skipped:           0
+Errors:            0
 
-== Test Results ==
-BUILD SUCCESSFUL
-Test classes: 33
-Total tests:  422
-Passed:       422
-Failed:       0
-Errors:       0
-Skipped:      0
-
-== Notes ==
-- Expected log output from error-path tests (UpstreamException, PotentialStubbingProblem,
-  DocNotFoundException, RuntimeException) — these are intentional error-handling scenarios
-  in CacheRefreshJobTest and QuarkiverseServiceTest, not actual failures.
-- Warning: SQLite Dev Services not supported (expected in test profile).
-- Warning: java.lang.System::load restricted method called by sqlite-jdbc (JDK 25 notice).
-
-== Edge Cases Observed ==
-- WireMock stub mismatch logs for "main" version path vs "3.27" version path — these are
-  intentional test scenarios testing cache refresh resilience.
-- Mockito strict stubbing logged for CodeSampleIndexer.build() argument mismatch — 
-  this is an expected behavior test in refreshWithQuarkiverseEnabledAndMultipleVersionsOnlyRefreshesMain.
+All 33 suites green. No failures.

@@ -231,7 +231,9 @@ class MultiParameterSearchTest {
                 .then()
                 .statusCode(200)
                 .body("results.size()", greaterThan(1))
-                .body("total", greaterThan(1));
+                .body("total", greaterThan(1))
+                .body("results.extension", hasItem("quarkus-core"))
+                .body("results.extension", hasItem("quarkus-oidc"));
     }
 
     // ---- Seed helpers ----

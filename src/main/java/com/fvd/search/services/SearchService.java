@@ -97,6 +97,8 @@ public class SearchService {
 
         Set<String> keywordSet = new HashSet<>(keywords.stream()
                 .map(k -> Stemmer.stem(k.toLowerCase())).toList());
+        Set<String> originalKeywords = new HashSet<>(keywords.stream()
+                .map(String::toLowerCase).toList());
         Set<String> filePathSet = (filePaths == null || filePaths.isEmpty())
                 ? null : new HashSet<>(filePaths);
         double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
@@ -124,8 +126,6 @@ public class SearchService {
         }
 
         // Apply sectionTitle fuzzy filter if provided
-        String matchedTitle = null;
-        double matchScore = 0.0;
         if (sectionTitle != null && !sectionTitle.isBlank()) {
             List<String> uniqueTitles = results.stream()
                     .map(r -> r.section)
@@ -133,17 +133,15 @@ public class SearchService {
                     .toList();
             Optional<FuzzyMatcher.MatchResult> fuzzyResult = fuzzyMatcher.bestMatch(sectionTitle, uniqueTitles);
             if (fuzzyResult.isPresent()) {
-                matchedTitle = fuzzyResult.get().value();
-                matchScore = fuzzyResult.get().score();
-                String finalMatchedTitle = matchedTitle;
-                double finalMatchScore = matchScore;
+                String finalMatchedTitle = fuzzyResult.get().value();
+                double finalMatchScore = fuzzyResult.get().score();
                 results = results.stream()
                         .filter(r -> r.section.equals(finalMatchedTitle))
-                        .peek(r -> {
-                            r.matchedSectionTitle = finalMatchedTitle;
-                            r.sectionMatchScore = finalMatchScore;
-                        })
                         .collect(java.util.stream.Collectors.toList());
+                for (SectionSearchResult r : results) {
+                    r.matchedSectionTitle = finalMatchedTitle;
+                    r.sectionMatchScore = finalMatchScore;
+                }
             } else {
                 return new PaginatedResult<>(List.of(), 0);
             }
@@ -154,13 +152,14 @@ public class SearchService {
 
         // Generate snippets for paginated results only
         for (SectionSearchResult result : paginated.items()) {
-            generateSectionSnippet(version, result, keywordSet);
+            generateSectionSnippet(version, result, originalKeywords, keywordSet);
         }
 
         return paginated;
     }
 
-    private void generateSectionSnippet(String version, SectionSearchResult result, Set<String> keywords) {
+    private void generateSectionSnippet(String version, SectionSearchResult result,
+                                        Set<String> originalKeywords, Set<String> stemmedKeywords) {
         if (docStore == null) {
             return;
         }
@@ -179,14 +178,12 @@ public class SearchService {
             return;
         }
 
-        // Find first keyword occurrence (case-insensitive) in section content
+        // Find first keyword occurrence (case-insensitive) in section content.
+        // Try original (unstemmed) keywords first, then fall back to stemmed keywords.
         String lowerSection = sectionContent.toLowerCase();
-        int bestOffset = -1;
-        for (String keyword : keywords) {
-            int idx = lowerSection.indexOf(keyword.toLowerCase());
-            if (idx >= 0 && (bestOffset < 0 || idx < bestOffset)) {
-                bestOffset = idx;
-            }
+        int bestOffset = findFirstKeywordOffset(lowerSection, originalKeywords);
+        if (bestOffset < 0) {
+            bestOffset = findFirstKeywordOffset(lowerSection, stemmedKeywords);
         }
 
         if (bestOffset >= 0) {
@@ -198,6 +195,17 @@ public class SearchService {
                 result.snippet = result.snippet + "...";
             }
         }
+    }
+
+    private int findFirstKeywordOffset(String lowerContent, Set<String> keywords) {
+        int bestOffset = -1;
+        for (String keyword : keywords) {
+            int idx = lowerContent.indexOf(keyword.toLowerCase());
+            if (idx >= 0 && (bestOffset < 0 || idx < bestOffset)) {
+                bestOffset = idx;
+            }
+        }
+        return bestOffset;
     }
 
     public SectionContentResult getSectionContent(String version, String filePath, String sectionTitle) {
