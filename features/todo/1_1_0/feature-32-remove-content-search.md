@@ -61,21 +61,21 @@ The `/api/search/content` endpoint is removed entirely. Clients calling it will 
 
 ## Tasks
 
-- [ ] Delete `ContentIndex.java`, `ContentOccurrence.java`, `ContentIndexer.java`, `ContentIndexStore.java`, `ContentSearchResult.java`.
-- [ ] Delete `ContentIndexerTest.java`, `ContentIndexStoreTest.java`.
-- [ ] Remove `searchContent()` endpoint from `SearchResource`.
-- [ ] Remove `searchContent()`, `searchContentBruteForce()`, `getOrLoadContentIndex()`, `contentIndexCache` from `SearchService`. Keep `generateSnippet()` and `computeLineNumber()`.
-- [ ] Remove `ContentIndexStore` field and `contentIndexCache.remove()` from `SearchService.invalidateCache()`.
-- [ ] Remove `ContentIndexer` field and calls from `CacheWarmupJob.buildIndexes()` and `buildMainWithQuarkiverse()`.
-- [ ] Remove `ContentIndexer` field and calls from `CacheRefreshJob.refreshVersion()` and `refreshQuarkiverse()`.
-- [ ] Remove `content_words` and `content_word_positions` tables and indexes from `SqliteSchemaInitializer.createTables()`.
-- [ ] Remove `content_words` and `content_word_positions` from `SqliteSchemaInitializer.resetSchema()`.
-- [ ] Remove content search tests from `SearchResourceTest.java`.
-- [ ] Remove content search tests from `SearchServiceTest.java`.
-- [ ] Update `SearchServiceTest.setUp()` — remove `ContentIndexStore` from `SearchService` constructor call.
-- [ ] Update `CacheWarmupJobTest.java` — remove `ContentIndexer` mock/verify.
-- [ ] Update `CacheRefreshJobTest.java` — remove `ContentIndexer` mock/verify.
-- [ ] Run all tests (`./gradlew test`) — all remaining tests must pass.
+- [x] Delete `ContentIndex.java`, `ContentOccurrence.java`, `ContentIndexer.java`, `ContentIndexStore.java`, `ContentSearchResult.java`.
+- [x] Delete `ContentIndexerTest.java`, `ContentIndexStoreTest.java`.
+- [x] Remove `searchContent()` endpoint from `SearchResource`.
+- [x] Remove `searchContent()`, `searchContentBruteForce()`, `getOrLoadContentIndex()`, `contentIndexCache` from `SearchService`. Keep `generateSnippet()` and `computeLineNumber()`.
+- [x] Remove `ContentIndexStore` field and `contentIndexCache.remove()` from `SearchService.invalidateCache()`.
+- [x] Remove `ContentIndexer` field and calls from `CacheWarmupJob.buildIndexes()` and `buildMainWithQuarkiverse()`.
+- [x] Remove `ContentIndexer` field and calls from `CacheRefreshJob.refreshVersion()` and `refreshQuarkiverse()`.
+- [x] Remove `content_words` and `content_word_positions` tables and indexes from `SqliteSchemaInitializer.createTables()`.
+- [x] Remove `content_words` and `content_word_positions` from `SqliteSchemaInitializer.resetSchema()`.
+- [x] Remove content search tests from `SearchResourceTest.java`.
+- [x] Remove content search tests from `SearchServiceTest.java`.
+- [x] Update `SearchServiceTest.setUp()` — remove `ContentIndexStore` from `SearchService` constructor call.
+- [x] Update `CacheWarmupJobTest.java` — remove `ContentIndexer` mock/verify.
+- [x] Update `CacheRefreshJobTest.java` — remove `ContentIndexer` mock/verify.
+- [x] Run all tests (`./gradlew test`) — all remaining tests must pass.
 
 ## Acceptance Criteria
 

@@ -64,7 +64,7 @@ public class SearchResource {
             @Parameter(description = "Quarkus version branch or tag. Defaults to 'main' if omitted. When using 'main', results may include quarkiverse extension docs.",
                     required = false, example = "3.27", schema = @Schema(defaultValue = "main"))
             @QueryParam("version") String version,
-            @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in lowercase)", required = true, example = "security,oidc")
+            @Parameter(description = "Space-separated search keywords (stop words like 'how', 'does', 'the' are automatically removed)", required = true, example = "security oidc")
             @QueryParam("keywords") String keywords,
             @Parameter(description = "Maximum number of results to return (default 10, max 100)", example = "10")
             @QueryParam("limit") Integer limit,
@@ -73,11 +73,10 @@ public class SearchResource {
             @Parameter(description = "Optional extension name to filter results (e.g. quarkus-openapi-generator for quarkiverse, or quarkus-core for core docs)", required = false, example = "quarkus-core")
             @QueryParam("extension") String extension) {
         version = InputValidator.resolveVersion(version);
-        InputValidator.validateKeywords(keywords);
+        List<String> keywordList = InputValidator.parseKeywords(keywords);
         int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
         int validOffset = InputValidator.validateOffset(offset);
-        List<String> keywordList = Arrays.asList(keywords.split(","));
-        List<String> queriedKeywords = keywordList.stream().map(String::toLowerCase).toList();
+        List<String> queriedKeywords = keywordList;
         long startNanos = System.nanoTime();
         PaginatedResult<FileSearchResult> result = searchService.searchFiles(version, keywordList,
                 validLimit, validOffset);
@@ -107,7 +106,7 @@ public class SearchResource {
             @Parameter(description = "Quarkus version branch or tag. Defaults to 'main' if omitted. When using 'main', results may include quarkiverse extension docs.",
                     required = false, example = "3.27", schema = @Schema(defaultValue = "main"))
             @QueryParam("version") String version,
-            @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in lowercase)", required = true, example = "security,oidc")
+            @Parameter(description = "Space-separated search keywords (stop words like 'how', 'does', 'the' are automatically removed)", required = true, example = "security oidc")
             @QueryParam("keywords") String keywords,
             @Parameter(description = "Comma-separated list of file paths relative to the docs directory (optional)", example = "security-overview.adoc,config.adoc")
             @QueryParam("filePaths") String filePaths,
@@ -118,11 +117,10 @@ public class SearchResource {
             @Parameter(description = "Optional extension name to filter results (e.g. quarkus-openapi-generator for quarkiverse, or quarkus-core for core docs)", required = false, example = "quarkus-core")
             @QueryParam("extension") String extension) {
         version = InputValidator.resolveVersion(version);
-        InputValidator.validateKeywords(keywords);
+        List<String> keywordList = InputValidator.parseKeywords(keywords);
         int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
         int validOffset = InputValidator.validateOffset(offset);
-        List<String> keywordList = Arrays.asList(keywords.split(","));
-        List<String> queriedKeywords = keywordList.stream().map(String::toLowerCase).toList();
+        List<String> queriedKeywords = keywordList;
         List<String> filePathList = null;
         if (filePaths != null && !filePaths.isBlank()) {
             InputValidator.validateFilePaths(filePaths);
@@ -200,7 +198,7 @@ public class SearchResource {
             @Parameter(description = "Quarkus version branch or tag. Defaults to 'main' if omitted. When using 'main', results may include quarkiverse extension docs.",
                     required = false, example = "3.27", schema = @Schema(defaultValue = "main"))
             @QueryParam("version") String version,
-            @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in lowercase)", required = true, example = "security,oidc")
+            @Parameter(description = "Space-separated search keywords (stop words like 'how', 'does', 'the' are automatically removed)", required = true, example = "security oidc")
             @QueryParam("keywords") String keywords,
             @Parameter(description = "Optional file path to filter results", example = "security-overview.adoc")
             @QueryParam("filePath") String filePath,
@@ -213,7 +211,7 @@ public class SearchResource {
             @Parameter(description = "Optional extension name to filter results (e.g. quarkus-openapi-generator for quarkiverse, or quarkus-core for core docs)", required = false, example = "quarkus-core")
             @QueryParam("extension") String extension) {
         version = InputValidator.resolveVersion(version);
-        InputValidator.validateKeywords(keywords);
+        List<String> keywordList = InputValidator.parseKeywords(keywords);
         int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
         int validOffset = InputValidator.validateOffset(offset);
         if (filePath != null && !filePath.isBlank()) {
@@ -222,8 +220,7 @@ public class SearchResource {
         if (sectionTitle != null && !sectionTitle.isBlank()) {
             InputValidator.validateSectionTitle(sectionTitle);
         }
-        List<String> keywordList = Arrays.asList(keywords.split(","));
-        List<String> queriedKeywords = keywordList.stream().map(String::toLowerCase).toList();
+        List<String> queriedKeywords = keywordList;
         long startNanos = System.nanoTime();
         PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
                 version, keywordList, filePath, sectionTitle, validLimit, validOffset);
@@ -232,54 +229,4 @@ public class SearchResource {
                 queriedKeywords, searchTimeMs);
     }
 
-    @GET
-    @Path("/content")
-    @Operation(
-            summary = "Full-text search in document content",
-            description = "Full-text search across all document content for a given version. "
-                    + "Returns matching excerpts ranked by relevance. "
-                    + "Optionally filter by file paths. When filePaths is omitted, all files are searched."
-    )
-    @APIResponse(
-            responseCode = "200",
-            description = "Content search results returned successfully. Each result includes an extension field. Includes queriedKeywords and searchTimeMs.",
-            content = @Content(schema = @Schema(implementation = SearchResponse.class))
-    )
-    @APIResponse(
-            responseCode = "400",
-            description = "Invalid input parameters (missing or malformed version/keywords/filePaths)",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
-    )
-    public SearchResponse<ContentSearchResult> searchContent(
-            @Parameter(description = "Quarkus version branch or tag. Defaults to 'main' if omitted. When using 'main', results may include quarkiverse extension docs.",
-                    required = false, example = "3.27", schema = @Schema(defaultValue = "main"))
-            @QueryParam("version") String version,
-            @Parameter(description = "Comma-separated list of search keywords (case-insensitive, matched in document body)", required = true, example = "security,oidc")
-            @QueryParam("keywords") String keywords,
-            @Parameter(description = "Comma-separated list of file paths relative to the docs directory (optional)", example = "security-overview.adoc,config.adoc")
-            @QueryParam("filePaths") String filePaths,
-            @Parameter(description = "Maximum number of results to return (default 10, max 100)", example = "10")
-            @QueryParam("limit") Integer limit,
-            @Parameter(description = "Number of results to skip (default 0)", example = "0")
-            @QueryParam("offset") Integer offset,
-            @Parameter(description = "Optional extension name to filter results (e.g. quarkus-openapi-generator for quarkiverse, or quarkus-core for core docs)", required = false, example = "quarkus-core")
-            @QueryParam("extension") String extension) {
-        version = InputValidator.resolveVersion(version);
-        InputValidator.validateKeywords(keywords);
-        int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
-        int validOffset = InputValidator.validateOffset(offset);
-        List<String> keywordList = Arrays.asList(keywords.split(","));
-        List<String> queriedKeywords = keywordList.stream().map(String::toLowerCase).toList();
-        List<String> filePathList = null;
-        if (filePaths != null && !filePaths.isBlank()) {
-            InputValidator.validateFilePaths(filePaths);
-            filePathList = Arrays.asList(filePaths.split(","));
-        }
-        long startNanos = System.nanoTime();
-        PaginatedResult<ContentSearchResult> result = searchService.searchContent(
-                version, keywordList, filePathList, validLimit, validOffset);
-        long searchTimeMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
-        return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset,
-                queriedKeywords, searchTimeMs);
-    }
 }

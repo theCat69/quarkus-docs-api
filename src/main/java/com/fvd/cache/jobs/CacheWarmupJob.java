@@ -4,7 +4,6 @@ import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.CodeSampleIndexer;
-import com.fvd.indexs.indexers.ContentIndexer;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.services.IndexService;
 import com.fvd.quarkiverse.services.QuarkiverseService;
@@ -32,7 +31,6 @@ public class CacheWarmupJob {
     private final IndexService indexService;
     private final KeywordIndexer keywordIndexer;
     private final CodeSampleIndexer codeSampleIndexer;
-    private final ContentIndexer contentIndexer;
     private final CacheService cacheService;
     private final QuarkiverseService quarkiverseService;
 
@@ -127,9 +125,6 @@ public class CacheWarmupJob {
 
         codeSampleIndexer.build("main", filePathsByExtension);
         log.info("Code sample index built for version main (merged)");
-
-        contentIndexer.build("main", filePathsByExtension);
-        log.info("Content index built for version main (merged)");
     }
 
     static Map<String, List<String>> buildExtensionMap(List<String> coreFiles, List<String> quarkiversePaths) {
@@ -154,8 +149,5 @@ public class CacheWarmupJob {
 
         codeSampleIndexer.build(version, extractedFiles);
         log.info("Code sample index built for version {}", version);
-
-        contentIndexer.build(version, extractedFiles);
-        log.info("Content index built for version {}", version);
     }
 }

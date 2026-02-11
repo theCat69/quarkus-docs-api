@@ -1,7 +1,11 @@
 package com.fvd.common.validators;
 
+import com.fvd.common.StopWords;
 import com.fvd.common.exceptions.InvalidInputException;
 import lombok.experimental.UtilityClass;
+
+import java.util.Arrays;
+import java.util.List;
 
 @UtilityClass
 public class InputValidator {
@@ -54,6 +58,18 @@ public class InputValidator {
 
     public static void validateKeywords(String keywords) {
         requireNonEmpty(keywords, "keywords");
+    }
+
+    public static List<String> parseKeywords(String raw) {
+        requireNonEmpty(raw, "keywords");
+        List<String> filtered = Arrays.stream(raw.trim().split("\\s+"))
+                .map(String::toLowerCase)
+                .filter(k -> !StopWords.DEFAULT.contains(k))
+                .toList();
+        if (filtered.isEmpty()) {
+            throw new InvalidInputException("All keywords are stop words");
+        }
+        return filtered;
     }
 
     public static void validateSectionTitle(String sectionTitle) {

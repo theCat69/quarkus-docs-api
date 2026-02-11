@@ -2,7 +2,6 @@ package com.fvd.quarkiverse;
 
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.indexers.CodeSampleIndexer;
-import com.fvd.indexs.indexers.ContentIndexer;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import com.fvd.quarkiverse.services.QuarkiverseService;
@@ -43,9 +42,6 @@ class QuarkiverseIntegrationTest {
 
     @Inject
     CodeSampleIndexer codeSampleIndexer;
-
-    @Inject
-    ContentIndexer contentIndexer;
 
     @Inject
     DocStore docStore;
@@ -98,12 +94,11 @@ class QuarkiverseIntegrationTest {
         }
         keywordIndexer.build("main", filePathsByExtension);
         codeSampleIndexer.build("main", filePathsByExtension);
-        contentIndexer.build("main", filePathsByExtension);
 
         // Search for keywords from the quarkiverse doc
         given()
                 .queryParam("version", "main")
-                .queryParam("keywords", "test,extension")
+                .queryParam("keywords", "test extension")
         .when()
                 .get("/api/search/files")
         .then()
@@ -173,7 +168,7 @@ class QuarkiverseIntegrationTest {
         // Search for 3.27 should not return quarkiverse results
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "test,extension")
+                .queryParam("keywords", "test extension")
         .when()
                 .get("/api/search/files")
         .then()
@@ -201,7 +196,7 @@ class QuarkiverseIntegrationTest {
         // Search for code samples from the quarkiverse doc
         given()
                 .queryParam("version", "main")
-                .queryParam("keywords", "dependency,quarkus")
+                .queryParam("keywords", "dependency quarkus")
         .when()
                 .get("/api/search/code-samples")
         .then()
@@ -211,31 +206,4 @@ class QuarkiverseIntegrationTest {
                 .body("results[0].extension", equalTo("quarkus-test-extension"));
     }
 
-    @Test
-    void quarkiverseContentSearchWorks() {
-        // Extract quarkiverse docs
-        List<String> quarkiversePaths = quarkiverseService.fetchAndExtractAll();
-
-        // Build content index
-        Map<String, List<String>> filePathsByExtension = new LinkedHashMap<>();
-        filePathsByExtension.put("quarkus-core", List.of());
-        for (String path : quarkiversePaths) {
-            String[] parts = path.split("/", 3);
-            if (parts.length >= 2) {
-                String extName = parts[1];
-                filePathsByExtension.computeIfAbsent(extName, k -> new ArrayList<>()).add(path);
-            }
-        }
-        contentIndexer.build("main", filePathsByExtension);
-
-        // Full-text search for content from quarkiverse doc
-        given()
-                .queryParam("version", "main")
-                .queryParam("keywords", "test,extension")
-        .when()
-                .get("/api/search/content")
-        .then()
-                .statusCode(200)
-                .body("total", greaterThan(0));
-    }
 }

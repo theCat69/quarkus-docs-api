@@ -175,6 +175,57 @@ class InputValidatorTest {
                 .hasMessageContaining("offset must not be negative");
     }
 
+    // --- parseKeywords tests ---
+
+    @Test
+    void parseKeywordsSplitsOnSpaces() {
+        assertThat(InputValidator.parseKeywords("security oidc")).containsExactly("security", "oidc");
+    }
+
+    @Test
+    void parseKeywordsLowercases() {
+        assertThat(InputValidator.parseKeywords("Security OIDC")).containsExactly("security", "oidc");
+    }
+
+    @Test
+    void parseKeywordsRemovesStopWords() {
+        assertThat(InputValidator.parseKeywords("how does security work")).containsExactly("security");
+    }
+
+    @Test
+    void parseKeywordsTrimsAndHandlesMultipleSpaces() {
+        assertThat(InputValidator.parseKeywords("  security   oidc  ")).containsExactly("security", "oidc");
+    }
+
+    @Test
+    void parseKeywordsThrowsOnNull() {
+        assertThatThrownBy(() -> InputValidator.parseKeywords(null))
+                .isInstanceOf(InvalidInputException.class);
+    }
+
+    @Test
+    void parseKeywordsThrowsOnBlank() {
+        assertThatThrownBy(() -> InputValidator.parseKeywords("   "))
+                .isInstanceOf(InvalidInputException.class);
+    }
+
+    @Test
+    void parseKeywordsThrowsOnAllStopWords() {
+        assertThatThrownBy(() -> InputValidator.parseKeywords("how does the"))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("All keywords are stop words");
+    }
+
+    @Test
+    void parseKeywordsSingleKeyword() {
+        assertThat(InputValidator.parseKeywords("security")).containsExactly("security");
+    }
+
+    @Test
+    void parseKeywordsTabSplitting() {
+        assertThat(InputValidator.parseKeywords("security\toidc")).containsExactly("security", "oidc");
+    }
+
     // --- resolveVersion tests ---
 
     @Test

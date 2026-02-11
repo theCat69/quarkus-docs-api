@@ -10,8 +10,6 @@ import com.fvd.github.exceptions.UpstreamException;
 import com.fvd.github.services.GitHubService;
 import com.fvd.indexs.indexers.CodeSampleIndex;
 import com.fvd.indexs.indexers.CodeSampleIndexer;
-import com.fvd.indexs.indexers.ContentIndex;
-import com.fvd.indexs.indexers.ContentIndexer;
 import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.stores.IndexStore;
@@ -59,9 +57,6 @@ class CacheRefreshJobTest {
     private CodeSampleIndexer codeSampleIndexer;
 
     @Mock
-    private ContentIndexer contentIndexer;
-
-    @Mock
     private SearchService searchService;
 
     @Mock
@@ -73,7 +68,7 @@ class CacheRefreshJobTest {
 
     @BeforeEach
     void setUp() {
-        job = new CacheRefreshJob(cacheService, gitHubService, indexStore, docStore, keywordIndexer, codeSampleIndexer, contentIndexer, searchService, docParser, quarkiverseService);
+        job = new CacheRefreshJob(cacheService, gitHubService, indexStore, docStore, keywordIndexer, codeSampleIndexer, searchService, docParser, quarkiverseService);
         job.quarkiverseEnabled = false;
     }
 
@@ -145,7 +140,6 @@ class CacheRefreshJobTest {
 
         verify(keywordIndexer).build(eq("3.27"), eq(List.of("security-overview.adoc", "config.adoc")));
         verify(codeSampleIndexer).build(eq("3.27"), eq(List.of("security-overview.adoc", "config.adoc")));
-        verify(contentIndexer).build(eq("3.27"), eq(List.of("security-overview.adoc", "config.adoc")));
         verify(searchService).invalidateCache("3.27");
     }
 
@@ -223,7 +217,6 @@ class CacheRefreshJobTest {
         verify(indexStore, never()).write(anyString(), anyList());
         verify(keywordIndexer, never()).build(anyString(), anyList());
         verify(codeSampleIndexer, never()).build(anyString(), anyList());
-        verify(contentIndexer, never()).build(anyString(), anyList());
     }
 
     @Test
@@ -316,7 +309,6 @@ class CacheRefreshJobTest {
         // Core refresh uses List overload
         when(keywordIndexer.build(eq("main"), anyList())).thenReturn(new KeywordIndex(List.of()));
         when(codeSampleIndexer.build(eq("main"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
-        when(contentIndexer.build(eq("main"), anyList())).thenReturn(new ContentIndex(Map.of()));
 
         // Quarkiverse refresh returns true (changes detected)
         when(quarkiverseService.refreshAll()).thenReturn(true);
@@ -329,7 +321,6 @@ class CacheRefreshJobTest {
         // Quarkiverse rebuild uses Map overload
         when(keywordIndexer.build(eq("main"), anyMap())).thenReturn(new KeywordIndex(List.of()));
         when(codeSampleIndexer.build(eq("main"), anyMap())).thenReturn(new CodeSampleIndex(List.of()));
-        when(contentIndexer.build(eq("main"), anyMap())).thenReturn(new ContentIndex(Map.of()));
 
         job.refresh();
 
@@ -341,7 +332,6 @@ class CacheRefreshJobTest {
         expected.put("quarkus-openapi-generator", List.of("quarkiverse/quarkus-openapi-generator/index.adoc"));
         verify(keywordIndexer).build(eq("main"), eq(expected));
         verify(codeSampleIndexer).build(eq("main"), eq(expected));
-        verify(contentIndexer).build(eq("main"), eq(expected));
         verify(searchService, times(2)).invalidateCache("main");
     }
 
@@ -363,7 +353,6 @@ class CacheRefreshJobTest {
         // Map overload should NOT be called since no changes
         verify(keywordIndexer, never()).build(eq("main"), anyMap());
         verify(codeSampleIndexer, never()).build(eq("main"), anyMap());
-        verify(contentIndexer, never()).build(eq("main"), anyMap());
     }
 
     @Test
@@ -428,7 +417,6 @@ class CacheRefreshJobTest {
         // Core refresh for main uses List overload
         when(keywordIndexer.build(eq("main"), anyList())).thenReturn(new KeywordIndex(List.of()));
         when(codeSampleIndexer.build(eq("main"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
-        when(contentIndexer.build(eq("main"), anyList())).thenReturn(new ContentIndex(Map.of()));
 
         // Quarkiverse refresh returns true
         when(quarkiverseService.refreshAll()).thenReturn(true);
@@ -436,7 +424,6 @@ class CacheRefreshJobTest {
                 "config.adoc", "quarkiverse/quarkus-cxf/index.adoc"));
         when(keywordIndexer.build(eq("main"), anyMap())).thenReturn(new KeywordIndex(List.of()));
         when(codeSampleIndexer.build(eq("main"), anyMap())).thenReturn(new CodeSampleIndex(List.of()));
-        when(contentIndexer.build(eq("main"), anyMap())).thenReturn(new ContentIndex(Map.of()));
 
         job.refresh();
 
@@ -462,7 +449,6 @@ class CacheRefreshJobTest {
         // Core refresh uses List overload
         when(keywordIndexer.build(eq("main"), anyList())).thenReturn(new KeywordIndex(List.of()));
         when(codeSampleIndexer.build(eq("main"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
-        when(contentIndexer.build(eq("main"), anyList())).thenReturn(new ContentIndex(Map.of()));
 
         when(quarkiverseService.refreshAll()).thenReturn(true);
         when(docStore.listDocFiles("main")).thenReturn(List.of(
@@ -474,7 +460,6 @@ class CacheRefreshJobTest {
 
         when(keywordIndexer.build(eq("main"), anyMap())).thenReturn(new KeywordIndex(List.of()));
         when(codeSampleIndexer.build(eq("main"), anyMap())).thenReturn(new CodeSampleIndex(List.of()));
-        when(contentIndexer.build(eq("main"), anyMap())).thenReturn(new ContentIndex(Map.of()));
 
         job.refresh();
 
@@ -488,7 +473,6 @@ class CacheRefreshJobTest {
 
         verify(keywordIndexer).build(eq("main"), eq(expected));
         verify(codeSampleIndexer).build(eq("main"), eq(expected));
-        verify(contentIndexer).build(eq("main"), eq(expected));
     }
 
     private List<GithubApiIndex> mainIndex() {

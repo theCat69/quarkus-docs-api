@@ -86,7 +86,7 @@ class SearchResourceTest {
     void testSearchFilesEndpointNoIndexReturnsEmpty() {
         given()
                 .queryParam("version", "3.99")
-                .queryParam("keywords", "oidc,security")
+                .queryParam("keywords", "oidc security")
                 .when().get("/api/search/files")
                 .then()
                 .statusCode(200)
@@ -120,7 +120,7 @@ class SearchResourceTest {
         seedKeywordIndex();
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "oidc,security")
+                .queryParam("keywords", "oidc security")
                 .when().get("/api/search/files")
                 .then()
                 .statusCode(200)
@@ -414,135 +414,6 @@ class SearchResourceTest {
                 .body("matchScore", lessThan(1.0f));
     }
 
-    // --- Content search endpoint tests ---
-
-    @Test
-    void testSearchContentEndpointMissingVersion() {
-        given()
-                .queryParam("keywords", "security")
-                .when().get("/api/search/content")
-                .then()
-                .statusCode(200)
-                .body("results.size()", is(0));
-    }
-
-    @Test
-    void testSearchContentEndpointDefaultsToMainVersion() {
-        seedDocFileForMain();
-        given()
-                .queryParam("keywords", "security")
-                .when().get("/api/search/content")
-                .then()
-                .statusCode(200)
-                .body("results.size()", greaterThan(0))
-                .body("results[0].path", equalTo("security.adoc"));
-    }
-
-    @Test
-    void testSearchContentEndpointMissingKeywords() {
-        given()
-                .queryParam("version", "3.27")
-                .when().get("/api/search/content")
-                .then()
-                .statusCode(400);
-    }
-
-    @Test
-    void testSearchContentEndpointNoDocsReturnsEmpty() {
-        given()
-                .queryParam("version", "3.99")
-                .queryParam("keywords", "nonexistent")
-                .when().get("/api/search/content")
-                .then()
-                .statusCode(200)
-                .body("results.size()", is(0))
-                .body("total", is(0));
-    }
-
-    @Test
-    void testSearchContentEndpointReturnsResults() {
-        seedDocFile();
-        given()
-                .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
-                .when().get("/api/search/content")
-                .then()
-                .statusCode(200)
-                .body("results.size()", greaterThan(0))
-                .body("results[0].path", equalTo("security.adoc"))
-                .body("results[0].snippet", notNullValue())
-                .body("results[0].matchOffset", greaterThanOrEqualTo(0))
-                .body("results[0].matchLine", greaterThanOrEqualTo(1))
-                .body("results[0].score", greaterThan(0.0f))
-                .body("results[0].matchedKeywords", notNullValue())
-                .body("results[0].matchedKeywords", hasItem("security"))
-                .body("results[0].matchCount", greaterThan(0))
-                .body("queriedKeywords", hasItem("security"))
-                .body("searchTimeMs", greaterThanOrEqualTo(0));
-    }
-
-    @Test
-    void testSearchContentEndpointWithPagination() {
-        seedDocFile();
-        docStore.write("3.27", "config.adoc", "= Config Guide\nSecurity config for quarkus.\n");
-        given()
-                .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
-                .queryParam("limit", 1)
-                .queryParam("offset", 0)
-                .when().get("/api/search/content")
-                .then()
-                .statusCode(200)
-                .body("results.size()", is(1))
-                .body("total", is(2))
-                .body("limit", is(1))
-                .body("offset", is(0));
-    }
-
-    @Test
-    void testSearchContentEndpointWithPaginationOffset() {
-        seedDocFile();
-        docStore.write("3.27", "config.adoc", "= Config Guide\nSecurity config for quarkus.\n");
-        given()
-                .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
-                .queryParam("limit", 1)
-                .queryParam("offset", 1)
-                .when().get("/api/search/content")
-                .then()
-                .statusCode(200)
-                .body("results.size()", is(1))
-                .body("total", is(2))
-                .body("limit", is(1))
-                .body("offset", is(1));
-    }
-
-    @Test
-    void testSearchContentEndpointWithFilePathsFilter() {
-        seedDocFile();
-        docStore.write("3.27", "config.adoc", "= Config Guide\nSecurity config for quarkus.\n");
-        given()
-                .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
-                .queryParam("filePaths", "security.adoc")
-                .when().get("/api/search/content")
-                .then()
-                .statusCode(200)
-                .body("results.size()", is(1))
-                .body("results[0].path", equalTo("security.adoc"));
-    }
-
-    @Test
-    void testSearchContentEndpointFilePathsTraversal() {
-        given()
-                .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
-                .queryParam("filePaths", "../../etc/passwd")
-                .when().get("/api/search/content")
-                .then()
-                .statusCode(400);
-    }
-
     // --- Versions endpoint tests ---
 
     @Test
@@ -706,6 +577,34 @@ class SearchResourceTest {
                 .body("results.size()", greaterThan(0))
                 .body("results[0].matchedSectionTitle", notNullValue())
                 .body("results[0].sectionMatchScore", greaterThan(0f));
+    }
+
+    @Test
+    void testSearchFilesEndpointStopWordRemoval() {
+        seedKeywordIndex();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "how does security work in quarkus")
+                .when().get("/api/search/files")
+                .then()
+                .statusCode(200)
+                .body("results.size()", greaterThan(0))
+                .body("queriedKeywords", hasItem("security"))
+                .body("queriedKeywords", hasItem("quarkus"))
+                .body("queriedKeywords", not(hasItem("how")))
+                .body("queriedKeywords", not(hasItem("does")))
+                .body("queriedKeywords", not(hasItem("work")))
+                .body("queriedKeywords", not(hasItem("in")));
+    }
+
+    @Test
+    void testSearchFilesEndpointAllStopWordsReturns400() {
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "how does the")
+                .when().get("/api/search/files")
+                .then()
+                .statusCode(400);
     }
 
     private void seedDocFile() {
