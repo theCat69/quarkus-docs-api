@@ -47,7 +47,7 @@ No structural changes. The `queriedKeywords` field in responses will now reflect
 
 ## Tasks
 
-- [ ] Add unit tests for `InputValidator.parseKeywords()`:
+- [x] Add unit tests for `InputValidator.parseKeywords()`:
   - Splits on spaces: `"security oidc"` → `["security", "oidc"]`.
   - Lowercases: `"Security OIDC"` → `["security", "oidc"]`.
   - Removes stop words: `"how does security work"` → `["security"]`.
@@ -56,16 +56,16 @@ No structural changes. The `queriedKeywords` field in responses will now reflect
   - Throws on all-stop-words input: `"how does the"` → `InvalidInputException`.
   - Single keyword: `"security"` → `["security"]`.
   - Tab/newline splitting: `"security\toidc"` → `["security", "oidc"]`.
-- [ ] Implement `InputValidator.parseKeywords()`.
-- [ ] Update `SearchResource.searchFiles()`: replace `validateKeywords` + `split(",")` + `toLowerCase` with `parseKeywords()`.
-- [ ] Update `SearchResource.searchSections()`: same replacement.
-- [ ] Update `SearchResource.searchCodeSamples()`: same replacement.
-- [ ] Update `SearchResource.searchContent()`: same replacement (skip if Feature 32 removes this endpoint first).
-- [ ] Update all `@Parameter` descriptions and examples for `keywords` parameter.
-- [ ] Update `SearchResourceTest` — change ALL test keyword parameters from comma-separated to space-separated format. This affects every test method that sends `keywords` query parameters (file search, section search, code-sample search, and content search tests). Search for all occurrences of comma-separated keyword strings (e.g., `"oidc,security"`, `"security,authentication"`) and replace commas with spaces.
-- [ ] Add integration test: query `"how does security work in quarkus"` returns results for `"security"` and `"quarkus"` with stop words stripped.
-- [ ] Add integration test: query `"how does the"` returns 400 with error message about all keywords being stop words.
-- [ ] Run all tests (`./gradlew test`) — all must pass.
+- [x] Implement `InputValidator.parseKeywords()`.
+- [x] Update `SearchResource.searchFiles()`: replace `validateKeywords` + `split(",")` + `toLowerCase` with `parseKeywords()`.
+- [x] Update `SearchResource.searchSections()`: same replacement.
+- [x] Update `SearchResource.searchCodeSamples()`: same replacement.
+- [x] Update `SearchResource.searchContent()`: same replacement (skip if Feature 32 removes this endpoint first).
+- [x] Update all `@Parameter` descriptions and examples for `keywords` parameter.
+- [x] Update `SearchResourceTest` — change ALL test keyword parameters from comma-separated to space-separated format. This affects every test method that sends `keywords` query parameters (file search, section search, code-sample search, and content search tests). Search for all occurrences of comma-separated keyword strings (e.g., `"oidc,security"`, `"security,authentication"`) and replace commas with spaces.
+- [x] Add integration test: query `"how does security work in quarkus"` returns results for `"security"` and `"quarkus"` with stop words stripped.
+- [x] Add integration test: query `"how does the"` returns 400 with error message about all keywords being stop words.
+- [x] Run all tests (`./gradlew test`) — all must pass.
 
 ## Acceptance Criteria
 
@@ -81,3 +81,12 @@ No structural changes. The `queriedKeywords` field in responses will now reflect
 - **Breaking change**: Clients currently sending comma-separated keywords (e.g., `keywords=security,oidc`) must switch to space-separated (e.g., `keywords=security oidc`). URL encoding: spaces become `+` or `%20`.
 - Stop word removal is case-insensitive (keywords are lowercased before filtering).
 - The `validateKeywords()` method remains available in `InputValidator` for any other future use, but the search endpoints no longer call it directly.
+
+## Implementation notes
+
+- **`InputValidator.parseKeywords()`**: New method that splits on `\s+`, lowercases, filters out `StopWords.DEFAULT`, and throws `InvalidInputException("All keywords are stop words")` if the filtered list is empty.
+- **`SearchResource`**: All 4 search endpoints (`searchFiles`, `searchSections`, `searchCodeSamples`, `searchContent`) updated — replaced `validateKeywords()` + `split(",")` + `toLowerCase()` with `parseKeywords()`. Updated `@Parameter` descriptions from "Comma-separated list of search keywords" to "Space-separated search keywords (stop words like 'how', 'does', 'the' are automatically removed)" and examples from `"security,oidc"` to `"security oidc"`.
+- **`InputValidatorTest`**: Added 9 unit tests for `parseKeywords()` covering space splitting, lowercasing, stop word removal, multiple spaces, null/blank, all-stop-words error, single keyword, and tab splitting.
+- **`SearchResourceTest`**: Changed 2 occurrences of comma-separated keywords (`"oidc,security"` → `"oidc security"`). Added 2 integration tests: stop word removal verification and all-stop-words 400 error.
+- **`QuarkiverseIntegrationTest`**: Changed 4 occurrences of comma-separated keywords to space-separated.
+- **All 443 tests pass** after changes.
