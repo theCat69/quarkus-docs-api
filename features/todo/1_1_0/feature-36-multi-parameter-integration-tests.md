@@ -30,20 +30,20 @@ No production code changes.
 
 ## Tasks
 
-- [ ] Create test data setup: `@BeforeEach` test fixture seeding with 4+ adoc files:
+- [x] Create test data setup: `@BeforeEach` test fixture seeding with 4+ adoc files:
   - `security-overview.adoc` (extension: `quarkus-core`, keywords: security, authentication, authorization)
   - `config.adoc` (extension: `quarkus-core`, keywords: configuration, properties)
   - `quarkiverse/quarkus-oidc/index.adoc` (extension: `quarkus-oidc`, keywords: security, oidc, authentication)
   - `quarkiverse/quarkus-oidc/configuration.adoc` (extension: `quarkus-oidc`, keywords: oidc, configuration)
-- [ ] Test 1: keywords + extension filtering — `keywords=security&extension=quarkus-core` vs `keywords=security` (unfiltered has more results).
-- [ ] Test 2: keywords + filePaths + extension — triple filter on sections endpoint.
-- [ ] Test 3: keywords + limit + offset + extension — pagination with filter.
-- [ ] Test 4: keywords + sectionTitle + filePath + extension on code-samples.
-- [ ] Test 5: stop words + extension — `keywords=how does security work&extension=quarkus-core`.
-- [ ] Test 6: section search + extension = `quarkus-oidc` only.
-- [ ] Test 7: extension = `nonexistent-ext` returns empty.
-- [ ] Test 8: no extension returns all extensions' results.
-- [ ] Run all tests (`./gradlew test`) — all must pass.
+- [x] Test 1: keywords + extension filtering — `keywords=security&extension=quarkus-core` vs `keywords=security` (unfiltered has more results).
+- [x] Test 2: keywords + filePaths + extension — triple filter on sections endpoint.
+- [x] Test 3: keywords + limit + offset + extension — pagination with filter.
+- [x] Test 4: keywords + sectionTitle + filePath + extension on code-samples.
+- [x] Test 5: stop words + extension — `keywords=how does security work&extension=quarkus-core`.
+- [x] Test 6: section search + extension = `quarkus-oidc` only.
+- [x] Test 7: extension = `nonexistent-ext` returns empty.
+- [x] Test 8: no extension returns all extensions' results.
+- [x] Run all tests (`./gradlew test`) — all must pass.
 
 ## Acceptance Criteria
 
@@ -61,3 +61,13 @@ No production code changes.
 - Follow the test seeding pattern used in `SearchResourceTest` — clean `build/test-cache`, reset schema, invalidate caches in `@BeforeEach`.
 
 ---
+
+## Implementation Notes
+
+- **Test class**: `src/test/java/com/fvd/search/resources/MultiParameterSearchTest.java`
+- **8 tests implemented**, all passing. No production code changes.
+- Seed data uses 4 adoc files across 2 extensions (`quarkus-core`, `quarkus-oidc`) with keyword indexes, code sample indexes, and doc content stored via `docStore.write()`.
+- Section line ranges in `SectionKeywordEntry` were carefully aligned with actual doc content line counts to avoid `ArrayIndexOutOfBoundsException` during snippet generation.
+- Follows the exact `@BeforeEach` cleanup pattern from `SearchResourceTest`: clean `build/test-cache`, `resetSchema()`, `invalidateCache()`.
+- Uses Hamcrest matchers consistently with the existing test suite (no AssertJ mixing).
+- Stop word test verifies both removal ("the", "of" excluded from `queriedKeywords`) and extension filtering in the same request.
