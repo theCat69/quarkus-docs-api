@@ -29,6 +29,12 @@ public interface SearchConfig {
 
         @WithDefault("0.8")
         double prefixMatchMultiplier();
+
+        @WithDefault("10")
+        int annotationBoost();
+
+        @WithDefault("io.quarkus,jakarta,org.eclipse.microprofile,javax")
+        String annotationPackages();
     }
 
     interface Fuzzy {

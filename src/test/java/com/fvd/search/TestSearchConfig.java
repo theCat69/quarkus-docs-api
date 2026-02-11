@@ -57,6 +57,16 @@ public class TestSearchConfig implements SearchConfig {
         public double prefixMatchMultiplier() {
             return 0.8;
         }
+
+        @Override
+        public int annotationBoost() {
+            return 10;
+        }
+
+        @Override
+        public String annotationPackages() {
+            return "io.quarkus,jakarta,org.eclipse.microprofile,javax";
+        }
     }
 
     public static class TestFuzzy implements Fuzzy {

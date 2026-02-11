@@ -253,23 +253,19 @@ class CodeSampleIndexerTest {
 
         indexer.applyImportBoost(code, keywords);
 
-        // "restassured" stems to "restassur" (-ed); appears twice (package + class): 2 * 5 = 10
-        assertThat(keywords.get("restassur")).isEqualTo(10);
-        assertThat(keywords.get("given")).isEqualTo(5);
+        // io.restassured is NOT a known framework package — no boost applied
+        assertThat(keywords).isEmpty();
     }
 
     @Test
-    void applyImportBoostIgnoresShortTokens() {
+    void applyImportBoostIgnoresNonFrameworkImports() {
         Map<String, Integer> keywords = new HashMap<>();
         String code = "import io.x.Foo;";
 
         indexer.applyImportBoost(code, keywords);
 
-        // "io" and "x" are too short (< 3 chars), should not be added
-        assertThat(keywords).doesNotContainKey("io");
-        assertThat(keywords).doesNotContainKey("x");
-        // "foo" should be added
-        assertThat(keywords.get("foo")).isEqualTo(5);
+        // io.x does not start with any known package — no boost applied
+        assertThat(keywords).isEmpty();
     }
 
     @Test
@@ -378,6 +374,98 @@ class CodeSampleIndexerTest {
         assertThat(keywordMap.get("configur")).isGreaterThanOrEqualTo(5);
         // "inject" should still have import boost
         assertThat(keywordMap.get("inject")).isGreaterThanOrEqualTo(5);
+    }
+
+    @Test
+    void applyImportBoostHandlesStaticImportsFromKnownPackages() {
+        Map<String, Integer> keywords = new HashMap<>();
+        String code = "import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;";
+
+        indexer.applyImportBoost(code, keywords);
+
+        assertThat(keywords).isNotEmpty();
+        assertThat(keywords.get("jakarta")).isEqualTo(5);
+    }
+
+    @Test
+    void applyImportBoostOnlyBoostsKnownPackages() {
+        Map<String, Integer> keywords = new HashMap<>();
+        String code = "import jakarta.ws.rs.GET;\nimport java.util.List;\nimport org.eclipse.microprofile.config.inject.ConfigProperty;";
+
+        indexer.applyImportBoost(code, keywords);
+
+        // jakarta and org.eclipse.microprofile are known; java.util is NOT
+        assertThat(keywords.get("jakarta")).isNotNull();
+        assertThat(keywords).doesNotContainKey("java");
+        assertThat(keywords).doesNotContainKey("util");
+        assertThat(keywords).doesNotContainKey("list");
+        // org.eclipse.microprofile keywords should be boosted
+        assertThat(keywords.get("eclipse")).isNotNull(); // "eclipse" stemmed
+    }
+
+    @Test
+    void applyAnnotationBoostResolvesKnownPackageAnnotation() {
+        Map<String, Integer> keywords = new HashMap<>();
+        String code = "import jakarta.enterprise.context.ApplicationScoped;\n\n@ApplicationScoped\npublic class Foo {}";
+
+        indexer.applyAnnotationBoost(code, keywords);
+
+        // "applicationscoped" → Stemmer.stem("applicationscoped") with boost 10
+        assertThat(keywords).isNotEmpty();
+        String stemmed = com.fvd.common.Stemmer.stem("applicationscoped");
+        assertThat(keywords.get(stemmed)).isEqualTo(10);
+    }
+
+    @Test
+    void applyAnnotationBoostResolvesPathAnnotation() {
+        Map<String, Integer> keywords = new HashMap<>();
+        String code = "import jakarta.ws.rs.Path;\n\n@Path(\"/hello\")\npublic class Foo {}";
+
+        indexer.applyAnnotationBoost(code, keywords);
+
+        assertThat(keywords).isNotEmpty();
+        assertThat(keywords.get("path")).isEqualTo(10);
+    }
+
+    @Test
+    void applyAnnotationBoostIgnoresAnnotationWithoutImport() {
+        Map<String, Integer> keywords = new HashMap<>();
+        String code = "@Override\npublic String toString() { return \"\"; }";
+
+        indexer.applyAnnotationBoost(code, keywords);
+
+        assertThat(keywords).isEmpty();
+    }
+
+    @Test
+    void applyAnnotationBoostIgnoresNonKnownPackageAnnotation() {
+        Map<String, Integer> keywords = new HashMap<>();
+        String code = "import com.example.MyCustomAnnotation;\n\n@MyCustomAnnotation\npublic class Foo {}";
+
+        indexer.applyAnnotationBoost(code, keywords);
+
+        assertThat(keywords).isEmpty();
+    }
+
+    @Test
+    void applyAnnotationBoostHandlesMultipleAnnotations() {
+        Map<String, Integer> keywords = new HashMap<>();
+        String code = "import jakarta.ws.rs.Path;\nimport jakarta.ws.rs.GET;\n\n@Path(\"/hello\")\npublic class Foo {\n    @GET\n    public String get() {}\n}";
+
+        indexer.applyAnnotationBoost(code, keywords);
+
+        assertThat(keywords.get("path")).isEqualTo(10);
+        assertThat(keywords.get("get")).isEqualTo(10);
+    }
+
+    @Test
+    void applyAnnotationBoostOnlyBoostsEachAnnotationOnce() {
+        Map<String, Integer> keywords = new HashMap<>();
+        String code = "import jakarta.ws.rs.GET;\n\n@GET\npublic String foo() {}\n@GET\npublic String bar() {}";
+
+        indexer.applyAnnotationBoost(code, keywords);
+
+        assertThat(keywords.get("get")).isEqualTo(10);
     }
 
     private Map<String, Integer> toMap(List<KeywordScore> scores) {

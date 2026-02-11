@@ -53,28 +53,28 @@ No structural changes. Code sample scores will change (some increase for annotat
 
 ## Tasks
 
-- [ ] Add `annotationBoost()` and `annotationPackages()` to `SearchConfig.Boost` with `@WithDefault` annotations.
-- [ ] Add `search.boost.annotation-boost=10` and `search.boost.annotation-packages=io.quarkus,jakarta,org.eclipse.microprofile,javax` to `application.properties`.
-- [ ] Update `TestSearchConfig.TestBoost` with the new methods.
-- [ ] Add unit tests for `CodeSampleIndexer.applyAnnotationBoost()`:
+- [x] Add `annotationBoost()` and `annotationPackages()` to `SearchConfig.Boost` with `@WithDefault` annotations.
+- [x] Add `search.boost.annotation-boost=10` and `search.boost.annotation-packages=io.quarkus,jakarta,org.eclipse.microprofile,javax` to `application.properties`.
+- [x] Update `TestSearchConfig.TestBoost` with the new methods.
+- [x] Add unit tests for `CodeSampleIndexer.applyAnnotationBoost()`:
   - Annotation `@ApplicationScoped` with import `jakarta.enterprise.context.ApplicationScoped` → boosted at score 10.
   - Annotation `@Path` with import `jakarta.ws.rs.Path` → boosted at score 10.
   - Annotation `@Override` without any import → not boosted.
   - Annotation `@MyCustomAnnotation` with import `com.example.MyCustomAnnotation` → not boosted (not a known package).
   - Multiple annotations in same code block → each independently resolved and boosted.
   - Annotation appears but import is from non-known package → not boosted.
-- [ ] Implement `CodeSampleIndexer.applyAnnotationBoost()`.
-- [ ] Add unit tests for filtered `applyImportBoost()`:
+- [x] Implement `CodeSampleIndexer.applyAnnotationBoost()`.
+- [x] Add unit tests for filtered `applyImportBoost()`:
   - Import `jakarta.ws.rs.GET` → boosted (known package `jakarta`).
   - Import `io.quarkus.runtime.Startup` → boosted (known package `io.quarkus`).
   - Import `java.util.List` → NOT boosted (not a known package).
   - Import `java.io.IOException` → NOT boosted.
   - Import `org.eclipse.microprofile.config.inject.ConfigProperty` → boosted (known package).
   - Static import `jakarta.ws.rs.core.MediaType.APPLICATION_JSON` → boosted.
-- [ ] Update `CodeSampleIndexer.applyImportBoost()` — add known-package filtering using the injected `searchConfig.boost().annotationPackages()` field.
-- [ ] Update `CodeSampleIndexer.buildEntriesForFile()` — call `applyAnnotationBoost()` after `applyImportBoost()`.
-- [ ] Update existing `CodeSampleIndexerTest` tests for changed import boost behavior (some imports will no longer be boosted).
-- [ ] Run all tests (`./gradlew test`) — all must pass.
+- [x] Update `CodeSampleIndexer.applyImportBoost()` — add known-package filtering using the injected `searchConfig.boost().annotationPackages()` field.
+- [x] Update `CodeSampleIndexer.buildEntriesForFile()` — call `applyAnnotationBoost()` after `applyImportBoost()`.
+- [x] Update existing `CodeSampleIndexerTest` tests for changed import boost behavior (some imports will no longer be boosted).
+- [x] Run all tests (`./gradlew test`) — all must pass.
 
 ## Acceptance Criteria
 
@@ -90,3 +90,14 @@ No structural changes. Code sample scores will change (some increase for annotat
 - **Score changes**: Existing code sample scores will change because imports from `java.*` are no longer boosted. This improves relevance but may affect result ordering.
 - The annotation regex `@([A-Z][a-zA-Z0-9_]+)` is simple and may match annotation-like patterns in comments. This is acceptable — false positives are harmless (they just don't get boosted if they don't resolve to imports from known packages).
 - Deploying this feature requires a full reindex of all cached versions because code sample keyword scores change.
+
+## Implementation notes
+
+- **`SearchConfig.Boost`**: Added `annotationBoost()` (default 10) and `annotationPackages()` (default `io.quarkus,jakarta,org.eclipse.microprofile,javax`).
+- **`TestSearchConfig.TestBoost`**: Added `annotationBoost()` returning 10 and `annotationPackages()` returning the default framework packages string.
+- **`application.properties`**: Added `search.boost.annotation-boost=10` and `search.boost.annotation-packages` configuration entries.
+- **`CodeSampleIndexer.applyImportBoost()`**: Now filters imports by known framework packages — only imports whose FQCN starts with a configured package prefix are boosted. Non-framework imports (e.g., `java.util.List`) are skipped.
+- **`CodeSampleIndexer.applyAnnotationBoost()`**: New package-private method that resolves `@Annotation` patterns against import statements, boosts stemmed annotation names by `annotationBoost` (10) if the import is from a known framework package. Each annotation boosted only once per code block.
+- **`CodeSampleIndexer.buildEntriesForFile()`**: Calls `applyAnnotationBoost()` after `applyImportBoost()`.
+- **`CodeSampleIndexerTest`**: Updated 2 existing tests for import filtering behavior (static imports from non-known packages, non-framework imports). Added 8 new tests: known-package static import, known-package-only filtering, annotation resolution for ApplicationScoped/Path, annotation without import, non-known-package annotation, multiple annotations, and deduplication.
+- **All 432 tests pass** after changes.

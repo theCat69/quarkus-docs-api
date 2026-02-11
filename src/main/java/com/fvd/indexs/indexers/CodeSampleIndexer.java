@@ -10,7 +10,14 @@ import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,6 +27,7 @@ import java.util.regex.Pattern;
 public class CodeSampleIndexer {
 
     private static final Pattern IMPORT_PATTERN = Pattern.compile("^\\s*import\\s+(?:static\\s+)?([a-zA-Z][a-zA-Z0-9_.]+)\\s*;");
+    private static final Pattern ANNOTATION_PATTERN = Pattern.compile("@([A-Z][a-zA-Z0-9_]+)");
 
     private final DocStore docStore;
     private final CodeSampleIndexStore codeSampleIndexStore;
@@ -94,6 +102,7 @@ public class CodeSampleIndexer {
 
             // Boost import statements
             applyImportBoost(block.content(), keywords);
+            applyAnnotationBoost(block.content(), keywords);
 
             // Boost filename and section title keywords
             applyFilenameBoost(filePath, keywords);
@@ -123,11 +132,15 @@ public class CodeSampleIndexer {
 
     void applyImportBoost(String codeContent, Map<String, Integer> keywords) {
         int boost = searchConfig.boost().importBoost();
+        List<String> knownPackages = Arrays.asList(searchConfig.boost().annotationPackages().split(","));
         for (String line : codeContent.split("\n")) {
             Matcher matcher = IMPORT_PATTERN.matcher(line);
             if (matcher.matches()) {
                 String fqcn = matcher.group(1);
-                // Tokenize the fully qualified class name (split on dots)
+                // Only boost imports from known framework packages
+                if (knownPackages.stream().noneMatch(fqcn::startsWith)) {
+                    continue;
+                }
                 String[] parts = fqcn.split("\\.");
                 for (String part : parts) {
                     String token = part.toLowerCase();
@@ -135,6 +148,37 @@ public class CodeSampleIndexer {
                         keywords.merge(Stemmer.stem(token), boost, Integer::sum);
                     }
                 }
+            }
+        }
+    }
+
+    void applyAnnotationBoost(String codeContent, Map<String, Integer> keywords) {
+        int boost = searchConfig.boost().annotationBoost();
+        List<String> knownPackages = Arrays.asList(searchConfig.boost().annotationPackages().split(","));
+
+        // Build map: simple name → FQCN from imports
+        Map<String, String> importMap = new HashMap<>();
+        for (String line : codeContent.split("\n")) {
+            Matcher matcher = IMPORT_PATTERN.matcher(line);
+            if (matcher.matches()) {
+                String fqcn = matcher.group(1);
+                String simpleName = fqcn.substring(fqcn.lastIndexOf('.') + 1);
+                importMap.put(simpleName, fqcn);
+            }
+        }
+
+        // Find annotations in code body and boost if from known packages
+        Matcher annotationMatcher = ANNOTATION_PATTERN.matcher(codeContent);
+        Set<String> boostedAnnotations = new HashSet<>();
+        while (annotationMatcher.find()) {
+            String annotationName = annotationMatcher.group(1);
+            if (boostedAnnotations.contains(annotationName)) {
+                continue; // Only boost each annotation once per code block
+            }
+            String fqcn = importMap.get(annotationName);
+            if (fqcn != null && knownPackages.stream().anyMatch(fqcn::startsWith)) {
+                keywords.merge(Stemmer.stem(annotationName.toLowerCase()), boost, Integer::sum);
+                boostedAnnotations.add(annotationName);
             }
         }
     }
