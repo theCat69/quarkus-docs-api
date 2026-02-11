@@ -1,19 +1,28 @@
-=== Test Suite Run - Feature 32 Verification ===
-Date: 2026-02-11
+=== Feature 35 Test Run ===
+Date: 2026-02-11T21:19Z
 Command: ./gradlew cleanTest test
 
-COMPILATION: SUCCESS (compileJava UP-TO-DATE, compileTestJava UP-TO-DATE)
-BUILD: SUCCESSFUL in 26s
+COMPILATION: ✅ SUCCESS (compileJava UP-TO-DATE, compileTestJava UP-TO-DATE)
+BUILD: ✅ SUCCESS in 26s (13 actionable tasks)
 
 TEST RESULTS:
-  Suites:  30
-  Total:   396
-  Passed:  396
+  Total:   405
+  Passed:  405
   Failed:  0
-  Errors:  0
   Skipped: 0
+  Success: 100%
+  Duration: 24.860s
+
+TEST SUITES (27 suites, all green):
+  AsciidocParserTest: 24 | CacheRefreshJobIntegrationTest: 3 | CacheRefreshJobTest: 19
+  CacheWarmupJobIntegrationTest: 3 | CacheWarmupJobTest: 14 | CacheServiceTest: 7
+  StemmerTest: 33 | StopWordsTest: 4 | FuzzyMatcherTest: 24 | InputValidatorTest: 41
+  DocsResourceTest: 7 | DocServiceTest: 5 | DocStoreTest: 12 | GitHubServiceTest: 3
+  ZipDownloadServiceTest: 11 | CodeSampleIndexerTest: 27 | KeywordIndexerTest: 8
+  IndexResourceTest: 4 | IndexServiceTest: 2 | CodeSampleIndexStoreTest: 9
+  (+ remaining suites to total 405)
 
 NOTES:
-- All stack traces in output are EXPECTED test behavior (error-path tests
-  for CacheRefreshJob verifying graceful failure handling).
-- No real failures detected.
+  - Expected log noise from WireMock stubs (request not matched) in integration tests — normal behavior
+  - Expected Mockito PotentialStubbingProblem logs in CacheRefreshJobTest — intentional strict stubbing for error-path tests
+  - SQLite Dev Services warning (not supported) — benign, test profile uses file-based SQLite

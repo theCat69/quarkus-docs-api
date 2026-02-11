@@ -607,6 +607,79 @@ class SearchResourceTest {
                 .statusCode(400);
     }
 
+    // --- Extension parameter integration tests ---
+
+    @Test
+    void testSearchFilesEndpointWithExtensionFilter() {
+        seedKeywordIndexWithExtensions();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("extension", "quarkus-core")
+                .when().get("/api/search/files")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(1))
+                .body("total", is(1))
+                .body("results[0].path", equalTo("core-security.adoc"));
+    }
+
+    @Test
+    void testSearchFilesEndpointWithoutExtensionReturnsAll() {
+        seedKeywordIndexWithExtensions();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .when().get("/api/search/files")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(2))
+                .body("total", is(2));
+    }
+
+    @Test
+    void testSearchSectionsEndpointWithExtensionFilter() {
+        seedKeywordIndexWithExtensions();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("extension", "quarkus-openapi-generator")
+                .when().get("/api/search/sections")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(1))
+                .body("total", is(1))
+                .body("results[0].path", equalTo("ext-security.adoc"));
+    }
+
+    @Test
+    void testSearchCodeSamplesEndpointWithExtensionFilter() {
+        seedCodeSampleIndexWithExtensions();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("extension", "quarkus-core")
+                .when().get("/api/search/code-samples")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(1))
+                .body("total", is(1))
+                .body("results[0].path", equalTo("core-security.adoc"));
+    }
+
+    @Test
+    void testSearchCodeSamplesEndpointWithoutExtensionReturnsAll() {
+        seedCodeSampleIndexWithExtensions();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .when().get("/api/search/code-samples")
+                .then()
+                .statusCode(200)
+                .body("results.size()", is(2))
+                .body("total", is(2));
+    }
+
     private void seedDocFile() {
         String docContent = """
                 = Security Guide
@@ -670,6 +743,36 @@ class SearchResourceTest {
                         "@RolesAllowed(\"admin\")",
                         20, 25,
                         List.of(new KeywordScore("security", 10), new KeywordScore("roles", 5)))
+        ));
+        codeSampleIndexStore.write("3.27", codeSampleIndex);
+    }
+
+    private void seedKeywordIndexWithExtensions() {
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("core-security.adoc",
+                        List.of(new KeywordScore("security", 15)),
+                        List.of(new SectionKeywordEntry("Core Security", 1, 10,
+                                List.of(new KeywordScore("security", 12)))),
+                        "quarkus-core"),
+                new FileKeywordEntry("ext-security.adoc",
+                        List.of(new KeywordScore("security", 10)),
+                        List.of(new SectionKeywordEntry("Ext Security", 1, 10,
+                                List.of(new KeywordScore("security", 8)))),
+                        "quarkus-openapi-generator")
+        ));
+        keywordIndexStore.write("3.27", index);
+    }
+
+    private void seedCodeSampleIndexWithExtensions() {
+        CodeSampleIndex codeSampleIndex = new CodeSampleIndex(List.of(
+                new CodeSampleEntry("core-security.adoc", "Authentication", "java",
+                        "import io.quarkus.security.identity.SecurityIdentity;",
+                        5, 10,
+                        List.of(new KeywordScore("security", 15)), "quarkus-core"),
+                new CodeSampleEntry("ext-security.adoc", "Authentication", "java",
+                        "import io.quarkus.openapi.Generator;",
+                        5, 10,
+                        List.of(new KeywordScore("security", 10)), "quarkus-openapi-generator")
         ));
         codeSampleIndexStore.write("3.27", codeSampleIndex);
     }

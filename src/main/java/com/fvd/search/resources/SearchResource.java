@@ -79,7 +79,7 @@ public class SearchResource {
         List<String> queriedKeywords = keywordList;
         long startNanos = System.nanoTime();
         PaginatedResult<FileSearchResult> result = searchService.searchFiles(version, keywordList,
-                validLimit, validOffset);
+                extension, validLimit, validOffset);
         long searchTimeMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
         return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset,
                 queriedKeywords, searchTimeMs);
@@ -128,7 +128,7 @@ public class SearchResource {
         }
         long startNanos = System.nanoTime();
         PaginatedResult<SectionSearchResult> result = searchService.searchSections(version, keywordList,
-                filePathList, validLimit, validOffset);
+                filePathList, extension, validLimit, validOffset);
         long searchTimeMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
         return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset,
                 queriedKeywords, searchTimeMs);
@@ -223,7 +223,7 @@ public class SearchResource {
         List<String> queriedKeywords = keywordList;
         long startNanos = System.nanoTime();
         PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
-                version, keywordList, filePath, sectionTitle, validLimit, validOffset);
+                version, keywordList, filePath, sectionTitle, extension, validLimit, validOffset);
         long searchTimeMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
         return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset,
                 queriedKeywords, searchTimeMs);

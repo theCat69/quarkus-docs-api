@@ -51,7 +51,7 @@ public class SearchService {
     }
 
     public PaginatedResult<FileSearchResult> searchFiles(String version, List<String> keywords,
-                                                         int limit, int offset) {
+                                                         String extension, int limit, int offset) {
         KeywordIndex index = getOrBuildIndex(version);
         if (index == null) {
             return new PaginatedResult<>(List.of(), 0);
@@ -59,18 +59,21 @@ public class SearchService {
 
         Set<String> keywordSet = new HashSet<>(keywords.stream()
                 .map(k -> Stemmer.stem(k.toLowerCase())).toList());
-        List<FileSearchResult> all = getFileResults(index, keywordSet);
+        List<FileSearchResult> all = getFileResults(index, keywordSet, extension);
 
         all.sort(Comparator.comparingDouble((FileSearchResult r) -> r.score).reversed());
         return paginate(all, limit, offset);
     }
 
     @Nonnull
-    private List<FileSearchResult> getFileResults(KeywordIndex index, Set<String> keywordSet) {
+    private List<FileSearchResult> getFileResults(KeywordIndex index, Set<String> keywordSet, String extension) {
         double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
         List<FileSearchResult> results = new ArrayList<>();
 
         for (FileKeywordEntry file : index.files) {
+            if (extension != null && !extension.isBlank() && !extension.equals(file.extension)) {
+                continue;
+            }
             MatchAccumulator acc = computeMatchingScore(file.keywords, keywordSet);
             if (acc.score > 0) {
                 double finalScore = acc.score;
@@ -85,7 +88,7 @@ public class SearchService {
     }
 
     public PaginatedResult<SectionSearchResult> searchSections(String version, List<String> keywords,
-                                                    List<String> filePaths, int limit, int offset) {
+                                                    List<String> filePaths, String extension, int limit, int offset) {
         KeywordIndex index = getOrBuildIndex(version);
         if (index == null) {
             return new PaginatedResult<>(List.of(), 0);
@@ -100,6 +103,9 @@ public class SearchService {
 
         for (FileKeywordEntry file : index.files) {
             if (filePathSet != null && !filePathSet.contains(file.path)) {
+                continue;
+            }
+            if (extension != null && !extension.isBlank() && !extension.equals(file.extension)) {
                 continue;
             }
             for (SectionKeywordEntry section : file.sections) {
@@ -172,7 +178,7 @@ public class SearchService {
 
     public PaginatedResult<CodeSampleSearchResult> searchCodeSamples(String version, List<String> keywords,
                                                           String filePath, String sectionTitle,
-                                                          int limit, int offset) {
+                                                          String extension, int limit, int offset) {
         CodeSampleIndex index = getOrLoadCodeSampleIndex(version);
         if (index == null) {
             return new PaginatedResult<>(List.of(), 0);
@@ -208,6 +214,9 @@ public class SearchService {
                 continue;
             }
             if (matchedTitle != null && !sample.sectionTitle.equals(matchedTitle)) {
+                continue;
+            }
+            if (extension != null && !extension.isBlank() && !extension.equals(sample.extension)) {
                 continue;
             }
 

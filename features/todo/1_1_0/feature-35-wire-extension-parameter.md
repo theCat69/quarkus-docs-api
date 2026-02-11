@@ -30,24 +30,24 @@ No structural changes. When `extension` is provided, only results matching that 
 
 ## Tasks
 
-- [ ] Add `String extension` parameter to `SearchService.searchFiles()`. Add extension filtering in the file loop.
-- [ ] Add `String extension` parameter to `SearchService.searchSections()`. Add extension filtering.
-- [ ] Add `String extension` parameter to `SearchService.searchCodeSamples()`. Add extension filtering.
-- [ ] Update `SearchResource.searchFiles()` — pass `extension` to service.
-- [ ] Update `SearchResource.searchSections()` — pass `extension` to service.
-- [ ] Update `SearchResource.searchCodeSamples()` — pass `extension` to service.
-- [ ] Add unit tests for extension filtering in `SearchServiceTest`:
+- [x] Add `String extension` parameter to `SearchService.searchFiles()`. Add extension filtering in the file loop.
+- [x] Add `String extension` parameter to `SearchService.searchSections()`. Add extension filtering.
+- [x] Add `String extension` parameter to `SearchService.searchCodeSamples()`. Add extension filtering.
+- [x] Update `SearchResource.searchFiles()` — pass `extension` to service.
+- [x] Update `SearchResource.searchSections()` — pass `extension` to service.
+- [x] Update `SearchResource.searchCodeSamples()` — pass `extension` to service.
+- [x] Add unit tests for extension filtering in `SearchServiceTest`:
   - `searchFiles` with `extension="quarkus-core"` returns only core results.
   - `searchFiles` with `extension="quarkus-openapi-generator"` returns only quarkiverse results.
   - `searchFiles` with `extension=null` returns all results.
   - `searchFiles` with `extension=""` (blank) returns all results.
   - `searchFiles` with `extension="nonexistent"` returns empty results.
   - Same patterns for `searchSections` and `searchCodeSamples`.
-- [ ] Add integration tests in `SearchResourceTest`:
+- [x] Add integration tests in `SearchResourceTest`:
   - `/api/search/files?keywords=security&extension=quarkus-core` returns only core results.
   - `/api/search/files?keywords=security` (no extension) returns all results.
-- [ ] Update existing `SearchServiceTest` calls to include the new `extension` parameter (pass `null` for backward compat).
-- [ ] Run all tests (`./gradlew test`) — all must pass.
+- [x] Update existing `SearchServiceTest` calls to include the new `extension` parameter (pass `null` for backward compat).
+- [x] Run all tests (`./gradlew test`) — all must pass.
 
 ## Acceptance Criteria
 
@@ -62,3 +62,14 @@ No structural changes. When `extension` is provided, only results matching that 
 - Extension filtering is a simple string equality check. No fuzzy matching or case-insensitive comparison.
 - The filter runs in the iteration loop before adding to the results list, so it's efficient (no post-processing).
 - Common extension values: `"quarkus-core"` for core docs, extension repo names (e.g., `"quarkus-openapi-generator"`) for quarkiverse docs.
+
+## Implementation notes
+
+- Added `String extension` parameter to SearchService.searchFiles(), searchSections(), searchCodeSamples()
+- Extension filtering applied before pagination so `total` reflects filtered count
+- Null/blank extension means no filtering (all results included)
+- Simple String.equals() matching (exact, case-sensitive)
+- Updated SearchResource to pass extension parameter from @QueryParam to service methods
+- Updated all existing tests to pass null for extension parameter
+- Added new unit tests for extension filtering on all three search methods
+- Added integration tests for extension parameter forwarding
