@@ -4,7 +4,7 @@ REST API for caching, indexing, and searching Quarkus documentation (core and qu
 
 ## Overview
 
-**quarkus-docs-api** is a Quarkus-based REST API that downloads, caches, and indexes Quarkus documentation from the [quarkusio.github.io](https://github.com/quarkusio/quarkusio.github.io) website repository. It builds keyword, section, code-sample, and full-text indexes in SQLite and exposes them through a search API designed for consumption by AI agents, MCP servers, IDEs, and developer tooling.
+**quarkus-docs-api** is a Quarkus-based REST API that downloads, caches, and indexes Quarkus documentation from the [quarkusio.github.io](https://github.com/quarkusio/quarkusio.github.io) website repository. It builds keyword and code-sample indexes in SQLite and exposes them through a search API designed for consumption by AI agents, MCP servers, IDEs, and developer tooling.
 
 The API supports **multi-version** documentation — multiple Quarkus releases can be cached and searched simultaneously. It also ingests **quarkiverse extension docs** by parsing the Antora playbook from [quarkiverse/quarkiverse-docs](https://github.com/quarkiverse/quarkiverse-docs), downloading extension repository zips, and extracting `.adoc` files. All indexes support stemming, prefix matching, fuzzy section title matching (Levenshtein + containment + word overlap), and pagination.
 
@@ -26,7 +26,7 @@ Quarkiverse playbook ──► Extension zips ──► Merge & index
 1. A single zip archive is downloaded per version from the GitHub website repository.
 2. AsciiDoc files are extracted and cached on disk under `_versions/<version>/guides/`.
 3. For the `main` version, the quarkiverse Antora playbook is parsed (YAML) to discover extension repositories. Each extension repo zip is downloaded and `.adoc` files are extracted under `quarkiverse/<ext-name>/`.
-4. Three SQLite-backed indexes are built: keyword index, code-sample index, and content (full-text) index.
+4. Two SQLite-backed indexes are built: keyword index and code-sample index.
 5. The REST API serves search queries and raw document content from these indexes and the cache.
 6. A scheduled job periodically checks SHA hashes and refreshes only changed versions.
 
@@ -34,7 +34,7 @@ Quarkiverse playbook ──► Extension zips ──► Merge & index
 
 ## API Endpoints
 
-All endpoints return JSON. The `version` parameter is **optional** on every endpoint and defaults to `main` if omitted. The `extension` parameter is an optional filter available on search and doc endpoints.
+All endpoints return JSON. The `version` parameter is **optional** on every endpoint and defaults to `main` if omitted. The `extension` parameter actively filters results to only include documents from the specified extension.
 
 ### Document retrieval
 
@@ -48,10 +48,9 @@ All endpoints return JSON. The `version` parameter is **optional** on every endp
 | Method | Path | Summary | Key Parameters |
 |--------|------|---------|----------------|
 | `GET` | `/api/search/files` | Search files by keywords | `version`, `keywords` (required), `limit`, `offset`, `extension` |
-| `GET` | `/api/search/sections` | Search sections by keywords | `version`, `keywords` (required), `filePaths`, `limit`, `offset`, `extension` |
-| `GET` | `/api/search/section-content` | Get section content (fuzzy title match) | `version`, `filePath` (required), `sectionTitle` (required) |
+| `GET` | `/api/search/sections` | Search sections by keywords | `version`, `keywords` (required), `sectionTitle` (optional filter), `filePaths`, `limit`, `offset`, `extension` |
+| `GET` | `/api/search/section-content` | Get section content (fuzzy title match) | `version`, `filePath` (required), `sectionTitle` (required), `keywords` (optional) |
 | `GET` | `/api/search/code-samples` | Search code samples by keywords | `version`, `keywords` (required), `filePath`, `sectionTitle`, `limit`, `offset`, `extension` |
-| `GET` | `/api/search/content` | Full-text search across documents | `version`, `keywords` (required), `filePaths`, `limit`, `offset`, `extension` |
 | `GET` | `/api/search/versions` | List all cached versions | _(none)_ |
 
 ## Quick Start
@@ -79,7 +78,7 @@ Browse the interactive API docs at: [http://localhost:8080/q/swagger-ui](http://
 
 ```bash
 # Search for files about security
-curl "http://localhost:8080/api/search/files?keywords=security,oidc"
+curl "http://localhost:8080/api/search/files?keywords=security+oidc"
 
 # Get a specific document
 curl "http://localhost:8080/api/doc?path=security-overview.adoc"
@@ -128,13 +127,15 @@ All `search.*` keys are configurable via `application.properties` or environment
 | `search.index.min-keyword-score` | `2` | Minimum keyword score to include in index |
 | `search.index.min-token-length` | `3` | Minimum token length for indexing |
 | `search.snippet.context-size` | `100` | Characters of context around content search matches |
+| `search.annotation-boost` | _(unset)_ | Score boost for annotation matches |
+| `search.annotation-packages` | _(unset)_ | Annotation packages to boost during indexing |
 
 ## Examples
 
 ### Search files by keywords
 
 ```bash
-curl "http://localhost:8080/api/search/files?keywords=security,oidc&version=3.27"
+curl "http://localhost:8080/api/search/files?keywords=security+oidc&version=3.27"
 ```
 
 ```json
@@ -144,7 +145,10 @@ curl "http://localhost:8080/api/search/files?keywords=security,oidc&version=3.27
       "path": "security-oidc-bearer-token-authentication.adoc",
       "score": 42.5,
       "matchedKeywords": ["security", "oidc"],
-      "extension": "quarkus-core"
+      "extension": "quarkus-core",
+      "snippet": "...relevant text around the match...",
+      "matchedSectionTitle": "OIDC Bearer Token Authentication",
+      "sectionMatchScore": 0.85
     }
   ],
   "total": 15,

@@ -76,6 +76,8 @@ public SomeResponse example(
 | `search.index.min-keyword-score` | `2` | Minimum keyword score for indexing |
 | `search.index.min-token-length` | `3` | Minimum token length for indexing |
 | `search.snippet.context-size` | `100` | Characters of context around matches |
+| `search.annotation-boost` | _(unset)_ | Score boost for annotation matches |
+| `search.annotation-packages` | _(unset)_ | Annotation packages to boost during indexing |
 
 ## Feature Planning
 

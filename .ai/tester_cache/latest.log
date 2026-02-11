@@ -1,13 +1,5 @@
-=== Test Suite Run — 2026-02-11 ===
-Command: ./gradlew cleanTest test
+[2026-02-11T21:59:15+01:00] BUILD: cleanTest test
 Compilation: SUCCESS (compileJava UP-TO-DATE, compileTestJava UP-TO-DATE)
-Build: SUCCESSFUL in 29s
-
-Total test suites: 33
-Total tests:      387
-Passed:           387
-Failed:            0
-Skipped:           0
-Errors:            0
-
-All 33 suites green. No failures.
+Total tests: 422 | Passed: 422 | Failed: 0 | Errors: 0 | Skipped: 0
+Result: BUILD SUCCESSFUL in 30s
+Note: Stack traces in output are expected test behavior (mocked upstream failures)
