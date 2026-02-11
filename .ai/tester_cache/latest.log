@@ -1,28 +1,47 @@
-=== Feature 35 Test Run ===
-Date: 2026-02-11T21:19Z
+=== Test Suite Report ===
+Date: 2026-02-11
 Command: ./gradlew cleanTest test
 
-COMPILATION: ✅ SUCCESS (compileJava UP-TO-DATE, compileTestJava UP-TO-DATE)
-BUILD: ✅ SUCCESS in 26s (13 actionable tasks)
+Compilation: SUCCESS (all tasks UP-TO-DATE or compiled successfully)
+Build: SUCCESSFUL in ~28s
 
-TEST RESULTS:
-  Total:   405
-  Passed:  405
+Test Results:
+  Total:   414
+  Passed:  414
   Failed:  0
+  Errors:  0
   Skipped: 0
-  Success: 100%
-  Duration: 24.860s
 
-TEST SUITES (27 suites, all green):
-  AsciidocParserTest: 24 | CacheRefreshJobIntegrationTest: 3 | CacheRefreshJobTest: 19
-  CacheWarmupJobIntegrationTest: 3 | CacheWarmupJobTest: 14 | CacheServiceTest: 7
-  StemmerTest: 33 | StopWordsTest: 4 | FuzzyMatcherTest: 24 | InputValidatorTest: 41
-  DocsResourceTest: 7 | DocServiceTest: 5 | DocStoreTest: 12 | GitHubServiceTest: 3
-  ZipDownloadServiceTest: 11 | CodeSampleIndexerTest: 27 | KeywordIndexerTest: 8
-  IndexResourceTest: 4 | IndexServiceTest: 2 | CodeSampleIndexStoreTest: 9
-  (+ remaining suites to total 405)
+Test Classes (32 total):
+  - CacheRefreshJobTest (19 tests)
+  - CacheRefreshJobIntegrationTest
+  - CacheWarmupJobTest
+  - CacheWarmupJobIntegrationTest
+  - CacheServiceTest
+  - DocsResourceTest
+  - DocStoreTest
+  - DocServiceTest
+  - IndexResourceTest
+  - IndexStoreTest
+  - IndexServiceTest
+  - KeywordIndexerTest
+  - KeywordIndexStoreTest
+  - CodeSampleIndexerTest
+  - CodeSampleIndexStoreTest
+  - SearchResourceTest
+  - SearchServiceTest (+ nested: CodeSampleSearchTests, SectionSearchSnippetAndFilterTests, SectionContentTests, ExtensionFilteringTests)
+  - GitHubServiceTest
+  - ZipDownloadServiceTest
+  - QuarkiverseServiceTest
+  - QuarkiverseIntegrationTest
+  - QuarkiverseZipExtractorTest
+  - AntoraPlaybookParserTest
+  - AsciidocParserTest
+  - FuzzyMatcherTest
+  - StopWordsTest
+  - StemmerTest
+  - InputValidatorTest
 
-NOTES:
-  - Expected log noise from WireMock stubs (request not matched) in integration tests — normal behavior
-  - Expected Mockito PotentialStubbingProblem logs in CacheRefreshJobTest — intentional strict stubbing for error-path tests
-  - SQLite Dev Services warning (not supported) — benign, test profile uses file-based SQLite
+Notes:
+  - Expected test log messages (UpstreamException, DocNotFoundException, PotentialStubbingProblem) are from tests verifying error-handling paths — not real failures.
+  - SQLite Dev Services warning is benign (sqlite doesn't support Dev Services).

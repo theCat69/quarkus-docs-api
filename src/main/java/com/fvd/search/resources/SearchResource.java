@@ -1,7 +1,9 @@
 package com.fvd.search.resources;
 
+import com.fvd.common.exceptions.InvalidInputException;
 import com.fvd.common.resources.ErrorResponse;
 import com.fvd.common.validators.InputValidator;
+import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.search.services.*;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -110,6 +112,8 @@ public class SearchResource {
             @QueryParam("keywords") String keywords,
             @Parameter(description = "Comma-separated list of file paths relative to the docs directory (optional)", example = "security-overview.adoc,config.adoc")
             @QueryParam("filePaths") String filePaths,
+            @Parameter(description = "Optional section title to filter results using fuzzy matching", example = "Authentication")
+            @QueryParam("sectionTitle") String sectionTitle,
             @Parameter(description = "Maximum number of results to return (default 10, max 100)", example = "10")
             @QueryParam("limit") Integer limit,
             @Parameter(description = "Number of results to skip (default 0)", example = "0")
@@ -126,9 +130,12 @@ public class SearchResource {
             InputValidator.validateFilePaths(filePaths);
             filePathList = Arrays.asList(filePaths.split(","));
         }
+        if (sectionTitle != null && !sectionTitle.isBlank()) {
+            InputValidator.validateSectionTitle(sectionTitle);
+        }
         long startNanos = System.nanoTime();
         PaginatedResult<SectionSearchResult> result = searchService.searchSections(version, keywordList,
-                filePathList, extension, validLimit, validOffset);
+                filePathList, sectionTitle, extension, validLimit, validOffset);
         long searchTimeMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
         return new SearchResponse<>(result.items(), result.total(), validLimit, validOffset,
                 queriedKeywords, searchTimeMs);
@@ -142,7 +149,8 @@ public class SearchResource {
                     + "Supports fuzzy matching: if no exact title match is found, the best fuzzy match is returned "
                     + "based on Levenshtein similarity, substring containment, and word overlap. "
                     + "The response includes matchedTitle, matchScore (0.0-1.0), and matchType (exact/partial/keyword) "
-                    + "to indicate how the section was matched."
+                    + "to indicate how the section was matched. "
+                    + "Alternatively, provide keywords to look up the top-scoring section by keyword search."
     )
     @APIResponse(
             responseCode = "200",
@@ -163,15 +171,41 @@ public class SearchResource {
             @Parameter(description = "Quarkus version branch or tag. Defaults to 'main' if omitted. When using 'main', results may include quarkiverse extension docs.",
                     required = false, example = "3.27", schema = @Schema(defaultValue = "main"))
             @QueryParam("version") String version,
-            @Parameter(description = "File path relative to the docs directory", required = true, example = "security-overview.adoc")
+            @Parameter(description = "File path relative to the docs directory", example = "security-overview.adoc")
             @QueryParam("filePath") String filePath,
             @Parameter(description = "Title of the section to retrieve. Supports fuzzy matching: partial titles, "
-                    + "keywords, and minor misspellings will be matched to the closest section.", required = true, example = "Getting Started")
-            @QueryParam("sectionTitle") String sectionTitle) {
+                    + "keywords, and minor misspellings will be matched to the closest section.", example = "Getting Started")
+            @QueryParam("sectionTitle") String sectionTitle,
+            @Parameter(description = "Space-separated search keywords for keyword-based section lookup. "
+                    + "When provided without filePath/sectionTitle, returns the top-scoring section's content.", example = "security oidc")
+            @QueryParam("keywords") String keywords) {
         version = InputValidator.resolveVersion(version);
-        InputValidator.validatePath(filePath);
-        InputValidator.validateSectionTitle(sectionTitle);
-        return searchService.getSectionContent(version, filePath, sectionTitle);
+
+        boolean hasFilePath = filePath != null && !filePath.isBlank();
+        boolean hasSectionTitle = sectionTitle != null && !sectionTitle.isBlank();
+        boolean hasKeywords = keywords != null && !keywords.isBlank();
+
+        if (hasFilePath && hasSectionTitle) {
+            // Existing behavior: filePath + sectionTitle takes precedence (ignore keywords)
+            InputValidator.validatePath(filePath);
+            InputValidator.validateSectionTitle(sectionTitle);
+            return searchService.getSectionContent(version, filePath, sectionTitle);
+        }
+
+        if (hasKeywords) {
+            // Keyword-based lookup: find top section, then get its content
+            List<String> keywordList = InputValidator.parseKeywords(keywords);
+            PaginatedResult<SectionSearchResult> searchResult = searchService.searchSections(
+                    version, keywordList, null, null, null, 1, 0);
+            if (searchResult.items().isEmpty()) {
+                throw new DocNotFoundException("No section found matching keywords: " + keywords);
+            }
+            SectionSearchResult topResult = searchResult.items().get(0);
+            return searchService.getSectionContent(version, topResult.path, topResult.section);
+        }
+
+        // Neither filePath+sectionTitle nor keywords provided
+        throw new InvalidInputException("Either filePath and sectionTitle, or keywords must be provided");
     }
 
     @GET

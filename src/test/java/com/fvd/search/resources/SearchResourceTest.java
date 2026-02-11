@@ -414,6 +414,81 @@ class SearchResourceTest {
                 .body("matchScore", lessThan(1.0f));
     }
 
+    // --- Section search snippet and sectionTitle filter integration tests ---
+
+    @Test
+    void testSearchSectionsEndpointReturnsSnippets() {
+        seedDocFileForSearch();
+        seedKeywordIndexForSearch();
+        searchService.invalidateCache("3.27");
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("filePaths", "search-security.adoc")
+                .when().get("/api/search/sections")
+                .then()
+                .statusCode(200)
+                .body("results.size()", greaterThan(0))
+                .body("results[0].snippet", notNullValue());
+    }
+
+    @Test
+    void testSearchSectionsEndpointWithSectionTitleFilter() {
+        seedKeywordIndexForSectionTitleFilter();
+        searchService.invalidateCache("3.27");
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("sectionTitle", "Authentication")
+                .when().get("/api/search/sections")
+                .then()
+                .statusCode(200)
+                .body("results.size()", greaterThan(0))
+                .body("results[0].matchedSectionTitle", notNullValue())
+                .body("results[0].sectionMatchScore", greaterThan(0.0f));
+    }
+
+    @Test
+    void testSectionContentEndpointKeywordBasedLookup() {
+        seedDocFileForSearch();
+        seedKeywordIndexForSearch();
+        searchService.invalidateCache("3.27");
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .when().get("/api/search/section-content")
+                .then()
+                .statusCode(200)
+                .body("path", notNullValue())
+                .body("title", notNullValue())
+                .body("content", notNullValue());
+    }
+
+    @Test
+    void testSectionContentEndpointFilePathSectionTitleIgnoresKeywords() {
+        seedDocFile();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("filePath", "security.adoc")
+                .queryParam("sectionTitle", "Overview")
+                .queryParam("keywords", "security")
+                .when().get("/api/search/section-content")
+                .then()
+                .statusCode(200)
+                .body("path", equalTo("security.adoc"))
+                .body("title", equalTo("Overview"))
+                .body("content", containsString("This is the overview section."));
+    }
+
+    @Test
+    void testSectionContentEndpointNoParamsReturns400() {
+        given()
+                .queryParam("version", "3.27")
+                .when().get("/api/search/section-content")
+                .then()
+                .statusCode(400);
+    }
+
     // --- Versions endpoint tests ---
 
     @Test
@@ -775,5 +850,44 @@ class SearchResourceTest {
                         List.of(new KeywordScore("security", 10)), "quarkus-openapi-generator")
         ));
         codeSampleIndexStore.write("3.27", codeSampleIndex);
+    }
+
+    private void seedDocFileForSearch() {
+        String docContent = """
+                = Security Guide
+                Introduction text.
+                
+                == Security Overview
+                This section covers the security features of Quarkus including authentication and authorization.
+                It has multiple lines of content about security topics.
+                
+                == Configuration
+                Config details here.
+                """;
+        docStore.write("3.27", "search-security.adoc", docContent);
+    }
+
+    private void seedKeywordIndexForSearch() {
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("search-security.adoc",
+                        List.of(new KeywordScore("security", 15)),
+                        List.of(new SectionKeywordEntry("Security Overview", 4, 6,
+                                List.of(new KeywordScore("security", 12)))))
+        ));
+        keywordIndexStore.write("3.27", index);
+    }
+
+    private void seedKeywordIndexForSectionTitleFilter() {
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("security.adoc",
+                        List.of(new KeywordScore("security", 15)),
+                        List.of(
+                                new SectionKeywordEntry("Authentication Methods", 1, 10,
+                                        List.of(new KeywordScore("security", 10))),
+                                new SectionKeywordEntry("Authorization and Roles", 11, 20,
+                                        List.of(new KeywordScore("security", 5)))
+                        ))
+        ));
+        keywordIndexStore.write("3.27", index);
     }
 }

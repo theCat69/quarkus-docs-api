@@ -275,7 +275,7 @@ class SearchServiceTest {
         seedIndex("3.27", index);
 
         PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                "3.27", List.of("auth"), null, null, 10, 0);
+                "3.27", List.of("auth"), null, null, null, 10, 0);
 
         assertThat(result.items()).hasSize(1);
         // Prefix discount: 8 * 0.8 = 6.4
@@ -313,7 +313,7 @@ class SearchServiceTest {
         seedIndex("3.27", index);
 
         PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                "3.27", List.of("security"), List.of("security.adoc"), null, 10, 0);
+                "3.27", List.of("security"), List.of("security.adoc"), null, null, 10, 0);
 
         assertThat(result.items()).isNotEmpty();
         assertThat(result.items().get(0).section).isEqualTo("Overview"); // score 8 > 3
@@ -337,7 +337,7 @@ class SearchServiceTest {
         seedIndex("3.27", index);
 
         PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                "3.27", List.of("security"), List.of("included.adoc"), null, 10, 0);
+                "3.27", List.of("security"), List.of("included.adoc"), null, null, 10, 0);
 
         assertThat(result.items()).hasSize(1);
         assertThat(result.items().get(0).path).isEqualTo("included.adoc");
@@ -356,7 +356,7 @@ class SearchServiceTest {
         seedIndex("3.27", index);
 
         PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                "3.27", List.of("test"), List.of("big.adoc"), null, 3, 0);
+                "3.27", List.of("test"), List.of("big.adoc"), null, null, 3, 0);
 
         assertThat(result.items()).hasSize(3);
         assertThat(result.total()).isEqualTo(8);
@@ -376,7 +376,7 @@ class SearchServiceTest {
         seedIndex("3.27", index);
 
         PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                "3.27", List.of("test"), List.of("big.adoc"), null, 3, 3);
+                "3.27", List.of("test"), List.of("big.adoc"), null, null, 3, 3);
 
         assertThat(result.items()).hasSize(3);
         assertThat(result.total()).isEqualTo(8);
@@ -394,7 +394,7 @@ class SearchServiceTest {
         seedIndex("3.27", index);
 
         PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                "3.27", List.of("nonexistent"), List.of("test.adoc"), null, 10, 0);
+                "3.27", List.of("nonexistent"), List.of("test.adoc"), null, null, 10, 0);
 
         assertThat(result.items()).isEmpty();
     }
@@ -402,7 +402,7 @@ class SearchServiceTest {
     @Test
     void searchSectionsReturnsEmptyWhenNoIndexAndNoDeps() {
         PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                "3.27", List.of("security"), List.of("test.adoc"), null, 10, 0);
+                "3.27", List.of("security"), List.of("test.adoc"), null, null, 10, 0);
 
         assertThat(result.items()).isEmpty();
     }
@@ -418,7 +418,7 @@ class SearchServiceTest {
         seedIndex("3.27", index);
 
         PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                "3.27", List.of("security", "oidc"), null, null, 10, 0);
+                "3.27", List.of("security", "oidc"), null, null, null, 10, 0);
 
         assertThat(result.items()).hasSize(1);
         // Raw sum is 10, with 1.5x boost should be 15
@@ -437,7 +437,7 @@ class SearchServiceTest {
         seedIndex("3.27", index);
 
         PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                "3.27", List.of("security", "oidc"), null, null, 10, 0);
+                "3.27", List.of("security", "oidc"), null, null, null, 10, 0);
 
         assertThat(result.items()).hasSize(1);
         // Only one keyword matched, no boost — raw score of 10
@@ -459,7 +459,7 @@ class SearchServiceTest {
         PaginatedResult<FileSearchResult> fileResult = searchService.searchFiles(
                 "3.27", List.of("security", "oidc"), null, 10, 0);
         PaginatedResult<SectionSearchResult> sectionResult = searchService.searchSections(
-                "3.27", List.of("security", "oidc"), null, null, 10, 0);
+                "3.27", List.of("security", "oidc"), null, null, null, 10, 0);
 
         // Both should apply the same 1.5x boost to the same raw score of 10 → 15
         assertThat(fileResult.items().get(0).score).isEqualTo(15.0);
@@ -481,7 +481,7 @@ class SearchServiceTest {
         seedIndex("3.27", index);
 
         PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                "3.27", List.of("security"), null, null, 10, 0);
+                "3.27", List.of("security"), null, null, null, 10, 0);
 
         assertThat(result.items()).hasSize(2);
         assertThat(result.items().get(0).section).isEqualTo("Auth");
@@ -503,7 +503,7 @@ class SearchServiceTest {
         seedIndex("3.27", index);
 
         PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                "3.27", List.of("security"), List.of(), null, 10, 0);
+                "3.27", List.of("security"), List.of(), null, null, 10, 0);
 
         assertThat(result.items()).hasSize(2);
     }
@@ -691,6 +691,121 @@ class SearchServiceTest {
             assertThat(result.content).contains("Exact match content.");
             assertThat(result.matchScore).isEqualTo(1.0);
             assertThat(result.matchType).isEqualTo("exact");
+        }
+    }
+
+    // --- Section search snippet and sectionTitle filter tests ---
+
+    @Nested
+    class SectionSearchSnippetAndFilterTests {
+
+        private SearchService snippetSearchService;
+        private DocStore realDocStore;
+
+        @BeforeEach
+        void setUpSnippetTests() {
+            CacheService cacheService = new CacheService(tempDir.toString());
+            realDocStore = new DocStore(cacheService);
+            SearchConfig searchConfig = new TestSearchConfig();
+            FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
+            snippetSearchService = new SearchService(
+                    keywordIndexStore, codeSampleIndexStore, realDocStore, docParser, cacheService, searchConfig, fuzzyMatcher);
+        }
+
+        @Test
+        void searchSectionsGeneratesSnippetAroundKeywordMatch() {
+            String docContent = """
+                    = Security Guide
+                    Introduction text.
+                    
+                    == Overview
+                    This section covers the security features of Quarkus including authentication and authorization mechanisms for enterprise applications.
+                    """;
+            realDocStore.write("3.27", "security.adoc", docContent);
+            KeywordIndex index = new KeywordIndex(List.of(
+                    new FileKeywordEntry("security.adoc", List.of(), List.of(
+                            new SectionKeywordEntry("Overview", 4, 5,
+                                    List.of(new KeywordScore("secur", 10)))
+                    ))
+            ));
+            keywordIndexStore.write("3.27", index);
+            snippetSearchService.invalidateCache("3.27");
+
+            PaginatedResult<SectionSearchResult> result = snippetSearchService.searchSections(
+                    "3.27", List.of("security"), null, null, null, 10, 0);
+
+            assertThat(result.items()).hasSize(1);
+            assertThat(result.items().get(0).snippet).isNotNull();
+            assertThat(result.items().get(0).snippet).isNotEmpty();
+        }
+
+        @Test
+        void searchSectionsSnippetFallbackUsesFirstCharsWhenKeywordNotFound() {
+            String docContent = """
+                    = Guide
+                    Intro.
+                    
+                    == Overview
+                    This is a section with some general content that does not contain the searched keyword anywhere in its text body.
+                    """;
+            realDocStore.write("3.27", "guide.adoc", docContent);
+            KeywordIndex index = new KeywordIndex(List.of(
+                    new FileKeywordEntry("guide.adoc", List.of(), List.of(
+                            new SectionKeywordEntry("Overview", 4, 5,
+                                    List.of(new KeywordScore("oidc", 5)))
+                    ))
+            ));
+            keywordIndexStore.write("3.27", index);
+            snippetSearchService.invalidateCache("3.27");
+
+            PaginatedResult<SectionSearchResult> result = snippetSearchService.searchSections(
+                    "3.27", List.of("oidc"), null, null, null, 10, 0);
+
+            assertThat(result.items()).hasSize(1);
+            assertThat(result.items().get(0).snippet).isNotNull();
+            // Snippet should be the first ~100 chars since "oidc" is not in the section content
+            assertThat(result.items().get(0).snippet).doesNotContain("oidc");
+            assertThat(result.items().get(0).snippet.length()).isLessThanOrEqualTo(103); // 100 + "..."
+        }
+
+        @Test
+        void searchSectionsSectionTitleFilterReturnsFuzzyMatchedSections() {
+            KeywordIndex index = new KeywordIndex(List.of(
+                    new FileKeywordEntry("security.adoc", List.of(), List.of(
+                            new SectionKeywordEntry("Authentication Methods", 1, 10,
+                                    List.of(new KeywordScore("secur", 8))),
+                            new SectionKeywordEntry("Authorization and Roles", 11, 20,
+                                    List.of(new KeywordScore("secur", 5)))
+                    ))
+            ));
+            keywordIndexStore.write("3.27", index);
+            snippetSearchService.invalidateCache("3.27");
+
+            PaginatedResult<SectionSearchResult> result = snippetSearchService.searchSections(
+                    "3.27", List.of("security"), null, "authentication", null, 10, 0);
+
+            assertThat(result.items()).isNotEmpty();
+            assertThat(result.items()).allMatch(r -> r.section.equals("Authentication Methods"));
+            assertThat(result.items().get(0).matchedSectionTitle).isEqualTo("Authentication Methods");
+            assertThat(result.items().get(0).sectionMatchScore).isGreaterThan(0.0);
+        }
+
+        @Test
+        void searchSectionsSectionTitleNoMatchReturnsEmpty() {
+            KeywordIndex index = new KeywordIndex(List.of(
+                    new FileKeywordEntry("security.adoc", List.of(), List.of(
+                            new SectionKeywordEntry("Authentication Methods", 1, 10,
+                                    List.of(new KeywordScore("secur", 8)))
+                    ))
+            ));
+            keywordIndexStore.write("3.27", index);
+            snippetSearchService.invalidateCache("3.27");
+
+            PaginatedResult<SectionSearchResult> result = snippetSearchService.searchSections(
+                    "3.27", List.of("security"), null, "ZzzzCompletelyDifferent", null, 10, 0);
+
+            assertThat(result.items()).isEmpty();
+            assertThat(result.total()).isEqualTo(0);
         }
     }
 
@@ -899,9 +1014,9 @@ class SearchServiceTest {
         seedIndex("3.27", index);
 
         PaginatedResult<SectionSearchResult> resultSecurity = searchService.searchSections(
-                "3.27", List.of("security"), null, null, 10, 0);
+                "3.27", List.of("security"), null, null, null, 10, 0);
         PaginatedResult<SectionSearchResult> resultSecured = searchService.searchSections(
-                "3.27", List.of("secured"), null, null, 10, 0);
+                "3.27", List.of("secured"), null, null, null, 10, 0);
 
         assertThat(resultSecurity.items()).hasSize(1);
         assertThat(resultSecured.items()).hasSize(1);
@@ -1019,7 +1134,7 @@ class SearchServiceTest {
             seedIndex("3.27", index);
 
             PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                    "3.27", List.of("security"), null, "quarkus-core", 10, 0);
+                    "3.27", List.of("security"), null, null, "quarkus-core", 10, 0);
 
             assertThat(result.items()).hasSize(1);
             assertThat(result.total()).isEqualTo(1);
@@ -1041,7 +1156,7 @@ class SearchServiceTest {
             seedIndex("3.27", index);
 
             PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                    "3.27", List.of("security"), null, null, 10, 0);
+                    "3.27", List.of("security"), null, null, null, 10, 0);
 
             assertThat(result.items()).hasSize(2);
             assertThat(result.total()).isEqualTo(2);
@@ -1058,7 +1173,7 @@ class SearchServiceTest {
             seedIndex("3.27", index);
 
             PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                    "3.27", List.of("security"), null, "nonexistent-extension", 10, 0);
+                    "3.27", List.of("security"), null, null, "nonexistent-extension", 10, 0);
 
             assertThat(result.items()).isEmpty();
             assertThat(result.total()).isEqualTo(0);

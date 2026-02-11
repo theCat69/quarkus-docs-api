@@ -16,5 +16,16 @@ public class SectionSearchResult {
     public double score;
     public List<String> matchedKeywords;
     public String extension;
+    public String snippet;
+    public String matchedSectionTitle;
+    public double sectionMatchScore;
+
+    /**
+     * Constructor without the new snippet/sectionTitle fields for backward compatibility.
+     */
+    public SectionSearchResult(String path, String section, int start, int end,
+                               double score, List<String> matchedKeywords, String extension) {
+        this(path, section, start, end, score, matchedKeywords, extension, null, null, 0.0);
+    }
 
 }

@@ -88,7 +88,8 @@ public class SearchService {
     }
 
     public PaginatedResult<SectionSearchResult> searchSections(String version, List<String> keywords,
-                                                    List<String> filePaths, String extension, int limit, int offset) {
+                                                    List<String> filePaths, String sectionTitle,
+                                                    String extension, int limit, int offset) {
         KeywordIndex index = getOrBuildIndex(version);
         if (index == null) {
             return new PaginatedResult<>(List.of(), 0);
@@ -122,8 +123,81 @@ public class SearchService {
             }
         }
 
+        // Apply sectionTitle fuzzy filter if provided
+        String matchedTitle = null;
+        double matchScore = 0.0;
+        if (sectionTitle != null && !sectionTitle.isBlank()) {
+            List<String> uniqueTitles = results.stream()
+                    .map(r -> r.section)
+                    .distinct()
+                    .toList();
+            Optional<FuzzyMatcher.MatchResult> fuzzyResult = fuzzyMatcher.bestMatch(sectionTitle, uniqueTitles);
+            if (fuzzyResult.isPresent()) {
+                matchedTitle = fuzzyResult.get().value();
+                matchScore = fuzzyResult.get().score();
+                String finalMatchedTitle = matchedTitle;
+                double finalMatchScore = matchScore;
+                results = results.stream()
+                        .filter(r -> r.section.equals(finalMatchedTitle))
+                        .peek(r -> {
+                            r.matchedSectionTitle = finalMatchedTitle;
+                            r.sectionMatchScore = finalMatchScore;
+                        })
+                        .collect(java.util.stream.Collectors.toList());
+            } else {
+                return new PaginatedResult<>(List.of(), 0);
+            }
+        }
+
         results.sort(Comparator.comparingDouble((SectionSearchResult r) -> r.score).reversed());
-        return paginate(results, limit, offset);
+        PaginatedResult<SectionSearchResult> paginated = paginate(results, limit, offset);
+
+        // Generate snippets for paginated results only
+        for (SectionSearchResult result : paginated.items()) {
+            generateSectionSnippet(version, result, keywordSet);
+        }
+
+        return paginated;
+    }
+
+    private void generateSectionSnippet(String version, SectionSearchResult result, Set<String> keywords) {
+        if (docStore == null) {
+            return;
+        }
+        Optional<String> docContent = docStore.read(version, result.path);
+        if (docContent.isEmpty()) {
+            return;
+        }
+
+        String content = docContent.get();
+        String[] lines = content.split("\n", -1);
+        int startIdx = Math.max(0, result.start - 1);
+        int endIdx = Math.min(lines.length, result.end);
+        String sectionContent = String.join("\n", Arrays.copyOfRange(lines, startIdx, endIdx));
+
+        if (sectionContent.isEmpty()) {
+            return;
+        }
+
+        // Find first keyword occurrence (case-insensitive) in section content
+        String lowerSection = sectionContent.toLowerCase();
+        int bestOffset = -1;
+        for (String keyword : keywords) {
+            int idx = lowerSection.indexOf(keyword.toLowerCase());
+            if (idx >= 0 && (bestOffset < 0 || idx < bestOffset)) {
+                bestOffset = idx;
+            }
+        }
+
+        if (bestOffset >= 0) {
+            result.snippet = generateSnippet(sectionContent, bestOffset);
+        } else {
+            int len = Math.min(100, sectionContent.length());
+            result.snippet = sectionContent.substring(0, len).replaceAll("\\s+", " ").trim();
+            if (sectionContent.length() > 100) {
+                result.snippet = result.snippet + "...";
+            }
+        }
     }
 
     public SectionContentResult getSectionContent(String version, String filePath, String sectionTitle) {

@@ -98,21 +98,21 @@ Enhance the section search and section content endpoints with three improvements
 
 ## Tasks
 
-- [ ] Add `snippet`, `matchedSectionTitle`, `sectionMatchScore` fields to `SectionSearchResult`. Update constructor.
-- [ ] Add unit tests for snippet generation in section search: snippet is ~100 chars around first keyword match within section content.
-- [ ] Add unit tests for sectionTitle fuzzy filtering on section search.
-- [ ] Add unit tests for keyword-based section content lookup.
-- [ ] Update `SearchService.searchSections()` — add `sectionTitle` parameter, implement fuzzy title filtering, add post-pagination snippet generation.
-- [ ] Add private helper `generateSectionSnippet(String version, SectionSearchResult result, Set<String> keywords)` in `SearchService` — reads section content from `docStore`, finds first keyword occurrence, calls `generateSnippet()`.
-- [ ] Update `SearchResource.searchSections()` — add `sectionTitle` query parameter, pass to service.
-- [ ] Update `SearchResource.getSectionContent()` — add `keywords` query parameter, implement keyword-based lookup fallback.
-- [ ] Add integration tests: section search returns snippets.
-- [ ] Add integration tests: section search with `sectionTitle` filter returns only matching sections with `matchedSectionTitle` and `sectionMatchScore`.
-- [ ] Add integration tests: `/section-content?keywords=security` returns the top section's content.
-- [ ] Add integration tests: `/section-content?filePath=...&sectionTitle=...&keywords=...` ignores keywords and uses filePath+sectionTitle.
-- [ ] Add integration test: `/section-content` with no params returns 400.
-- [ ] Update existing section search tests to account for new fields (default values: `snippet=null`, `matchedSectionTitle=null`, `sectionMatchScore=0.0`).
-- [ ] Run all tests (`./gradlew test`) — all must pass.
+- [x] Add `snippet`, `matchedSectionTitle`, `sectionMatchScore` fields to `SectionSearchResult`. Update constructor.
+- [x] Add unit tests for snippet generation in section search: snippet is ~100 chars around first keyword match within section content.
+- [x] Add unit tests for sectionTitle fuzzy filtering on section search.
+- [x] Add unit tests for keyword-based section content lookup.
+- [x] Update `SearchService.searchSections()` — add `sectionTitle` parameter, implement fuzzy title filtering, add post-pagination snippet generation.
+- [x] Add private helper `generateSectionSnippet(String version, SectionSearchResult result, Set<String> keywords)` in `SearchService` — reads section content from `docStore`, finds first keyword occurrence, calls `generateSnippet()`.
+- [x] Update `SearchResource.searchSections()` — add `sectionTitle` query parameter, pass to service.
+- [x] Update `SearchResource.getSectionContent()` — add `keywords` query parameter, implement keyword-based lookup fallback.
+- [x] Add integration tests: section search returns snippets.
+- [x] Add integration tests: section search with `sectionTitle` filter returns only matching sections with `matchedSectionTitle` and `sectionMatchScore`.
+- [x] Add integration tests: `/section-content?keywords=security` returns the top section's content.
+- [x] Add integration tests: `/section-content?filePath=...&sectionTitle=...&keywords=...` ignores keywords and uses filePath+sectionTitle.
+- [x] Add integration test: `/section-content` with no params returns 400.
+- [x] Update existing section search tests to account for new fields (default values: `snippet=null`, `matchedSectionTitle=null`, `sectionMatchScore=0.0`).
+- [x] Run all tests (`./gradlew test`) — all must pass.
 
 ## Acceptance Criteria
 
@@ -130,3 +130,13 @@ Enhance the section search and section content endpoints with three improvements
 - Snippet generation reads section content from `docStore` — this adds I/O per returned result. Since it's only done for paginated results (default 10), the impact is minimal.
 - The `sectionTitle` filter on `/sections` mirrors the existing pattern on `/code-samples`, so the UX is consistent.
 - Keyword-based section content is a convenience for AI agents that want to go from "find me the section about security" to "give me its full content" in a single call.
+
+## Implementation notes
+
+- `SectionSearchResult` retains `@AllArgsConstructor`/`@NoArgsConstructor` Lombok annotations. A backward-compatible 7-arg constructor (without the 3 new fields) was added manually, defaulting `snippet=null`, `matchedSectionTitle=null`, `sectionMatchScore=0.0`.
+- Feature 35 (Wire Extension Parameter) was already merged, so `searchSections()` already had a `String extension` parameter. The new `String sectionTitle` parameter was inserted between `filePaths` and `extension` to maintain logical grouping.
+- `generateSectionSnippet()` guards against `docStore == null` (common in unit tests where docStore isn't injected) — returns `null` in that case.
+- All 17 existing `searchSections()` call sites in `SearchServiceTest` were updated to pass `null` for the new `sectionTitle` parameter.
+- The `getSectionContent` endpoint parameters (`filePath`, `sectionTitle`) no longer have `required = true` in their `@Parameter` annotations since the endpoint now supports an alternative `keywords`-based lookup path.
+- 4 new unit tests added in a `SectionSearchSnippetAndFilterTests` nested class; 5 new integration tests added in `SearchResourceTest`.
+- All tests pass (`BUILD SUCCESSFUL`).
