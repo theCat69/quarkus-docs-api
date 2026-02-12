@@ -45,13 +45,8 @@ public class SqliteKeywordIndexRepository implements KeywordIndexRepository {
     public boolean exists(String version) {
         InputValidator.validateVersion(version);
 
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT 1 FROM files WHERE version = ? LIMIT 1")) {
-            stmt.setString(1, version);
-            try (ResultSet rs = stmt.executeQuery()) {
-                return rs.next();
-            }
+        try (Connection conn = dataSource.getConnection()) {
+            return SqlUtils.existsByVersion(conn, "files", "version", version);
         } catch (SQLException e) {
             throw new RepositoryException("Failed to check keyword index existence for version: " + version, e);
         }
@@ -77,32 +72,19 @@ public class SqliteKeywordIndexRepository implements KeywordIndexRepository {
         InputValidator.validateVersion(version);
         Objects.requireNonNull(data, "data must not be null");
 
-        try (Connection conn = dataSource.getConnection()) {
-            conn.setAutoCommit(false);
-            try {
-                deleteVersion(conn, version);
-                insertIndex(conn, version, data);
-                conn.commit();
-            } catch (SQLException e) {
-                conn.rollback();
-                throw e;
-            } finally {
-                conn.setAutoCommit(true);
-            }
-        } catch (SQLException e) {
-            throw new RepositoryException("Failed to write keyword index for version: " + version, e);
-        }
+        TransactionTemplate.executeInTransactionVoid(dataSource, conn -> {
+            deleteVersion(conn, version);
+            insertIndex(conn, version, data);
+        }, "Failed to write keyword index for version: " + version);
     }
 
     @Override
     public void deleteByVersion(String version) {
         InputValidator.validateVersion(version);
 
-        try (Connection conn = dataSource.getConnection()) {
+        TransactionTemplate.executeInTransactionVoid(dataSource, conn -> {
             deleteVersion(conn, version);
-        } catch (SQLException e) {
-            throw new RepositoryException("Failed to delete keyword index for version: " + version, e);
-        }
+        }, "Failed to delete keyword index for version: " + version);
     }
 
     private void deleteVersion(Connection conn, String version) throws SQLException {

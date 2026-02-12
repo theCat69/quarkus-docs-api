@@ -38,13 +38,8 @@ public class SqliteGithubIndexRepository implements GithubIndexRepository {
     public boolean exists(String version) {
         InputValidator.validateVersion(version);
 
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT 1 FROM github_index WHERE version = ? LIMIT 1")) {
-            stmt.setString(1, version);
-            try (ResultSet rs = stmt.executeQuery()) {
-                return rs.next();
-            }
+        try (Connection conn = dataSource.getConnection()) {
+            return SqlUtils.existsByVersion(conn, "github_index", "version", version);
         } catch (SQLException e) {
             throw new RepositoryException("Failed to check GitHub index existence for version: " + version, e);
         }
@@ -81,32 +76,19 @@ public class SqliteGithubIndexRepository implements GithubIndexRepository {
         InputValidator.validateVersion(version);
         Objects.requireNonNull(entries, "entries must not be null");
 
-        try (Connection conn = dataSource.getConnection()) {
-            conn.setAutoCommit(false);
-            try {
-                deleteVersion(conn, version);
-                insertEntries(conn, version, entries);
-                conn.commit();
-            } catch (SQLException e) {
-                conn.rollback();
-                throw e;
-            } finally {
-                conn.setAutoCommit(true);
-            }
-        } catch (SQLException e) {
-            throw new RepositoryException("Failed to write GitHub index for version: " + version, e);
-        }
+        TransactionTemplate.executeInTransactionVoid(dataSource, conn -> {
+            deleteVersion(conn, version);
+            insertEntries(conn, version, entries);
+        }, "Failed to write GitHub index for version: " + version);
     }
 
     @Override
     public void deleteByVersion(String version) {
         InputValidator.validateVersion(version);
 
-        try (Connection conn = dataSource.getConnection()) {
+        TransactionTemplate.executeInTransactionVoid(dataSource, conn -> {
             deleteVersion(conn, version);
-        } catch (SQLException e) {
-            throw new RepositoryException("Failed to delete GitHub index for version: " + version, e);
-        }
+        }, "Failed to delete GitHub index for version: " + version);
     }
 
     private void deleteVersion(Connection conn, String version) throws SQLException {

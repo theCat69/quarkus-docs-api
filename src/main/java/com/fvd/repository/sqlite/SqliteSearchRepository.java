@@ -9,6 +9,7 @@ import com.fvd.repository.domain.FileSearchQuery;
 import com.fvd.repository.domain.SearchResult;
 import com.fvd.repository.domain.SectionMatch;
 import com.fvd.repository.domain.SectionSearchQuery;
+import com.fvd.repository.exceptions.RepositoryException;
 import io.quarkus.arc.lookup.LookupIfProperty;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +24,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.StringJoiner;
 
 /**
  * SQLite implementation of {@link SearchRepository}.
@@ -51,7 +51,7 @@ public class SqliteSearchRepository implements SearchRepository {
         try (Connection conn = dataSource.getConnection()) {
             return executeFileSearch(conn, query);
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to search files for version: " + query.version(), e);
+            throw new RepositoryException("Failed to search files for version: " + query.version(), e);
         }
     }
 
@@ -66,7 +66,7 @@ public class SqliteSearchRepository implements SearchRepository {
         try (Connection conn = dataSource.getConnection()) {
             return executeSectionSearch(conn, query);
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to search sections for version: " + query.version(), e);
+            throw new RepositoryException("Failed to search sections for version: " + query.version(), e);
         }
     }
 
@@ -81,13 +81,13 @@ public class SqliteSearchRepository implements SearchRepository {
         try (Connection conn = dataSource.getConnection()) {
             return executeCodeSampleSearch(conn, query);
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to search code samples for version: " + query.version(), e);
+            throw new RepositoryException("Failed to search code samples for version: " + query.version(), e);
         }
     }
 
     private SearchResult<FileMatch> executeFileSearch(Connection conn, FileSearchQuery query) throws SQLException {
         List<String> keywords = query.keywords();
-        String placeholders = buildPlaceholders(keywords.size());
+        String placeholders = SqlUtils.buildPlaceholders(keywords.size());
 
         StringBuilder sql = new StringBuilder();
         sql.append("""
@@ -162,7 +162,7 @@ public class SqliteSearchRepository implements SearchRepository {
 
     private SearchResult<SectionMatch> executeSectionSearch(Connection conn, SectionSearchQuery query) throws SQLException {
         List<String> keywords = query.keywords();
-        String placeholders = buildPlaceholders(keywords.size());
+        String placeholders = SqlUtils.buildPlaceholders(keywords.size());
 
         StringBuilder sql = new StringBuilder();
         sql.append("""
@@ -180,7 +180,7 @@ public class SqliteSearchRepository implements SearchRepository {
         params.addAll(keywords);
 
         if (query.filePaths() != null && !query.filePaths().isEmpty()) {
-            String filePathPlaceholders = buildPlaceholders(query.filePaths().size());
+            String filePathPlaceholders = SqlUtils.buildPlaceholders(query.filePaths().size());
             sql.append(" AND f.path IN (%s)".formatted(filePathPlaceholders));
             params.addAll(query.filePaths());
         }
@@ -250,7 +250,7 @@ public class SqliteSearchRepository implements SearchRepository {
 
     private SearchResult<CodeSampleMatch> executeCodeSampleSearch(Connection conn, CodeSampleSearchQuery query) throws SQLException {
         List<String> keywords = query.keywords();
-        String placeholders = buildPlaceholders(keywords.size());
+        String placeholders = SqlUtils.buildPlaceholders(keywords.size());
 
         StringBuilder sql = new StringBuilder();
         sql.append("""
@@ -336,14 +336,6 @@ public class SqliteSearchRepository implements SearchRepository {
         }
 
         return new SearchResult<>(results, total);
-    }
-
-    private String buildPlaceholders(int count) {
-        StringJoiner joiner = new StringJoiner(", ");
-        for (int i = 0; i < count; i++) {
-            joiner.add("?");
-        }
-        return joiner.toString();
     }
 
     private List<String> parseMatchedWords(String matchedWordsStr) {
