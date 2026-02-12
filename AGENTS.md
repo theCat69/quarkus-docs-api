@@ -22,9 +22,10 @@ Those RULES are CRITICAL you must follow them.
 
 ## Additional guidelines 
 Depending on your mission, identity, role or goal you may need additional guidelines.
+ALWAYS read additional guidelines if it is relevant for your mission, identity, role or goal.
 
 ### Coding agent
-Coding agents should read documentation here: `.project-guidelines-for-ai/coding`.
+Coding or Orchestrator agents should read documentation here: `.project-guidelines-for-ai/coding`.
 
 ### Building the project
 Building agents should read documentation here: `.project-guidelines-for-ai/building`.
