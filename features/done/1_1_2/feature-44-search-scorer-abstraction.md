@@ -207,30 +207,30 @@ public class KeywordScoreUtils {
 
 ## Tasks
 
-- [ ] Create `SearchScorer` interface with `MatchResult` record
-- [ ] Implement `SqliteSearchScorer` 
-- [ ] Refactor `SearchService` to use injected `SearchScorer`
-- [ ] Create `AbstractVersionedStore<T>` base class
-- [ ] Refactor `KeywordIndexStore` to extend base class
-- [ ] Refactor `CodeSampleIndexStore` to extend base class
-- [ ] Create `SearchKeywords` utility
-- [ ] Create `KeywordScoreUtils` utility
-- [ ] Move `applyFilenameBoost()` to `KeywordScorer`
-- [ ] Write unit tests for all new classes
+- [x] Create `SearchScorer` interface with `MatchResult` record
+- [x] Implement `SqliteSearchScorer` 
+- [x] Refactor `SearchService` to use injected `SearchScorer`
+- [x] Create `AbstractVersionedStore<T>` base class
+- [x] Refactor `KeywordIndexStore` to extend base class
+- [x] Refactor `CodeSampleIndexStore` to extend base class
+- [x] Create `SearchKeywords` utility
+- [x] Create `KeywordScoreUtils` utility
+- [x] Move `applyFilenameBoost()` to `KeywordScorer`
+- [x] Write unit tests for all new classes
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `SearchScorer` interface exists with `computeScore()` and `MatchResult`
-- [ ] `SqliteSearchScorer` is `@ApplicationScoped` and passes all existing search tests
-- [ ] `SearchService` uses injected `SearchScorer`
-- [ ] `AbstractVersionedStore` eliminates duplicate transactional patterns
-- [ ] `KeywordIndexStore` and `CodeSampleIndexStore` extend base class
-- [ ] `SearchKeywords.prepare()` replaces duplicate stemming patterns
-- [ ] `KeywordScoreUtils.toSortedScores()` used by both indexers
-- [ ] All existing tests pass
-- [ ] New unit tests achieve >90% coverage
+- [x] `SearchScorer` interface exists with `computeScore()` and `MatchResult`
+- [x] `SqliteSearchScorer` is `@ApplicationScoped` and passes all existing search tests
+- [x] `SearchService` uses injected `SearchScorer`
+- [x] `AbstractVersionedStore` eliminates duplicate transactional patterns
+- [x] `KeywordIndexStore` and `CodeSampleIndexStore` extend base class
+- [x] `SearchKeywords.prepare()` replaces duplicate stemming patterns
+- [x] `KeywordScoreUtils.toSortedScores()` used by both indexers
+- [x] All existing tests pass
+- [x] New unit tests achieve >90% coverage
 
 ---
 

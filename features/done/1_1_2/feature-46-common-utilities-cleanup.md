@@ -189,25 +189,25 @@ public class ZipStreamProcessor {
 
 ## Tasks
 
-- [ ] Create `AbstractProblemDetailMapper<T>` base class
-- [ ] Refactor 4 exception mappers to extend base
-- [ ] Create `ExtensionPathUtils` utility
-- [ ] Remove `buildExtensionMap()` from cache jobs
-- [ ] Create `FileUtils.deleteDirectoryQuietly()`
-- [ ] Refactor `ZipDownloadService` to use utility
-- [ ] Create `ZipStreamProcessor` (optional)
-- [ ] Write unit tests
+- [x] Create `AbstractProblemDetailMapper<T>` base class
+- [x] Refactor 4 exception mappers to extend base
+- [x] Create `ExtensionPathUtils` utility
+- [x] Remove `buildExtensionMap()` from cache jobs
+- [x] Create `FileUtils.deleteDirectoryQuietly()`
+- [x] Refactor `ZipDownloadService` to use utility
+- [x] Create `ZipStreamProcessor` (optional)
+- [x] Write unit tests
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `AbstractProblemDetailMapper<T>` exists with template methods
-- [ ] All 4 mappers extend base class
-- [ ] `ExtensionPathUtils.groupByExtension()` replaces duplicate methods
-- [ ] `FileUtils.deleteDirectoryQuietly()` replaces manual cleanup
-- [ ] All existing tests pass
-- [ ] No public API changes
+- [x] `AbstractProblemDetailMapper<T>` exists with template methods
+- [x] All 4 mappers extend base class
+- [x] `ExtensionPathUtils.groupByExtension()` replaces duplicate methods
+- [x] `FileUtils.deleteDirectoryQuietly()` replaces manual cleanup
+- [x] All existing tests pass
+- [x] No public API changes
 
 ---
 

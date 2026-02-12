@@ -258,17 +258,17 @@ Table names are **hardcoded constants**, NOT user input. Document clearly in Jav
 
 ## Tasks
 
-- [ ] Create `TransactionalOperation.java` functional interface
-- [ ] Create `VoidTransactionalOperation.java` functional interface
-- [ ] Create `TransactionTemplate.java` utility class
-- [ ] Create unit test `TransactionTemplateTest.java`
-- [ ] Create `SqlUtils.java` utility class
-- [ ] Create unit test `SqlUtilsTest.java`
-- [ ] Refactor `SqliteKeywordIndexRepository` to use utilities
-- [ ] Refactor `SqliteGithubIndexRepository` to use utilities
-- [ ] Refactor `SqliteCodeSampleIndexRepository` to use utilities
-- [ ] Refactor `SqliteSearchRepository` to use `SqlUtils.buildPlaceholders()`
-- [ ] Run all tests (`./gradlew test`) — all must pass
+- [x] Create `TransactionalOperation.java` functional interface
+- [x] Create `VoidTransactionalOperation.java` functional interface
+- [x] Create `TransactionTemplate.java` utility class
+- [x] Create unit test `TransactionTemplateTest.java`
+- [x] Create `SqlUtils.java` utility class
+- [x] Create unit test `SqlUtilsTest.java`
+- [x] Refactor `SqliteKeywordIndexRepository` to use utilities
+- [x] Refactor `SqliteGithubIndexRepository` to use utilities
+- [x] Refactor `SqliteCodeSampleIndexRepository` to use utilities
+- [x] Refactor `SqliteSearchRepository` to use `SqlUtils.buildPlaceholders()`
+- [x] Run all tests (`./gradlew test`) — all must pass
 
 ---
 

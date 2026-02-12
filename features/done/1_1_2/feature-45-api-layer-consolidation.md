@@ -152,30 +152,30 @@ public class FilterUtils {
 
 ## Tasks
 
-- [ ] Create `PaginatedResponse<T>` generic class
-- [ ] Migrate existing response DTOs to extend base
-- [ ] Create `DocumentTitleExtractor` utility
-- [ ] Remove `TITLE_PATTERN` from 3 services, use utility
-- [ ] Create `SearchConstants` class
-- [ ] Remove duplicate constants from resources
-- [ ] Create `SearchParams` record
-- [ ] Refactor resources to use `SearchParams.fromRaw()`
-- [ ] Create `FilterUtils` utility
-- [ ] Simplify subject/extension filtering in services
-- [ ] Write unit tests
+- [x] Create `PaginatedResponse<T>` generic class
+- [x] Migrate existing response DTOs to extend base
+- [x] Create `DocumentTitleExtractor` utility
+- [x] Remove `TITLE_PATTERN` from 3 services, use utility
+- [x] Create `SearchConstants` class
+- [x] Remove duplicate constants from resources
+- [x] Create `SearchParams` record
+- [x] Refactor resources to use `SearchParams.fromRaw()`
+- [x] Create `FilterUtils` utility
+- [x] Simplify subject/extension filtering in services
+- [x] Write unit tests
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `PaginatedResponse<T>` exists with factory method
-- [ ] All paginated DTOs use base class
-- [ ] `DocumentTitleExtractor` eliminates 3 duplicate methods
-- [ ] `SearchConstants` centralizes all limit/offset defaults
-- [ ] `SearchParams.fromRaw()` centralizes validation logic
-- [ ] `FilterUtils.matchesFilter()` simplifies filtering
-- [ ] OpenAPI spec unchanged
-- [ ] All tests pass
+- [x] `PaginatedResponse<T>` exists with factory method
+- [x] All paginated DTOs use base class
+- [x] `DocumentTitleExtractor` eliminates 3 duplicate methods
+- [x] `SearchConstants` centralizes all limit/offset defaults
+- [x] `SearchParams.fromRaw()` centralizes validation logic
+- [x] `FilterUtils.matchesFilter()` simplifies filtering
+- [x] OpenAPI spec unchanged
+- [x] All tests pass
 
 ---
 
