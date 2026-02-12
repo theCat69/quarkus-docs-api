@@ -52,10 +52,10 @@ The Quarkus documentation repository contains hundreds of documents across vario
 **Description:** Define regex patterns to match document paths to subjects.
 
 **Acceptance Criteria:**
-- [ ] Patterns evaluated in order, first match wins
-- [ ] Patterns support standard Java regex
-- [ ] Patterns match against full relative path
-- [ ] Case-insensitive matching by default
+- [x] Patterns evaluated in order, first match wins
+- [x] Patterns support standard Java regex
+- [x] Patterns match against full relative path
+- [x] Case-insensitive matching by default
 
 **Default Pattern Configuration:**
 
@@ -100,10 +100,10 @@ subject-patterns:
 **Description:** Allow explicit path-to-subject mappings in configuration.
 
 **Acceptance Criteria:**
-- [ ] Overrides take precedence over pattern matching
-- [ ] Support exact path matches
-- [ ] Support glob patterns for groups of files
-- [ ] Configuration in `application.properties` or YAML
+- [x] Overrides take precedence over pattern matching
+- [x] Support exact path matches
+- [x] Support glob patterns for groups of files
+- [x] Configuration in `application.properties` or YAML
 
 **Configuration Format:**
 
@@ -134,11 +134,11 @@ quarkus-docs.subject-overrides."_guides/platform-*.adoc"=core-concepts
 **Description:** Each subject includes metadata for API responses.
 
 **Acceptance Criteria:**
-- [ ] `name`: Machine-readable identifier (kebab-case)
-- [ ] `displayName`: Human-readable label
-- [ ] `description`: Brief description of subject scope
-- [ ] `docCount`: Number of documents in subject
-- [ ] `keywords`: Representative keywords for the subject
+- [x] `name`: Machine-readable identifier (kebab-case)
+- [x] `displayName`: Human-readable label
+- [x] `description`: Brief description of subject scope
+- [x] `docCount`: Number of documents in subject
+- [x] `keywords`: Representative keywords for the subject
 
 **Subject Definition:**
 
@@ -158,18 +158,18 @@ public record Subject(
 **Description:** Subjects with no matching documents are omitted from catalog.
 
 **Acceptance Criteria:**
-- [ ] Only subjects with `docCount > 0` appear in catalog
-- [ ] Subject list recalculated on re-index
-- [ ] Cached per version
+- [x] Only subjects with `docCount > 0` appear in catalog
+- [x] Subject list recalculated on re-index
+- [x] Cached per version
 
 ### R5: Subject Keywords
 
 **Description:** Each subject has associated keywords for discovery.
 
 **Acceptance Criteria:**
-- [ ] Keywords derived from subject's documents
-- [ ] Top N most frequent keywords selected
-- [ ] Keywords help users discover relevant subjects
+- [x] Keywords derived from subject's documents
+- [x] Top N most frequent keywords selected
+- [x] Keywords help users discover relevant subjects
 
 **Default Subject Keywords:**
 
@@ -291,3 +291,25 @@ public String deriveSubject(String filePath) {
 | Too many subjects | Fragmented navigation | Limit to ~12 standard subjects |
 | Missing patterns | Documents fall to "misc" | Review misc bucket periodically |
 | Pattern performance | Slow indexing | Compile patterns once, cache |
+
+---
+
+## Implementation Notes
+
+**Implemented:** 2026-02-12
+
+**Files Created:**
+- `com.fvd.subject.Subject` - Subject record with metadata
+- `com.fvd.subject.SubjectConfig` - @ConfigMapping configuration interface
+- `com.fvd.subject.services.SubjectDeriver` - Service for deriving subjects from paths
+- `com.fvd.subject.services.SubjectDeriverTest` - 53 unit tests
+
+**Configuration:**
+- Added `app.subjects.*` configuration to application.properties
+- 11 default regex patterns for all 12 subjects
+- Support for exact overrides and glob patterns
+
+**Review Status:**
+- Code Review: PASS
+- Security Review: PASS (noted ReDoS risk mitigated by admin-only config)
+- All 53 tests passing
