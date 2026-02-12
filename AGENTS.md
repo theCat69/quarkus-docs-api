@@ -20,6 +20,20 @@ Those RULES are CRITICAL you must follow them.
 - Tests are JUnit 5 with QuarkusTest, RestAssured, AssertJ, Mockito.
 - Lombok is available; use it to reduce boilerplate when possible.
 
-## Repository rules
-- No Cursor rules found in `.cursor/rules/` or `.cursorrules`.
-- No Copilot rules found in `.github/copilot-instructions.md`.
+## Additional guidelines 
+Depending on your mission, identity, role or goal you may need additional guidelines.
+
+### Coding agent
+Coding agents should read documentation here: `.project-guidelines-for-ai/coding`.
+
+### Building the project
+Building agents should read documentation here: `.project-guidelines-for-ai/building`.
+
+### Testing the project
+Testing agents should read documentation here: `.project-guidelines-for-ai/testing`.
+
+### Updating documentation on the project
+Librarian or documentalist agents should read documentation here: `.project-guidelines-for-ai/documentation`.
+
+### Security-reviewer agents
+Security reviewer agents should read documentation here: `.project-guidelines-for-ai/security`.
