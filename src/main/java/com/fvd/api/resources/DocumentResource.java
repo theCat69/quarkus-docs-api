@@ -4,7 +4,7 @@ import com.fvd.api.dto.DocumentResponse;
 import com.fvd.api.dto.DocumentSearchResponse;
 import com.fvd.api.services.DocumentService;
 import com.fvd.common.exceptions.InvalidInputException;
-import com.fvd.common.resources.ErrorResponse;
+import com.fvd.common.resources.ProblemDetail;
 import com.fvd.common.validators.InputValidator;
 import com.fvd.docs.exceptions.DocNotFoundException;
 import jakarta.ws.rs.GET;
@@ -53,12 +53,12 @@ public class DocumentResource {
     @APIResponse(
             responseCode = "400",
             description = "Invalid input parameters or neither path nor keywords provided",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))
     )
     @APIResponse(
             responseCode = "404",
             description = "Document not found (path mode only)",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))
     )
     public Object getDocuments(
             @Parameter(

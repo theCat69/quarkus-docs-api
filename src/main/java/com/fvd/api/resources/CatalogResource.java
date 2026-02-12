@@ -2,7 +2,7 @@ package com.fvd.api.resources;
 
 import com.fvd.api.dto.CatalogResponse;
 import com.fvd.api.services.CatalogService;
-import com.fvd.common.resources.ErrorResponse;
+import com.fvd.common.resources.ProblemDetail;
 import com.fvd.common.validators.InputValidator;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -44,7 +44,7 @@ public class CatalogResource {
     @APIResponse(
             responseCode = "400",
             description = "Invalid version parameter",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))
     )
     public CatalogResponse getCatalog(
             @Parameter(

@@ -19,11 +19,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.*;
 
 @QuarkusTest
 class DocumentResourceTest {
@@ -76,7 +72,7 @@ class DocumentResourceTest {
                 .when().get("/api/documents")
                 .then()
                 .statusCode(404)
-                .body("message", containsString("Document not found"));
+                .body("detail", containsString("Document not found"));
     }
 
     @Test
@@ -191,7 +187,7 @@ class DocumentResourceTest {
                 .when().get("/api/documents")
                 .then()
                 .statusCode(400)
-                .body("message", containsString("path"));
+                .body("detail", containsString("path"));
     }
 
     @Test

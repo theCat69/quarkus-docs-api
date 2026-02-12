@@ -2,7 +2,7 @@ package com.fvd.api.resources;
 
 import com.fvd.api.dto.QuickSearchResponse;
 import com.fvd.api.services.QuickSearchService;
-import com.fvd.common.resources.ErrorResponse;
+import com.fvd.common.resources.ProblemDetail;
 import com.fvd.common.validators.InputValidator;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -49,7 +49,7 @@ public class SearchResource {
     @APIResponse(
             responseCode = "400",
             description = "Invalid input parameters or keywords not provided",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))
     )
     public QuickSearchResponse search(
             @Parameter(

@@ -2,7 +2,7 @@ package com.fvd.api.resources;
 
 import com.fvd.api.dto.CodeSampleSearchResponse;
 import com.fvd.api.services.CodeSampleService;
-import com.fvd.common.resources.ErrorResponse;
+import com.fvd.common.resources.ProblemDetail;
 import com.fvd.common.validators.InputValidator;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -48,7 +48,7 @@ public class CodeSampleResource {
     @APIResponse(
             responseCode = "400",
             description = "Invalid input parameters or keywords not provided",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))
     )
     public CodeSampleSearchResponse searchCodeSamples(
             @Parameter(

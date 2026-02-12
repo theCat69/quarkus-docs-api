@@ -1,4 +1,4 @@
-package com.fvd.docs.exceptions;
+package com.fvd.common.exceptions;
 
 import com.fvd.common.resources.ProblemDetail;
 import jakarta.ws.rs.core.Context;
@@ -7,26 +7,30 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
+import lombok.extern.slf4j.Slf4j;
 
 /**
- * Maps DocNotFoundException to RFC 7807 Problem Details response with 404 Not Found.
+ * Generic exception mapper for unhandled exceptions.
+ * Returns RFC 7807 Problem Details response with 500 Internal Server Error.
  */
 @Provider
-public class DocNotFoundExceptionMapper implements ExceptionMapper<DocNotFoundException> {
+@Slf4j
+public class GenericExceptionMapper implements ExceptionMapper<Exception> {
 
     @Context
     UriInfo uriInfo;
 
     @Override
-    public Response toResponse(DocNotFoundException exception) {
+    public Response toResponse(Exception exception) {
+        log.error("Unhandled exception", exception);
         String instance = uriInfo != null ? uriInfo.getPath() : "/api";
         ProblemDetail problem = ProblemDetail.of(
-                404,
-                "Not Found",
-                exception.getMessage(),
+                500,
+                "Internal Server Error",
+                "An unexpected error occurred",
                 instance
         );
-        return Response.status(Response.Status.NOT_FOUND)
+        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(problem)
                 .type(MediaType.APPLICATION_JSON)
                 .build();

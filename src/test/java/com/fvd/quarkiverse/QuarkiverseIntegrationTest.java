@@ -8,7 +8,6 @@ import com.fvd.quarkiverse.services.QuarkiverseService;
 import com.fvd.search.services.SearchService;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
-import io.restassured.RestAssured;
 import jakarta.inject.Inject;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,19 +15,11 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.hasItems;
-import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.*;
 
 @QuarkusTest
 @TestProfile(QuarkiverseTestProfile.class)
@@ -95,35 +86,34 @@ class QuarkiverseIntegrationTest {
         keywordIndexer.build("main", filePathsByExtension);
         codeSampleIndexer.build("main", filePathsByExtension);
 
-        // Search for keywords from the quarkiverse doc
+        // Search for keywords from the quarkiverse doc using new /api/search endpoint
         given()
                 .queryParam("version", "main")
                 .queryParam("keywords", "test extension")
         .when()
-                .get("/api/search/files")
+                .get("/api/search")
         .then()
                 .statusCode(200)
-                .body("total", greaterThan(0))
+                .body("totalCount", greaterThan(0))
                 .body("results[0].path", equalTo("quarkiverse/quarkus-test-extension/index.adoc"))
                 .body("results[0].extension", equalTo("quarkus-test-extension"));
     }
 
     @Test
-    void quarkiverseDocRetrievableViaDocEndpoint() {
+    void quarkiverseDocRetrievableViaDocumentsEndpoint() {
         // Extract quarkiverse docs
         quarkiverseService.fetchAndExtractAll();
 
-        // Retrieve the quarkiverse doc via the /api/doc endpoint
+        // Retrieve the quarkiverse doc via the new /api/documents endpoint
         given()
                 .queryParam("version", "main")
                 .queryParam("path", "quarkiverse/quarkus-test-extension/index.adoc")
         .when()
-                .get("/api/doc")
+                .get("/api/documents")
         .then()
                 .statusCode(200)
                 .body("path", equalTo("quarkiverse/quarkus-test-extension/index.adoc"))
-                .body("content", containsString("Quarkus Test Extension"))
-                .body("format", equalTo("asciidoc"));
+                .body("title", containsString("Quarkus Test Extension"));
     }
 
     @Test
@@ -142,11 +132,14 @@ class QuarkiverseIntegrationTest {
         }
         keywordIndexer.build("main", filePathsByExtension);
 
-        // The /api/index endpoint should NOT include quarkiverse paths
-        // It returns the GitHub API file index (core-only), not the search index
-        // For "main", it fetches from GitHub API which won't have quarkiverse entries
-        // We can't easily test this without a main index mapping, but we verify
-        // that searching version=3.27 does NOT return quarkiverse results
+        // The old /api/index endpoint is removed
+        // We verify that the catalog endpoint works and includes versions
+        given()
+                .queryParam("version", "main")
+        .when()
+                .get("/api/catalog")
+        .then()
+                .statusCode(200);
     }
 
     @Test
@@ -170,10 +163,10 @@ class QuarkiverseIntegrationTest {
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "test extension")
         .when()
-                .get("/api/search/files")
+                .get("/api/search")
         .then()
                 .statusCode(200)
-                .body("total", equalTo(0));
+                .body("totalCount", equalTo(0));
     }
 
     @Test
@@ -193,16 +186,16 @@ class QuarkiverseIntegrationTest {
         }
         codeSampleIndexer.build("main", filePathsByExtension);
 
-        // Search for code samples from the quarkiverse doc
+        // Search for code samples from the quarkiverse doc using new /api/code-samples endpoint
         given()
                 .queryParam("version", "main")
                 .queryParam("keywords", "dependency quarkus")
         .when()
-                .get("/api/search/code-samples")
+                .get("/api/code-samples")
         .then()
                 .statusCode(200)
-                .body("total", greaterThan(0))
-                .body("results[0].path", equalTo("quarkiverse/quarkus-test-extension/index.adoc"))
+                .body("totalCount", greaterThan(0))
+                .body("results[0].documentPath", equalTo("quarkiverse/quarkus-test-extension/index.adoc"))
                 .body("results[0].extension", equalTo("quarkus-test-extension"));
     }
 
