@@ -1,5 +1,7 @@
-package com.fvd.indexs.stores;
+package com.fvd.repository.sqlite;
 
+import com.fvd.repository.api.SchemaInitializer;
+import io.quarkus.arc.lookup.LookupIfProperty;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -16,12 +18,21 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+/**
+ * SQLite implementation of {@link SchemaInitializer}.
+ * <p>
+ * Handles the creation and management of SQLite database schema for
+ * storing keyword indexes, code sample indexes, and GitHub file indexes.
+ * </p>
+ */
 @Slf4j
 @ApplicationScoped
 @RequiredArgsConstructor
-public class SqliteSchemaInitializer {
+@LookupIfProperty(name = "app.database.type", stringValue = "sqlite", lookupIfMissing = true)
+public class SqliteSchemaInitializerImpl implements SchemaInitializer {
 
     private final DataSource dataSource;
+
     @ConfigProperty(name = "app.cache.dir", defaultValue = ".cache")
     String cacheDir;
 
@@ -29,15 +40,13 @@ public class SqliteSchemaInitializer {
         initSchema();
     }
 
+    @Override
     public void initSchema() {
         ensureCacheDir();
         createTables();
     }
 
-    /**
-     * Drops all tables and recreates the schema. Used in tests to ensure
-     * a clean database after the cache directory has been wiped.
-     */
+    @Override
     public void resetSchema() {
         ensureCacheDir();
         try (Connection conn = dataSource.getConnection();
@@ -92,8 +101,6 @@ public class SqliteSchemaInitializer {
                         file_id INTEGER NOT NULL,
                         word TEXT NOT NULL,
                         score INTEGER NOT NULL,
-                        source TEXT NOT NULL DEFAULT 'body',
-                        frequency INTEGER NOT NULL DEFAULT 1,
                         FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
                     )
                     """);
@@ -115,8 +122,6 @@ public class SqliteSchemaInitializer {
                         section_id INTEGER NOT NULL,
                         word TEXT NOT NULL,
                         score INTEGER NOT NULL,
-                        source TEXT NOT NULL DEFAULT 'body',
-                        frequency INTEGER NOT NULL DEFAULT 1,
                         FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
                     )
                     """);

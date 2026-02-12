@@ -84,13 +84,13 @@ GET /api/catalog?version={version}
 
 #### Acceptance Criteria
 
-- [ ] Returns list of subjects derived from document paths
-- [ ] Returns list of extensions from Antora playbook parsing
-- [ ] Returns list of available versions
-- [ ] Each subject includes name, displayName, description, docCount, keywords
-- [ ] Each extension includes name, displayName, description, docCount
-- [ ] Default version is `main` when not specified
-- [ ] Response is cached per version
+- [x] Returns list of subjects derived from document paths
+- [x] Returns list of extensions from Antora playbook parsing
+- [x] Returns list of available versions
+- [x] Each subject includes name, displayName, description, docCount, keywords
+- [x] Each extension includes name, displayName, description, docCount
+- [x] Default version is `main` when not specified
+- [x] Response is cached per version
 
 ---
 
@@ -239,17 +239,17 @@ GET /api/documents?keywords={keywords}&version={version}&subject={subject}&exten
 
 #### Acceptance Criteria
 
-- [ ] Path mode returns single document with full structure
-- [ ] Search mode returns array of matching documents with scores
-- [ ] Sections are extracted with title, level, content, startLine, endLine
-- [ ] Code blocks are extracted with language, content, context, startLine, endLine
-- [ ] matchedKeywords populated in search mode
-- [ ] score populated in search mode
-- [ ] If both `path` and `keywords` provided, `path` takes precedence
-- [ ] Returns 400 if neither path nor keywords provided
-- [ ] Returns 404 if path not found
-- [ ] Filters by subject and extension work correctly
-- [ ] Limit parameter respected
+- [x] Path mode returns single document with full structure
+- [x] Search mode returns array of matching documents with scores
+- [x] Sections are extracted with title, level, content, startLine, endLine
+- [x] Code blocks are extracted with language, content, context, startLine, endLine
+- [x] matchedKeywords populated in search mode
+- [x] score populated in search mode
+- [x] If both `path` and `keywords` provided, `path` takes precedence
+- [x] Returns 400 if neither path nor keywords provided
+- [x] Returns 404 if path not found
+- [x] Filters by subject and extension work correctly
+- [x] Limit parameter respected
 
 ---
 
@@ -362,15 +362,15 @@ GET /api/code-samples?keywords={keywords}&language={language}&subject={subject}&
 
 #### Acceptance Criteria
 
-- [ ] Returns 400 if keywords not provided
-- [ ] Results include full code content
-- [ ] Results include document context (path, title, subject, extension)
-- [ ] Language filter works correctly
-- [ ] Subject filter works correctly
-- [ ] Extension filter works correctly
-- [ ] Results sorted by score descending
-- [ ] startLine and endLine indicate original position in document
-- [ ] matchedKeywords shows which keywords matched with source and weight
+- [x] Returns 400 if keywords not provided
+- [x] Results include full code content
+- [x] Results include document context (path, title, subject, extension)
+- [x] Language filter works correctly
+- [x] Subject filter works correctly
+- [x] Extension filter works correctly
+- [x] Results sorted by score descending
+- [x] startLine and endLine indicate original position in document
+- [x] matchedKeywords shows which keywords matched with source and weight
 
 ---
 
@@ -473,13 +473,13 @@ GET /api/search?keywords={keywords}&subject={subject}&extension={extension}&vers
 
 #### Acceptance Criteria
 
-- [ ] Returns 400 if keywords not provided
-- [ ] Returns lightweight references (no full content)
-- [ ] Snippet provides contextual preview of match
-- [ ] Results sorted by score descending
-- [ ] Subject filter works correctly
-- [ ] Extension filter works correctly
-- [ ] Fast response time (< 100ms for typical queries)
+- [x] Returns 400 if keywords not provided
+- [x] Returns lightweight references (no full content)
+- [x] Snippet provides contextual preview of match
+- [x] Results sorted by score descending
+- [x] Subject filter works correctly
+- [x] Extension filter works correctly
+- [x] Fast response time (< 100ms for typical queries)
 
 ---
 
@@ -540,3 +540,34 @@ All responses use consistent JSON structure:
 | Large response sizes | Pagination via limit parameter |
 | Slow search on large indexes | Pre-computed keyword weights, caching |
 | Breaking change impact | Clear migration documentation |
+
+---
+
+## Implementation Notes
+
+**Implemented:** Thu Feb 12 2026
+
+**Files Created:**
+
+DTOs (com.fvd.api.dto):
+- SubjectInfo, ExtensionInfo, CatalogResponse
+- SectionInfo, CodeBlockInfo, DocumentResponse, DocumentSearchResponse
+- CodeSampleResult, CodeSampleSearchResponse
+- SearchResultRef, QuickSearchResponse
+
+Services (com.fvd.api.services):
+- CatalogService, DocumentService, CodeSampleService, QuickSearchService
+
+Resources (com.fvd.api.resources):
+- CatalogResource (/api/catalog)
+- DocumentResource (/api/documents)
+- CodeSampleResource (/api/code-samples)
+- SearchResource (/api/search)
+
+Tests:
+- CatalogResourceTest, DocumentResourceTest, CodeSampleResourceTest, ApiSearchResourceTest
+
+**Review Status:**
+- Code Review: PASS (with minor improvements noted)
+- Security Review: PASS
+- All integration tests passing

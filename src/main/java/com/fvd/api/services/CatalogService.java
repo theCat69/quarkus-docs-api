@@ -1,0 +1,158 @@
+package com.fvd.api.services;
+
+import com.fvd.api.dto.CatalogResponse;
+import com.fvd.api.dto.ExtensionInfo;
+import com.fvd.api.dto.SubjectInfo;
+import com.fvd.cache.services.CacheService;
+import com.fvd.indexs.indexers.FileKeywordEntry;
+import com.fvd.indexs.indexers.KeywordIndex;
+import com.fvd.indexs.stores.KeywordIndexStore;
+import com.fvd.subject.Subject;
+import com.fvd.subject.services.SubjectDeriver;
+import jakarta.enterprise.context.ApplicationScoped;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Service for retrieving catalog information including subjects, extensions, and versions.
+ */
+@Slf4j
+@ApplicationScoped
+@RequiredArgsConstructor
+public class CatalogService {
+
+    private final SubjectDeriver subjectDeriver;
+    private final KeywordIndexStore keywordIndexStore;
+    private final CacheService cacheService;
+
+    private final Map<String, CatalogResponse> catalogCache = new ConcurrentHashMap<>();
+
+    /**
+     * Gets the catalog for a specific version.
+     * Results are cached per version.
+     *
+     * @param version the documentation version
+     * @return the catalog response
+     */
+    public CatalogResponse getCatalog(String version) {
+        CatalogResponse cached = catalogCache.get(version);
+        if (cached != null) {
+            return cached;
+        }
+
+        CatalogResponse catalog = buildCatalog(version);
+        catalogCache.put(version, catalog);
+        return catalog;
+    }
+
+    /**
+     * Invalidates the catalog cache for a specific version.
+     *
+     * @param version the version to invalidate
+     */
+    public void invalidateCache(String version) {
+        catalogCache.remove(version);
+    }
+
+    private CatalogResponse buildCatalog(String version) {
+        List<SubjectInfo> subjects = buildSubjectList(version);
+        List<ExtensionInfo> extensions = buildExtensionList(version);
+        List<String> versions = cacheService.listCachedVersions();
+
+        return new CatalogResponse(subjects, extensions, versions);
+    }
+
+    private List<SubjectInfo> buildSubjectList(String version) {
+        // Reset doc counts and re-derive from current index
+        subjectDeriver.resetDocCounts();
+
+        Optional<KeywordIndex> indexOpt = keywordIndexStore.read(version);
+        if (indexOpt.isEmpty()) {
+            // Return subjects with zero doc counts
+            return subjectDeriver.getAllSubjects().stream()
+                    .map(this::toSubjectInfo)
+                    .toList();
+        }
+
+        KeywordIndex index = indexOpt.get();
+        
+        // Derive subjects for all indexed files and update counts
+        for (FileKeywordEntry file : index.files) {
+            String subject = subjectDeriver.deriveSubject(file.path);
+            subjectDeriver.recordDocument(subject);
+        }
+
+        return subjectDeriver.getAllSubjects().stream()
+                .map(this::toSubjectInfo)
+                .toList();
+    }
+
+    private List<ExtensionInfo> buildExtensionList(String version) {
+        Optional<KeywordIndex> indexOpt = keywordIndexStore.read(version);
+        if (indexOpt.isEmpty()) {
+            return List.of();
+        }
+
+        KeywordIndex index = indexOpt.get();
+        Map<String, Integer> extensionDocCounts = new HashMap<>();
+
+        for (FileKeywordEntry file : index.files) {
+            String ext = file.extension != null ? file.extension : "quarkus-core";
+            extensionDocCounts.merge(ext, 1, Integer::sum);
+        }
+
+        List<ExtensionInfo> extensions = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : extensionDocCounts.entrySet()) {
+            String name = entry.getKey();
+            String displayName = formatExtensionDisplayName(name);
+            extensions.add(new ExtensionInfo(name, displayName, "", entry.getValue()));
+        }
+
+        // Sort by doc count descending, then by name
+        extensions.sort((a, b) -> {
+            int cmp = Integer.compare(b.docCount, a.docCount);
+            return cmp != 0 ? cmp : a.name.compareTo(b.name);
+        });
+
+        return extensions;
+    }
+
+    private SubjectInfo toSubjectInfo(Subject subject) {
+        return new SubjectInfo(
+                subject.name(),
+                subject.displayName(),
+                subject.description(),
+                subject.docCount(),
+                subject.keywords()
+        );
+    }
+
+    private String formatExtensionDisplayName(String name) {
+        if (name == null || name.isEmpty()) {
+            return "";
+        }
+        // Convert "quarkus-resteasy-reactive" to "RESTEasy Reactive"
+        String withoutPrefix = name.startsWith("quarkus-") ? name.substring(8) : name;
+        String[] parts = withoutPrefix.split("-");
+        StringBuilder sb = new StringBuilder();
+        for (String part : parts) {
+            if (!part.isEmpty()) {
+                if (sb.length() > 0) {
+                    sb.append(" ");
+                }
+                sb.append(Character.toUpperCase(part.charAt(0)));
+                if (part.length() > 1) {
+                    sb.append(part.substring(1));
+                }
+            }
+        }
+        return sb.toString();
+    }
+}

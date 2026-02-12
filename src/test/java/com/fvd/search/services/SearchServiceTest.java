@@ -10,6 +10,7 @@ import com.fvd.indexs.indexers.*;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.indexs.stores.SqliteSchemaInitializer;
+import com.fvd.repository.domain.MatchedKeyword;
 import com.fvd.search.SearchConfig;
 import com.fvd.search.TestSearchConfig;
 import org.junit.jupiter.api.BeforeEach;
@@ -74,7 +75,7 @@ class SearchServiceTest {
         assertThat(result.total()).isEqualTo(3);
         assertThat(result.items().get(0).path).isEqualTo("high.adoc");
         assertThat(result.items().get(0).score).isEqualTo(20.0);
-        assertThat(result.items().get(0).matchedKeywords).containsExactly("secur");
+        assertThat(extractKeywords(result.items().get(0).matchedKeywords)).containsExactly("secur");
         assertThat(result.items().get(1).path).isEqualTo("mid.adoc");
         assertThat(result.items().get(2).path).isEqualTo("low.adoc");
     }
@@ -94,8 +95,39 @@ class SearchServiceTest {
         assertThat(result.items()).hasSize(2);
         assertThat(result.items().get(0).path).isEqualTo("both.adoc");
         assertThat(result.items().get(0).score).isGreaterThan(result.items().get(1).score);
-        assertThat(result.items().get(0).matchedKeywords).containsExactlyInAnyOrder("secur", "oidc");
-        assertThat(result.items().get(1).matchedKeywords).containsExactly("secur");
+        assertThat(extractKeywords(result.items().get(0).matchedKeywords)).containsExactlyInAnyOrder("secur", "oidc");
+        assertThat(extractKeywords(result.items().get(1).matchedKeywords)).containsExactly("secur");
+    }
+
+    @Test
+    void searchFilesReturnsMatchedKeywordsWithSourceAndWeight() {
+        // Create index with keywords that have source information
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("test.adoc",
+                        List.of(
+                                new KeywordScore("secur", 10, "filename", 1),
+                                new KeywordScore("oidc", 5, "section", 2)
+                        ), List.of())
+        ));
+        seedIndex("3.27", index);
+
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles(
+                "3.27", List.of("security", "oidc"), null, 10, 0);
+
+        assertThat(result.items()).hasSize(1);
+        List<MatchedKeyword> matched = result.items().get(0).matchedKeywords;
+        assertThat(matched).hasSize(2);
+        
+        // Verify source and weight are populated
+        MatchedKeyword securMatch = matched.stream()
+                .filter(m -> m.keyword().equals("secur")).findFirst().orElseThrow();
+        assertThat(securMatch.source()).isEqualTo("filename");
+        assertThat(securMatch.weight()).isEqualTo(10.0);
+        
+        MatchedKeyword oidcMatch = matched.stream()
+                .filter(m -> m.keyword().equals("oidc")).findFirst().orElseThrow();
+        assertThat(oidcMatch.source()).isEqualTo("section");
+        assertThat(oidcMatch.weight()).isEqualTo(5.0);
     }
 
     @Test
@@ -319,7 +351,7 @@ class SearchServiceTest {
         assertThat(result.items().get(0).section).isEqualTo("Overview"); // score 8 > 3
         assertThat(result.items().get(0).start).isEqualTo(1);
         assertThat(result.items().get(0).end).isEqualTo(10);
-        assertThat(result.items().get(0).matchedKeywords).containsExactly("secur");
+        assertThat(extractKeywords(result.items().get(0).matchedKeywords)).containsExactly("secur");
     }
 
     @Test
@@ -423,7 +455,7 @@ class SearchServiceTest {
         assertThat(result.items()).hasSize(1);
         // Raw sum is 10, with 1.5x boost should be 15
         assertThat(result.items().get(0).score).isEqualTo(15.0);
-        assertThat(result.items().get(0).matchedKeywords).containsExactlyInAnyOrder("secur", "oidc");
+        assertThat(extractKeywords(result.items().get(0).matchedKeywords)).containsExactlyInAnyOrder("secur", "oidc");
     }
 
     @Test
@@ -1230,5 +1262,14 @@ class SearchServiceTest {
             assertThat(result.items()).isEmpty();
             assertThat(result.total()).isEqualTo(0);
         }
+    }
+
+    /**
+     * Helper method to extract keyword strings from MatchedKeyword list for test assertions.
+     */
+    private static List<String> extractKeywords(List<MatchedKeyword> matchedKeywords) {
+        return matchedKeywords.stream()
+                .map(MatchedKeyword::keyword)
+                .toList();
     }
 }

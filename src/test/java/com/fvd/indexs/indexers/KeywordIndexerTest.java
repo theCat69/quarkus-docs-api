@@ -6,7 +6,9 @@ import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.indexs.stores.SqliteSchemaInitializer;
+import com.fvd.search.TestKeywordScoringConfig;
 import com.fvd.search.TestSearchConfig;
+import com.fvd.search.services.KeywordScorer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -37,7 +39,8 @@ class KeywordIndexerTest {
         initializer.initSchema();
         keywordIndexStore = new KeywordIndexStore(ds);
         DocParser parser = new AsciidocParser(new TestSearchConfig());
-        indexer = new KeywordIndexer(docStore, keywordIndexStore, parser, new TestSearchConfig());
+        KeywordScorer keywordScorer = new KeywordScorer(new TestKeywordScoringConfig());
+        indexer = new KeywordIndexer(docStore, keywordIndexStore, parser, new TestSearchConfig(), keywordScorer);
     }
 
     @Test
@@ -60,11 +63,11 @@ class KeywordIndexerTest {
         assertThat(entry.path).isEqualTo("security-overview.adoc");
         assertThat(entry.keywords).isNotEmpty();
 
-        // "security" stems to "secur"; appears in text + filename boost (+10)
+        // "security" stems to "secur"; should be present with high score from filename
         Optional<KeywordScore> securityScore = entry.keywords.stream()
                 .filter(k -> k.word.equals("secur")).findFirst();
         assertThat(securityScore).isPresent();
-        assertThat(securityScore.get().score).isGreaterThanOrEqualTo(11); // at least 1 occurrence + 10 filename boost
+        assertThat(securityScore.get().score).isGreaterThanOrEqualTo(10); // filename boost
 
         // Sections should be present
         assertThat(entry.sections).isNotEmpty();
@@ -93,26 +96,27 @@ class KeywordIndexerTest {
 
     @Test
     void filenameBoostAddsToScore() {
-        docStore.write("3.27", "oidc-guide.adoc", """
+        docStore.write("3.27", "oidc-auth.adoc", """
                 = OIDC Authentication
                 
                 Some content about oidc authentication.
                 """);
 
-        KeywordIndex index = indexer.build("3.27", List.of("oidc-guide.adoc"));
+        KeywordIndex index = indexer.build("3.27", List.of("oidc-auth.adoc"));
         FileKeywordEntry entry = index.files.get(0);
 
-        // "oidc" is in filename (boost +10) and in text (at least 1 occurrence)
+        // "oidc" is in filename (10x weight) and in text
         Optional<KeywordScore> oidcScore = entry.keywords.stream()
                 .filter(k -> k.word.equals("oidc")).findFirst();
         assertThat(oidcScore).isPresent();
-        assertThat(oidcScore.get().score).isGreaterThanOrEqualTo(12); // 2 occurrences + 10 boost
+        assertThat(oidcScore.get().score).isGreaterThanOrEqualTo(10); // filename weight
+        assertThat(oidcScore.get().source).isEqualTo("filename"); // highest priority source
 
-        // "guide" is in filename but not in text (only boost)
-        Optional<KeywordScore> guideScore = entry.keywords.stream()
-                .filter(k -> k.word.equals("guide")).findFirst();
-        assertThat(guideScore).isPresent();
-        assertThat(guideScore.get().score).isEqualTo(10); // filename boost only
+        // "auth" is in filename
+        Optional<KeywordScore> authScore = entry.keywords.stream()
+                .filter(k -> k.word.equals("auth")).findFirst();
+        assertThat(authScore).isPresent();
+        assertThat(authScore.get().source).isEqualTo("filename");
     }
 
     @Test
@@ -193,5 +197,98 @@ class KeywordIndexerTest {
         // Code block keywords should not be present
         assertThat(entry.keywords.stream().map(k -> k.word))
                 .doesNotContain("class", "internalservice", "secretcode", "private");
+    }
+
+    @Test
+    void keywordsTrackSourceLocation() {
+        docStore.write("3.27", "security-config.adoc", """
+                = Security Guide
+                
+                == Authentication
+                
+                Configure authentication for your app.
+                
+                === OAuth2 Setup
+                
+                OAuth2 specific configuration.
+                """);
+
+        KeywordIndex index = indexer.build("3.27", List.of("security-config.adoc"));
+        FileKeywordEntry entry = index.files.get(0);
+
+        // "secur" (from security) should have filename as source (highest priority)
+        Optional<KeywordScore> securityScore = entry.keywords.stream()
+                .filter(k -> k.word.equals("secur")).findFirst();
+        assertThat(securityScore).isPresent();
+        assertThat(securityScore.get().source).isEqualTo("filename");
+
+        // "config" should also be from filename
+        Optional<KeywordScore> configScore = entry.keywords.stream()
+                .filter(k -> k.word.equals("config")).findFirst();
+        assertThat(configScore).isPresent();
+        assertThat(configScore.get().source).isEqualTo("filename");
+    }
+
+    @Test
+    void titleKeywordsHaveTitleSource() {
+        docStore.write("3.27", "test.adoc", """
+                = Authentication Overview
+                
+                Some content here.
+                """);
+
+        KeywordIndex index = indexer.build("3.27", List.of("test.adoc"));
+        FileKeywordEntry entry = index.files.get(0);
+
+        // "authentic" (from Authentication -> stem removes "ation") should have title as source
+        Optional<KeywordScore> authScore = entry.keywords.stream()
+                .filter(k -> k.word.equals("authentic")).findFirst();
+        assertThat(authScore).isPresent();
+        assertThat(authScore.get().source).isEqualTo("title");
+        assertThat(authScore.get().score).isGreaterThanOrEqualTo(8); // title weight = 8
+    }
+
+    @Test
+    void sectionKeywordsHaveSectionSource() {
+        docStore.write("3.27", "test.adoc", """
+                = Title
+                
+                == Database Configuration
+                
+                Configure your database connection.
+                """);
+
+        KeywordIndex index = indexer.build("3.27", List.of("test.adoc"));
+        FileKeywordEntry entry = index.files.get(0);
+
+        // "database" stays as "database" (no suffix rule matches)
+        Optional<KeywordScore> dbScore = entry.keywords.stream()
+                .filter(k -> k.word.equals("database")).findFirst();
+        assertThat(dbScore).isPresent();
+        assertThat(dbScore.get().source).isEqualTo("section");
+    }
+
+    @Test
+    void subtitleKeywordsHaveSubtitleSource() {
+        docStore.write("3.27", "test.adoc", """
+                = Title
+                
+                == Section
+                
+                Some content.
+                
+                === Advanced Options
+                
+                Advanced configuration options.
+                """);
+
+        KeywordIndex index = indexer.build("3.27", List.of("test.adoc"));
+        FileKeywordEntry entry = index.files.get(0);
+
+        // "advanc" (from Advanced) should have subtitle as source
+        Optional<KeywordScore> advancedScore = entry.keywords.stream()
+                .filter(k -> k.word.equals("advanc")).findFirst();
+        assertThat(advancedScore).isPresent();
+        assertThat(advancedScore.get().source).isEqualTo("subtitle");
     }
 }

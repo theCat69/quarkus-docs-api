@@ -1,5 +1,6 @@
 package com.fvd.search.services;
 
+import com.fvd.repository.domain.MatchedKeyword;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
@@ -14,7 +15,7 @@ public class SectionSearchResult {
     public int start;
     public int end;
     public double score;
-    public List<String> matchedKeywords;
+    public List<MatchedKeyword> matchedKeywords;
     public String extension;
     public String snippet;
     public String matchedSectionTitle;
@@ -24,7 +25,7 @@ public class SectionSearchResult {
      * Constructor without the new snippet/sectionTitle fields for backward compatibility.
      */
     public SectionSearchResult(String path, String section, int start, int end,
-                               double score, List<String> matchedKeywords, String extension) {
+                               double score, List<MatchedKeyword> matchedKeywords, String extension) {
         this(path, section, start, end, score, matchedKeywords, extension, null, null, 0.0);
     }
 

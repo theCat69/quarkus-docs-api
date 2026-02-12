@@ -1,25 +1,47 @@
-package com.fvd.indexs.stores;
+package com.fvd.repository.sqlite;
 
 import com.fvd.common.validators.InputValidator;
-import com.fvd.indexs.indexers.FileKeywordEntry;
-import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordScore;
-import com.fvd.indexs.indexers.SectionKeywordEntry;
+import com.fvd.repository.api.KeywordIndexRepository;
+import com.fvd.repository.domain.FileEntry;
+import com.fvd.repository.domain.KeywordIndexData;
+import com.fvd.repository.domain.KeywordWeight;
+import com.fvd.repository.domain.SectionEntry;
+import com.fvd.repository.exceptions.RepositoryException;
+import com.fvd.search.services.KeywordScorer;
+import io.quarkus.arc.lookup.LookupIfProperty;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.sql.DataSource;
-import java.sql.*;
-import java.util.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
+/**
+ * SQLite implementation of {@link KeywordIndexRepository}.
+ * <p>
+ * Stores keyword index data in SQLite tables with support for
+ * file-level and section-level keyword associations.
+ * </p>
+ */
 @Slf4j
 @ApplicationScoped
 @RequiredArgsConstructor
-public class KeywordIndexStore {
+@LookupIfProperty(name = "app.database.type", stringValue = "sqlite", lookupIfMissing = true)
+public class SqliteKeywordIndexRepository implements KeywordIndexRepository {
 
     private final DataSource dataSource;
 
+    @Override
     public boolean exists(String version) {
         InputValidator.validateVersion(version);
 
@@ -31,32 +53,35 @@ public class KeywordIndexStore {
                 return rs.next();
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to check keyword index existence for version: " + version, e);
+            throw new RepositoryException("Failed to check keyword index existence for version: " + version, e);
         }
     }
 
-    public Optional<KeywordIndex> read(String version) {
+    @Override
+    public Optional<KeywordIndexData> findByVersion(String version) {
         InputValidator.validateVersion(version);
 
         try (Connection conn = dataSource.getConnection()) {
-            List<FileKeywordEntry> fileEntries = loadFileEntries(conn, version);
+            List<FileEntry> fileEntries = loadFileEntries(conn, version);
             if (fileEntries.isEmpty()) {
                 return Optional.empty();
             }
-            return Optional.of(new KeywordIndex(fileEntries));
+            return Optional.of(new KeywordIndexData(version, fileEntries));
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to read keyword index for version: " + version, e);
+            throw new RepositoryException("Failed to read keyword index for version: " + version, e);
         }
     }
 
-    public void write(String version, KeywordIndex index) {
+    @Override
+    public void save(String version, KeywordIndexData data) {
         InputValidator.validateVersion(version);
+        Objects.requireNonNull(data, "data must not be null");
 
         try (Connection conn = dataSource.getConnection()) {
             conn.setAutoCommit(false);
             try {
                 deleteVersion(conn, version);
-                insertIndex(conn, version, index);
+                insertIndex(conn, version, data);
                 conn.commit();
             } catch (SQLException e) {
                 conn.rollback();
@@ -65,17 +90,18 @@ public class KeywordIndexStore {
                 conn.setAutoCommit(true);
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to write keyword index for version: " + version, e);
+            throw new RepositoryException("Failed to write keyword index for version: " + version, e);
         }
     }
 
-    public void deleteVersion(String version) {
+    @Override
+    public void deleteByVersion(String version) {
         InputValidator.validateVersion(version);
 
         try (Connection conn = dataSource.getConnection()) {
             deleteVersion(conn, version);
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to delete keyword index for version: " + version, e);
+            throw new RepositoryException("Failed to delete keyword index for version: " + version, e);
         }
     }
 
@@ -87,8 +113,8 @@ public class KeywordIndexStore {
         }
     }
 
-    private void insertIndex(Connection conn, String version, KeywordIndex index) throws SQLException {
-        if (index.files == null || index.files.isEmpty()) {
+    private void insertIndex(Connection conn, String version, KeywordIndexData data) throws SQLException {
+        if (data.files() == null || data.files().isEmpty()) {
             return;
         }
 
@@ -103,10 +129,10 @@ public class KeywordIndexStore {
              PreparedStatement sectionKwStmt = conn.prepareStatement(
                      "INSERT INTO section_keywords (section_id, word, score, source, frequency) VALUES (?, ?, ?, ?, ?)")) {
 
-            for (FileKeywordEntry file : index.files) {
+            for (FileEntry file : data.files()) {
                 fileStmt.setString(1, version);
-                fileStmt.setString(2, file.path);
-                fileStmt.setString(3, file.extension != null ? file.extension : "quarkus-core");
+                fileStmt.setString(2, file.path());
+                fileStmt.setString(3, file.extension() != null ? file.extension() : "quarkus-core");
                 fileStmt.executeUpdate();
 
                 long fileId;
@@ -116,25 +142,25 @@ public class KeywordIndexStore {
                 }
 
                 // Insert file-level keywords with source and frequency
-                if (file.keywords != null) {
-                    for (KeywordScore ks : file.keywords) {
+                if (file.keywords() != null) {
+                    for (KeywordWeight kw : file.keywords()) {
                         fileKwStmt.setLong(1, fileId);
-                        fileKwStmt.setString(2, ks.word);
-                        fileKwStmt.setInt(3, ks.score);
-                        fileKwStmt.setString(4, ks.source != null ? ks.source : "body");
-                        fileKwStmt.setInt(5, ks.frequency > 0 ? ks.frequency : 1);
+                        fileKwStmt.setString(2, kw.word());
+                        fileKwStmt.setInt(3, (int) kw.weight());
+                        fileKwStmt.setString(4, kw.source() != null ? kw.source() : KeywordScorer.SOURCE_BODY);
+                        fileKwStmt.setInt(5, kw.frequency() > 0 ? kw.frequency() : 1);
                         fileKwStmt.addBatch();
                     }
                     fileKwStmt.executeBatch();
                 }
 
                 // Insert sections and section keywords
-                if (file.sections != null) {
-                    for (SectionKeywordEntry section : file.sections) {
+                if (file.sections() != null) {
+                    for (SectionEntry section : file.sections()) {
                         sectionStmt.setLong(1, fileId);
-                        sectionStmt.setString(2, section.title);
-                        sectionStmt.setInt(3, section.start);
-                        sectionStmt.setInt(4, section.end);
+                        sectionStmt.setString(2, section.title());
+                        sectionStmt.setInt(3, section.startLine());
+                        sectionStmt.setInt(4, section.endLine());
                         sectionStmt.executeUpdate();
 
                         long sectionId;
@@ -143,13 +169,13 @@ public class KeywordIndexStore {
                             sectionId = keys.getLong(1);
                         }
 
-                        if (section.keywords != null) {
-                            for (KeywordScore ks : section.keywords) {
+                        if (section.keywords() != null) {
+                            for (KeywordWeight kw : section.keywords()) {
                                 sectionKwStmt.setLong(1, sectionId);
-                                sectionKwStmt.setString(2, ks.word);
-                                sectionKwStmt.setInt(3, ks.score);
-                                sectionKwStmt.setString(4, ks.source != null ? ks.source : "body");
-                                sectionKwStmt.setInt(5, ks.frequency > 0 ? ks.frequency : 1);
+                                sectionKwStmt.setString(2, kw.word());
+                                sectionKwStmt.setInt(3, (int) kw.weight());
+                                sectionKwStmt.setString(4, kw.source() != null ? kw.source() : KeywordScorer.SOURCE_BODY);
+                                sectionKwStmt.setInt(5, kw.frequency() > 0 ? kw.frequency() : 1);
                                 sectionKwStmt.addBatch();
                             }
                             sectionKwStmt.executeBatch();
@@ -160,9 +186,9 @@ public class KeywordIndexStore {
         }
     }
 
-    private List<FileKeywordEntry> loadFileEntries(Connection conn, String version) throws SQLException {
+    private List<FileEntry> loadFileEntries(Connection conn, String version) throws SQLException {
         // Use LinkedHashMap to preserve insertion order (by file id)
-        Map<Long, FileKeywordEntry> filesById = new LinkedHashMap<>();
+        Map<Long, FileEntryBuilder> filesById = new LinkedHashMap<>();
 
         // Query 1: files + file keywords via JOIN
         try (PreparedStatement stmt = conn.prepareStatement("""
@@ -176,21 +202,23 @@ public class KeywordIndexStore {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     long fileId = rs.getLong("file_id");
-                    FileKeywordEntry entry = filesById.get(fileId);
-                    if (entry == null) {
+                    FileEntryBuilder builder = filesById.get(fileId);
+                    if (builder == null) {
                         String path = rs.getString("path");
                         String extension = rs.getString("extension");
-                        entry = new FileKeywordEntry(path, new ArrayList<>(), new ArrayList<>(), extension);
-                        filesById.put(fileId, entry);
+                        builder = new FileEntryBuilder(path, extension);
+                        filesById.put(fileId, builder);
                     }
                     String word = rs.getString("word");
                     if (word != null) {
                         int score = rs.getInt("score");
                         String source = rs.getString("source");
                         int frequency = rs.getInt("frequency");
-                        entry.keywords.add(new KeywordScore(word, score, 
-                                source != null ? source : "body", 
-                                frequency > 0 ? frequency : 1));
+                        builder.keywords.add(new KeywordWeight(word, word,
+                                source != null ? source : KeywordScorer.SOURCE_BODY,
+                                (double) score,
+                                frequency > 0 ? frequency : 1,
+                                0));
                     }
                 }
             }
@@ -201,7 +229,7 @@ public class KeywordIndexStore {
         }
 
         // Query 2: sections + section keywords via JOIN
-        Map<Long, SectionKeywordEntry> sectionsById = new LinkedHashMap<>();
+        Map<Long, SectionEntryBuilder> sectionsById = new LinkedHashMap<>();
 
         try (PreparedStatement stmt = conn.prepareStatement("""
                 SELECT s.file_id, s.id AS section_id, s.title, s.start_line, s.end_line,
@@ -217,12 +245,12 @@ public class KeywordIndexStore {
                 while (rs.next()) {
                     long sectionId = rs.getLong("section_id");
                     long fileId = rs.getLong("file_id");
-                    SectionKeywordEntry section = sectionsById.get(sectionId);
+                    SectionEntryBuilder section = sectionsById.get(sectionId);
                     if (section == null) {
                         String title = rs.getString("title");
                         int start = rs.getInt("start_line");
                         int end = rs.getInt("end_line");
-                        section = new SectionKeywordEntry(title, start, end, new ArrayList<>());
+                        section = new SectionEntryBuilder(title, start, end);
                         sectionsById.put(sectionId, section);
                         filesById.get(fileId).sections.add(section);
                     }
@@ -231,14 +259,62 @@ public class KeywordIndexStore {
                         int score = rs.getInt("score");
                         String source = rs.getString("source");
                         int frequency = rs.getInt("frequency");
-                        section.keywords.add(new KeywordScore(word, score,
-                                source != null ? source : "body",
-                                frequency > 0 ? frequency : 1));
+                        section.keywords.add(new KeywordWeight(word, word,
+                                source != null ? source : KeywordScorer.SOURCE_BODY,
+                                (double) score,
+                                frequency > 0 ? frequency : 1,
+                                0));
                     }
                 }
             }
         }
 
-        return new ArrayList<>(filesById.values());
+        return filesById.values().stream()
+                .map(FileEntryBuilder::build)
+                .toList();
+    }
+
+    /**
+     * Builder for FileEntry to accumulate data during loading.
+     */
+    private static class FileEntryBuilder {
+        final String path;
+        final String extension;
+        final List<KeywordWeight> keywords = new ArrayList<>();
+        final List<SectionEntryBuilder> sections = new ArrayList<>();
+
+        FileEntryBuilder(String path, String extension) {
+            this.path = path;
+            this.extension = extension;
+        }
+
+        FileEntry build() {
+            return new FileEntry(
+                    path,
+                    extension,
+                    List.copyOf(keywords),
+                    sections.stream().map(SectionEntryBuilder::build).toList()
+            );
+        }
+    }
+
+    /**
+     * Builder for SectionEntry to accumulate data during loading.
+     */
+    private static class SectionEntryBuilder {
+        final String title;
+        final int startLine;
+        final int endLine;
+        final List<KeywordWeight> keywords = new ArrayList<>();
+
+        SectionEntryBuilder(String title, int startLine, int endLine) {
+            this.title = title;
+            this.startLine = startLine;
+            this.endLine = endLine;
+        }
+
+        SectionEntry build() {
+            return new SectionEntry(title, startLine, endLine, List.copyOf(keywords));
+        }
     }
 }

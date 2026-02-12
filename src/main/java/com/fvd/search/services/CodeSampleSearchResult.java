@@ -1,5 +1,6 @@
 package com.fvd.search.services;
 
+import com.fvd.repository.domain.MatchedKeyword;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
@@ -18,7 +19,7 @@ public class CodeSampleSearchResult {
     public int startLine;
     public int endLine;
     public double score;
-    public List<String> matchedKeywords;
+    public List<MatchedKeyword> matchedKeywords;
     public String extension;
 
 }

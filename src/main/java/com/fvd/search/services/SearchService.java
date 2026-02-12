@@ -14,6 +14,7 @@ import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.indexs.indexers.SectionKeywordEntry;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
+import com.fvd.repository.domain.MatchedKeyword;
 import com.fvd.search.SearchConfig;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -23,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -81,7 +83,7 @@ public class SearchService {
                     finalScore *= multiKeywordBoost;
                 }
                 results.add(new FileSearchResult(file.path, finalScore,
-                        List.copyOf(acc.matchedKeywords), file.extension));
+                        acc.matchedKeywords, file.extension));
             }
         }
         return results;
@@ -120,7 +122,7 @@ public class SearchService {
                     }
                     results.add(new SectionSearchResult(
                             file.path, section.title, section.start, section.end, finalScore,
-                            List.copyOf(acc.matchedKeywords), file.extension));
+                            acc.matchedKeywords, file.extension));
                 }
             }
         }
@@ -311,7 +313,7 @@ public class SearchService {
                 results.add(new CodeSampleSearchResult(
                         sample.filePath, sample.sectionTitle, matchedTitle, matchScore,
                         sample.language, sample.content, sample.startLine, sample.endLine, finalScore,
-                        List.copyOf(acc.matchedKeywords), sample.extension));
+                        acc.matchedKeywords, sample.extension));
             }
         }
 
@@ -337,17 +339,18 @@ public class SearchService {
         return new PaginatedResult<>(all.subList(offset, end), total);
     }
 
-    record MatchAccumulator(double score, int matchedCount, Set<String> matchedKeywords) {}
+    record MatchAccumulator(double score, int matchedCount, List<MatchedKeyword> matchedKeywords) {}
 
     /**
      * Computes the total matching score for a list of indexed keywords against a set of query keywords.
      * Supports both exact matches (full score) and prefix matches (discounted by PREFIX_MATCH_MULTIPLIER).
      * Exact matches take precedence over prefix matches for the same indexed keyword.
+     * Returns MatchedKeyword objects with source and weight information.
      */
     MatchAccumulator computeMatchingScore(List<KeywordScore> indexedKeywords, Set<String> queryKeywords) {
         double prefixMultiplier = searchConfig.boost().prefixMatchMultiplier();
         double totalScore = 0;
-        Set<String> matchedQueryKeywords = new HashSet<>();
+        Map<String, MatchedKeyword> matchedByQuery = new HashMap<>();
 
         for (KeywordScore ks : indexedKeywords) {
             double bestScore = 0;
@@ -371,11 +374,17 @@ public class SearchService {
 
             if (bestQueryKeyword != null) {
                 totalScore += bestScore;
-                matchedQueryKeywords.add(bestQueryKeyword);
+                // Track the matched keyword with source and weight
+                // If the same query keyword matches multiple index keywords, use highest weight
+                MatchedKeyword existing = matchedByQuery.get(bestQueryKeyword);
+                String source = ks.source != null ? ks.source : "body";
+                if (existing == null || bestScore > existing.weight()) {
+                    matchedByQuery.put(bestQueryKeyword, new MatchedKeyword(bestQueryKeyword, source, bestScore));
+                }
             }
         }
 
-        return new MatchAccumulator(totalScore, matchedQueryKeywords.size(), matchedQueryKeywords);
+        return new MatchAccumulator(totalScore, matchedByQuery.size(), List.copyOf(matchedByQuery.values()));
     }
 
     int computeLineNumber(String text, int charOffset) {
