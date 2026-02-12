@@ -2,6 +2,7 @@ package com.fvd.search.services;
 
 import com.fvd.cache.services.CacheService;
 import com.fvd.common.matchers.FuzzyMatcher;
+import com.fvd.common.utils.FilterUtils;
 import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
@@ -69,7 +70,7 @@ public class SearchService {
         List<FileSearchResult> results = new ArrayList<>();
 
         for (FileKeywordEntry file : index.files) {
-            if (extension != null && !extension.isBlank() && !extension.equals(file.extension)) {
+            if (!FilterUtils.matchesFilter(extension, file.extension)) {
                 continue;
             }
             SearchScorer.MatchResult matchResult = searchScorer.computeScore(file.keywords, keywordSet);
@@ -105,7 +106,7 @@ public class SearchService {
             if (filePathSet != null && !filePathSet.contains(file.path)) {
                 continue;
             }
-            if (extension != null && !extension.isBlank() && !extension.equals(file.extension)) {
+            if (!FilterUtils.matchesFilter(extension, file.extension)) {
                 continue;
             }
             for (SectionKeywordEntry section : file.sections) {
@@ -294,7 +295,7 @@ public class SearchService {
             if (matchedTitle != null && !sample.sectionTitle.equals(matchedTitle)) {
                 continue;
             }
-            if (extension != null && !extension.isBlank() && !extension.equals(sample.extension)) {
+            if (!FilterUtils.matchesFilter(extension, sample.extension)) {
                 continue;
             }
 

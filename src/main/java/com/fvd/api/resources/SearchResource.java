@@ -1,9 +1,9 @@
 package com.fvd.api.resources;
 
 import com.fvd.api.dto.QuickSearchResponse;
+import com.fvd.api.dto.SearchParams;
 import com.fvd.api.services.QuickSearchService;
 import com.fvd.common.resources.ProblemDetail;
-import com.fvd.common.validators.InputValidator;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -17,8 +17,6 @@ import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-import java.util.List;
-
 /**
  * REST endpoint for quick discovery search.
  */
@@ -27,9 +25,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(name = "Search", description = "Quick discovery search returning lightweight references")
 public class SearchResource {
-
-    private static final int DEFAULT_LIMIT = 20;
-    private static final int MAX_LIMIT = 100;
 
     private final QuickSearchService quickSearchService;
 
@@ -95,11 +90,9 @@ public class SearchResource {
             )
             @QueryParam("offset") Integer offset) {
 
-        version = InputValidator.resolveVersion(version);
-        List<String> keywordList = InputValidator.parseKeywords(keywords);
-        int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
-        int validOffset = InputValidator.validateOffset(offset);
+        SearchParams params = SearchParams.fromRaw(version, keywords, subject, extension, limit, offset);
 
-        return quickSearchService.search(version, keywordList, subject, extension, validLimit, validOffset);
+        return quickSearchService.search(params.version(), params.keywords(), params.subject(),
+                params.extension(), params.limit(), params.offset());
     }
 }

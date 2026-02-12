@@ -1,9 +1,9 @@
 package com.fvd.api.resources;
 
 import com.fvd.api.dto.CodeSampleSearchResponse;
+import com.fvd.api.dto.SearchParams;
 import com.fvd.api.services.CodeSampleService;
 import com.fvd.common.resources.ProblemDetail;
-import com.fvd.common.validators.InputValidator;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -17,8 +17,6 @@ import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-import java.util.List;
-
 /**
  * REST endpoint for code sample search.
  */
@@ -27,9 +25,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(name = "Code Samples", description = "Search code examples by keywords")
 public class CodeSampleResource {
-
-    private static final int DEFAULT_LIMIT = 20;
-    private static final int MAX_LIMIT = 100;
 
     private final CodeSampleService codeSampleService;
 
@@ -101,12 +96,9 @@ public class CodeSampleResource {
             )
             @QueryParam("offset") Integer offset) {
 
-        version = InputValidator.resolveVersion(version);
-        List<String> keywordList = InputValidator.parseKeywords(keywords);
-        int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
-        int validOffset = InputValidator.validateOffset(offset);
+        SearchParams params = SearchParams.fromRaw(version, keywords, subject, extension, limit, offset);
 
-        return codeSampleService.searchCodeSamples(version, keywordList, language, subject,
-                extension, validLimit, validOffset);
+        return codeSampleService.searchCodeSamples(params.version(), params.keywords(), language,
+                params.subject(), params.extension(), params.limit(), params.offset());
     }
 }

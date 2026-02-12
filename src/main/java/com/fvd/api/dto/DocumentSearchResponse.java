@@ -1,21 +1,14 @@
 package com.fvd.api.dto;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
-import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Generic paginated search response wrapper.
  */
-@RegisterForReflection
+@SuperBuilder
 @NoArgsConstructor
-@AllArgsConstructor
-public class DocumentSearchResponse {
-
-    public List<DocumentResponse> results;
-    public int totalCount;
-    public int returnedCount;
-
+@RegisterForReflection
+public class DocumentSearchResponse extends PaginatedResponse<DocumentResponse> {
 }

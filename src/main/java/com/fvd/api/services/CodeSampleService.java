@@ -2,8 +2,9 @@ package com.fvd.api.services;
 
 import com.fvd.api.dto.CodeSampleResult;
 import com.fvd.api.dto.CodeSampleSearchResponse;
+import com.fvd.common.utils.DocumentTitleExtractor;
+import com.fvd.common.utils.FilterUtils;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.indexs.indexers.CodeSampleEntry;
 import com.fvd.indexs.indexers.CodeSampleIndex;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.repository.domain.MatchedKeyword;
@@ -17,9 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Service for code sample search operations.
@@ -28,8 +26,6 @@ import java.util.regex.Pattern;
 @ApplicationScoped
 @RequiredArgsConstructor
 public class CodeSampleService {
-
-    private static final Pattern TITLE_PATTERN = Pattern.compile("^=\\s+(.+)$", Pattern.MULTILINE);
 
     private final SearchService searchService;
     private final CodeSampleIndexStore codeSampleIndexStore;
@@ -59,14 +55,14 @@ public class CodeSampleService {
         int skipped = 0;
 
         for (CodeSampleSearchResult csResult : searchResult.items()) {
-            // Apply language filter
+            // Apply language filter (case-insensitive)
             if (language != null && !language.isBlank() && !language.equalsIgnoreCase(csResult.language)) {
                 continue;
             }
 
             // Apply subject filter
             String derivedSubject = subjectDeriver.deriveSubject(csResult.path);
-            if (subject != null && !subject.isBlank() && !subject.equals(derivedSubject)) {
+            if (!FilterUtils.matchesFilter(subject, derivedSubject)) {
                 continue;
             }
 
@@ -81,7 +77,9 @@ public class CodeSampleService {
             }
 
             // Get document title
-            String docTitle = getDocumentTitle(version, csResult.path);
+            String docTitle = docStore.read(version, csResult.path)
+                    .map(DocumentTitleExtractor::extractTitle)
+                    .orElse("");
 
             List<String> matchedKws = csResult.matchedKeywords.stream()
                     .map(MatchedKeyword::keyword)
@@ -102,19 +100,10 @@ public class CodeSampleService {
             ));
         }
 
-        return new CodeSampleSearchResponse(results, searchResult.total(), results.size());
-    }
-
-    private String getDocumentTitle(String version, String path) {
-        Optional<String> contentOpt = docStore.read(version, path);
-        if (contentOpt.isEmpty()) {
-            return "";
-        }
-
-        Matcher matcher = TITLE_PATTERN.matcher(contentOpt.get());
-        if (matcher.find()) {
-            return matcher.group(1).trim();
-        }
-        return "";
+        return CodeSampleSearchResponse.builder()
+                .results(results)
+                .totalCount(searchResult.total())
+                .returnedCount(results.size())
+                .build();
     }
 }

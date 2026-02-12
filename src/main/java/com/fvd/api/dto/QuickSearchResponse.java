@@ -1,21 +1,14 @@
 package com.fvd.api.dto;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
-import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Paginated response for quick search endpoint.
  */
-@RegisterForReflection
+@SuperBuilder
 @NoArgsConstructor
-@AllArgsConstructor
-public class QuickSearchResponse {
-
-    public List<SearchResultRef> results;
-    public int totalCount;
-    public int returnedCount;
-
+@RegisterForReflection
+public class QuickSearchResponse extends PaginatedResponse<SearchResultRef> {
 }

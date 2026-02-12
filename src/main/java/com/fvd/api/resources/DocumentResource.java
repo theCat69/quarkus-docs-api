@@ -2,6 +2,7 @@ package com.fvd.api.resources;
 
 import com.fvd.api.dto.DocumentResponse;
 import com.fvd.api.dto.DocumentSearchResponse;
+import com.fvd.api.dto.SearchParams;
 import com.fvd.api.services.DocumentService;
 import com.fvd.common.exceptions.InvalidInputException;
 import com.fvd.common.resources.ProblemDetail;
@@ -20,8 +21,6 @@ import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-import java.util.List;
-
 /**
  * REST endpoint for document retrieval and search.
  */
@@ -30,9 +29,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(name = "Documents", description = "Document retrieval and search operations")
 public class DocumentResource {
-
-    private static final int DEFAULT_LIMIT = 20;
-    private static final int MAX_LIMIT = 100;
 
     private final DocumentService documentService;
 
@@ -111,12 +107,11 @@ public class DocumentResource {
             )
             @QueryParam("offset") Integer offset) {
 
-        version = InputValidator.resolveVersion(version);
-
         // Path mode takes precedence
         if (path != null && !path.isBlank()) {
+            String resolvedVersion = InputValidator.resolveVersion(version);
             InputValidator.validatePath(path);
-            DocumentResponse doc = documentService.getDocumentByPath(version, path);
+            DocumentResponse doc = documentService.getDocumentByPath(resolvedVersion, path);
             if (doc == null) {
                 throw new DocNotFoundException("Document not found: " + path);
             }
@@ -125,12 +120,10 @@ public class DocumentResource {
 
         // Search mode
         if (keywords != null && !keywords.isBlank()) {
-            List<String> keywordList = InputValidator.parseKeywords(keywords);
-            int validLimit = InputValidator.validateLimit(limit, DEFAULT_LIMIT, MAX_LIMIT);
-            int validOffset = InputValidator.validateOffset(offset);
+            SearchParams params = SearchParams.fromRaw(version, keywords, subject, extension, limit, offset);
 
-            return documentService.searchDocuments(version, keywordList, subject, extension,
-                    validLimit, validOffset);
+            return documentService.searchDocuments(params.version(), params.keywords(), params.subject(),
+                    params.extension(), params.limit(), params.offset());
         }
 
         // Neither provided

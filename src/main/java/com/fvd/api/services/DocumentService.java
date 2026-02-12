@@ -4,6 +4,8 @@ import com.fvd.api.dto.CodeBlockInfo;
 import com.fvd.api.dto.DocumentResponse;
 import com.fvd.api.dto.DocumentSearchResponse;
 import com.fvd.api.dto.SectionInfo;
+import com.fvd.common.utils.DocumentTitleExtractor;
+import com.fvd.common.utils.FilterUtils;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.indexers.FileKeywordEntry;
@@ -33,7 +35,6 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class DocumentService {
 
-    private static final Pattern TITLE_PATTERN = Pattern.compile("^=\\s+(.+)$", Pattern.MULTILINE);
     private static final Pattern DESCRIPTION_PATTERN = Pattern.compile("^:description:\\s*(.+)$", Pattern.MULTILINE);
     private static final Pattern SECTION_HEADER = Pattern.compile("^(={2,5})\\s+(.+)$");
 
@@ -85,7 +86,7 @@ public class DocumentService {
         for (FileSearchResult fileResult : searchResult.items()) {
             // Apply subject filter if specified
             String derivedSubject = subjectDeriver.deriveSubject(fileResult.path);
-            if (subject != null && !subject.isBlank() && !subject.equals(derivedSubject)) {
+            if (!FilterUtils.matchesFilter(subject, derivedSubject)) {
                 continue;
             }
 
@@ -110,13 +111,17 @@ public class DocumentService {
             results.add(doc);
         }
 
-        return new DocumentSearchResponse(results, searchResult.total(), results.size());
+        return DocumentSearchResponse.builder()
+                .results(results)
+                .totalCount(searchResult.total())
+                .returnedCount(results.size())
+                .build();
     }
 
     private DocumentResponse buildDocumentResponse(String path, String content,
                                                    String extension, String subject,
                                                    List<String> matchedKeywords, Double score) {
-        String title = extractTitle(content);
+        String title = DocumentTitleExtractor.extractTitle(content);
         String description = extractDescription(content);
         List<SectionInfo> sections = parseSections(content);
         List<CodeBlockInfo> codeBlocks = parseCodeBlocks(content);
@@ -132,14 +137,6 @@ public class DocumentService {
                 matchedKeywords,
                 score
         );
-    }
-
-    private String extractTitle(String content) {
-        Matcher matcher = TITLE_PATTERN.matcher(content);
-        if (matcher.find()) {
-            return matcher.group(1).trim();
-        }
-        return "";
     }
 
     private String extractDescription(String content) {

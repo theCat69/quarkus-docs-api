@@ -1,21 +1,14 @@
 package com.fvd.api.dto;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
-import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Paginated response for code sample search.
  */
-@RegisterForReflection
+@SuperBuilder
 @NoArgsConstructor
-@AllArgsConstructor
-public class CodeSampleSearchResponse {
-
-    public List<CodeSampleResult> results;
-    public int totalCount;
-    public int returnedCount;
-
+@RegisterForReflection
+public class CodeSampleSearchResponse extends PaginatedResponse<CodeSampleResult> {
 }

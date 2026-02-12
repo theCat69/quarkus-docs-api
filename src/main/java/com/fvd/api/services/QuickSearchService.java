@@ -2,6 +2,9 @@ package com.fvd.api.services;
 
 import com.fvd.api.dto.QuickSearchResponse;
 import com.fvd.api.dto.SearchResultRef;
+import com.fvd.common.SearchConstants;
+import com.fvd.common.utils.DocumentTitleExtractor;
+import com.fvd.common.utils.FilterUtils;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.repository.domain.MatchedKeyword;
 import com.fvd.search.services.FileSearchResult;
@@ -16,8 +19,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Service for quick discovery search operations.
@@ -26,9 +27,6 @@ import java.util.regex.Pattern;
 @ApplicationScoped
 @RequiredArgsConstructor
 public class QuickSearchService {
-
-    private static final Pattern TITLE_PATTERN = Pattern.compile("^=\\s+(.+)$", Pattern.MULTILINE);
-    private static final int SNIPPET_CONTEXT_SIZE = 80;
 
     private final SearchService searchService;
     private final DocStore docStore;
@@ -59,7 +57,7 @@ public class QuickSearchService {
         for (FileSearchResult fileResult : searchResult.items()) {
             // Apply subject filter if specified
             String derivedSubject = subjectDeriver.deriveSubject(fileResult.path);
-            if (subject != null && !subject.isBlank() && !subject.equals(derivedSubject)) {
+            if (!FilterUtils.matchesFilter(subject, derivedSubject)) {
                 continue;
             }
 
@@ -74,7 +72,9 @@ public class QuickSearchService {
             }
 
             // Get document info
-            String title = getDocumentTitle(version, fileResult.path);
+            String title = docStore.read(version, fileResult.path)
+                    .map(DocumentTitleExtractor::extractTitle)
+                    .orElse("");
             String snippet = generateSnippet(version, fileResult.path, keywordSet);
 
             List<String> matchedKws = fileResult.matchedKeywords.stream()
@@ -92,20 +92,11 @@ public class QuickSearchService {
             ));
         }
 
-        return new QuickSearchResponse(results, searchResult.total(), results.size());
-    }
-
-    private String getDocumentTitle(String version, String path) {
-        Optional<String> contentOpt = docStore.read(version, path);
-        if (contentOpt.isEmpty()) {
-            return "";
-        }
-
-        Matcher matcher = TITLE_PATTERN.matcher(contentOpt.get());
-        if (matcher.find()) {
-            return matcher.group(1).trim();
-        }
-        return "";
+        return QuickSearchResponse.builder()
+                .results(results)
+                .totalCount(searchResult.total())
+                .returnedCount(results.size())
+                .build();
     }
 
     private String generateSnippet(String version, String path, Set<String> keywords) {
@@ -127,8 +118,8 @@ public class QuickSearchService {
         }
 
         if (bestOffset >= 0) {
-            int start = Math.max(0, bestOffset - SNIPPET_CONTEXT_SIZE);
-            int end = Math.min(content.length(), bestOffset + SNIPPET_CONTEXT_SIZE);
+            int start = Math.max(0, bestOffset - SearchConstants.SNIPPET_CONTEXT_SIZE);
+            int end = Math.min(content.length(), bestOffset + SearchConstants.SNIPPET_CONTEXT_SIZE);
             String snippet = content.substring(start, end).replaceAll("\\s+", " ").trim();
             if (start > 0) {
                 snippet = "..." + snippet;
