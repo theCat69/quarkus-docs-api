@@ -1,7 +1,6 @@
 package com.fvd.search.services;
 
 import com.fvd.cache.services.CacheService;
-import com.fvd.common.Stemmer;
 import com.fvd.common.matchers.FuzzyMatcher;
 import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.docs.parser.DocParser;
@@ -10,11 +9,9 @@ import com.fvd.indexs.indexers.CodeSampleEntry;
 import com.fvd.indexs.indexers.CodeSampleIndex;
 import com.fvd.indexs.indexers.FileKeywordEntry;
 import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.indexs.indexers.SectionKeywordEntry;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
-import com.fvd.repository.domain.MatchedKeyword;
 import com.fvd.search.SearchConfig;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -24,7 +21,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +40,7 @@ public class SearchService {
     private final CacheService cacheService;
     private final SearchConfig searchConfig;
     private final FuzzyMatcher fuzzyMatcher;
+    private final SearchScorer searchScorer;
 
     private final Map<String, KeywordIndex> indexCache = new ConcurrentHashMap<>();
     private final Map<String, CodeSampleIndex> codeSampleIndexCache = new ConcurrentHashMap<>();
@@ -59,8 +56,7 @@ public class SearchService {
             return new PaginatedResult<>(List.of(), 0);
         }
 
-        Set<String> keywordSet = new HashSet<>(keywords.stream()
-                .map(k -> Stemmer.stem(k.toLowerCase())).toList());
+        Set<String> keywordSet = SearchKeywords.prepare(keywords);
         List<FileSearchResult> all = getFileResults(index, keywordSet, extension);
 
         all.sort(Comparator.comparingDouble((FileSearchResult r) -> r.score).reversed());
@@ -76,14 +72,14 @@ public class SearchService {
             if (extension != null && !extension.isBlank() && !extension.equals(file.extension)) {
                 continue;
             }
-            MatchAccumulator acc = computeMatchingScore(file.keywords, keywordSet);
-            if (acc.score > 0) {
-                double finalScore = acc.score;
-                if (acc.matchedCount > 1) {
+            SearchScorer.MatchResult matchResult = searchScorer.computeScore(file.keywords, keywordSet);
+            if (matchResult.score() > 0) {
+                double finalScore = matchResult.score();
+                if (matchResult.matchedCount() > 1) {
                     finalScore *= multiKeywordBoost;
                 }
                 results.add(new FileSearchResult(file.path, finalScore,
-                        acc.matchedKeywords, file.extension));
+                        matchResult.matchedKeywords(), file.extension));
             }
         }
         return results;
@@ -97,8 +93,7 @@ public class SearchService {
             return new PaginatedResult<>(List.of(), 0);
         }
 
-        Set<String> keywordSet = new HashSet<>(keywords.stream()
-                .map(k -> Stemmer.stem(k.toLowerCase())).toList());
+        Set<String> keywordSet = SearchKeywords.prepare(keywords);
         Set<String> originalKeywords = new HashSet<>(keywords.stream()
                 .map(String::toLowerCase).toList());
         Set<String> filePathSet = (filePaths == null || filePaths.isEmpty())
@@ -114,15 +109,15 @@ public class SearchService {
                 continue;
             }
             for (SectionKeywordEntry section : file.sections) {
-                MatchAccumulator acc = computeMatchingScore(section.keywords, keywordSet);
-                if (acc.score > 0) {
-                    double finalScore = acc.score;
-                    if (acc.matchedCount > 1) {
+                SearchScorer.MatchResult matchResult = searchScorer.computeScore(section.keywords, keywordSet);
+                if (matchResult.score() > 0) {
+                    double finalScore = matchResult.score();
+                    if (matchResult.matchedCount() > 1) {
                         finalScore *= multiKeywordBoost;
                     }
                     results.add(new SectionSearchResult(
                             file.path, section.title, section.start, section.end, finalScore,
-                            acc.matchedKeywords, file.extension));
+                            matchResult.matchedKeywords(), file.extension));
                 }
             }
         }
@@ -268,8 +263,7 @@ public class SearchService {
             return new PaginatedResult<>(List.of(), 0);
         }
 
-        Set<String> keywordSet = new HashSet<>(keywords.stream()
-                .map(k -> Stemmer.stem(k.toLowerCase())).toList());
+        Set<String> keywordSet = SearchKeywords.prepare(keywords);
         double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
 
         // Resolve fuzzy section title match if sectionTitle filter is provided
@@ -304,16 +298,16 @@ public class SearchService {
                 continue;
             }
 
-            MatchAccumulator acc = computeMatchingScore(sample.keywords, keywordSet);
-            if (acc.score > 0) {
-                double finalScore = acc.score;
-                if (acc.matchedCount > 1) {
+            SearchScorer.MatchResult matchResult = searchScorer.computeScore(sample.keywords, keywordSet);
+            if (matchResult.score() > 0) {
+                double finalScore = matchResult.score();
+                if (matchResult.matchedCount() > 1) {
                     finalScore *= multiKeywordBoost;
                 }
                 results.add(new CodeSampleSearchResult(
                         sample.filePath, sample.sectionTitle, matchedTitle, matchScore,
                         sample.language, sample.content, sample.startLine, sample.endLine, finalScore,
-                        acc.matchedKeywords, sample.extension));
+                        matchResult.matchedKeywords(), sample.extension));
             }
         }
 
@@ -337,54 +331,6 @@ public class SearchService {
         }
         int end = Math.min(offset + limit, total);
         return new PaginatedResult<>(all.subList(offset, end), total);
-    }
-
-    record MatchAccumulator(double score, int matchedCount, List<MatchedKeyword> matchedKeywords) {}
-
-    /**
-     * Computes the total matching score for a list of indexed keywords against a set of query keywords.
-     * Supports both exact matches (full score) and prefix matches (discounted by PREFIX_MATCH_MULTIPLIER).
-     * Exact matches take precedence over prefix matches for the same indexed keyword.
-     * Returns MatchedKeyword objects with source and weight information.
-     */
-    MatchAccumulator computeMatchingScore(List<KeywordScore> indexedKeywords, Set<String> queryKeywords) {
-        double prefixMultiplier = searchConfig.boost().prefixMatchMultiplier();
-        double totalScore = 0;
-        Map<String, MatchedKeyword> matchedByQuery = new HashMap<>();
-
-        for (KeywordScore ks : indexedKeywords) {
-            double bestScore = 0;
-            String bestQueryKeyword = null;
-
-            for (String query : queryKeywords) {
-                if (ks.word.equals(query)) {
-                    // Exact match — full score, takes precedence
-                    bestScore = ks.score;
-                    bestQueryKeyword = query;
-                    break;
-                } else if (ks.word.startsWith(query)) {
-                    // Prefix match — discounted score
-                    double prefixScore = ks.score * prefixMultiplier;
-                    if (prefixScore > bestScore) {
-                        bestScore = prefixScore;
-                        bestQueryKeyword = query;
-                    }
-                }
-            }
-
-            if (bestQueryKeyword != null) {
-                totalScore += bestScore;
-                // Track the matched keyword with source and weight
-                // If the same query keyword matches multiple index keywords, use highest weight
-                MatchedKeyword existing = matchedByQuery.get(bestQueryKeyword);
-                String source = ks.source != null ? ks.source : "body";
-                if (existing == null || bestScore > existing.weight()) {
-                    matchedByQuery.put(bestQueryKeyword, new MatchedKeyword(bestQueryKeyword, source, bestScore));
-                }
-            }
-        }
-
-        return new MatchAccumulator(totalScore, matchedByQuery.size(), List.copyOf(matchedByQuery.values()));
     }
 
     int computeLineNumber(String text, int charOffset) {

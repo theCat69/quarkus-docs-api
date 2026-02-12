@@ -211,9 +211,6 @@ public class CodeSampleIndexer {
     }
 
     private List<KeywordScore> toSortedScores(Map<String, Integer> keywords) {
-        return keywords.entrySet().stream()
-                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
-                .map(e -> new KeywordScore(e.getKey(), e.getValue()))
-                .toList();
+        return KeywordScoreUtils.toSortedScores(keywords);
     }
 }

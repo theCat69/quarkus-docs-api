@@ -48,7 +48,8 @@ class SearchServiceTest {
         cacheService = new CacheService(tempDir.toString());
         SearchConfig searchConfig = new TestSearchConfig();
         FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
-        searchService = new SearchService(keywordIndexStore, codeSampleIndexStore, null, docParser, cacheService, searchConfig, fuzzyMatcher);
+        SearchScorer searchScorer = new SqliteSearchScorer(searchConfig);
+        searchService = new SearchService(keywordIndexStore, codeSampleIndexStore, null, docParser, cacheService, searchConfig, fuzzyMatcher, searchScorer);
     }
 
     private void seedIndex(String version, KeywordIndex index) {
@@ -554,8 +555,9 @@ class SearchServiceTest {
             realDocStore = new DocStore(cacheService);
             SearchConfig searchConfig = new TestSearchConfig();
             FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
+            SearchScorer searchScorer = new SqliteSearchScorer(searchConfig);
             sectionSearchService = new SearchService(
-                    keywordIndexStore, codeSampleIndexStore, realDocStore, docParser, cacheService, searchConfig, fuzzyMatcher);
+                    keywordIndexStore, codeSampleIndexStore, realDocStore, docParser, cacheService, searchConfig, fuzzyMatcher, searchScorer);
         }
 
         @Test
@@ -740,8 +742,9 @@ class SearchServiceTest {
             realDocStore = new DocStore(cacheService);
             SearchConfig searchConfig = new TestSearchConfig();
             FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
+            SearchScorer searchScorer = new SqliteSearchScorer(searchConfig);
             snippetSearchService = new SearchService(
-                    keywordIndexStore, codeSampleIndexStore, realDocStore, docParser, cacheService, searchConfig, fuzzyMatcher);
+                    keywordIndexStore, codeSampleIndexStore, realDocStore, docParser, cacheService, searchConfig, fuzzyMatcher, searchScorer);
         }
 
         @Test

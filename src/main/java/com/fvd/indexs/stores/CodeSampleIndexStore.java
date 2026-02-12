@@ -1,84 +1,61 @@
 package com.fvd.indexs.stores;
 
-import com.fvd.common.validators.InputValidator;
 import com.fvd.indexs.indexers.CodeSampleEntry;
 import com.fvd.indexs.indexers.CodeSampleIndex;
 import com.fvd.indexs.indexers.KeywordScore;
 import jakarta.enterprise.context.ApplicationScoped;
-import lombok.RequiredArgsConstructor;
+import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.sql.DataSource;
-import java.sql.*;
-import java.util.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @ApplicationScoped
-@RequiredArgsConstructor
-public class CodeSampleIndexStore {
+public class CodeSampleIndexStore extends AbstractVersionedStore<CodeSampleIndex> {
 
-    private final DataSource dataSource;
-
-    public boolean exists(String version) {
-        InputValidator.validateVersion(version);
-
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT 1 FROM code_samples WHERE version = ? LIMIT 1")) {
-            stmt.setString(1, version);
-            try (ResultSet rs = stmt.executeQuery()) {
-                return rs.next();
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to check code sample index existence for version: " + version, e);
-        }
+    @Inject
+    public CodeSampleIndexStore(DataSource dataSource) {
+        super(dataSource);
     }
 
-    public Optional<CodeSampleIndex> read(String version) {
-        InputValidator.validateVersion(version);
-
-        try (Connection conn = dataSource.getConnection()) {
-            List<CodeSampleEntry> entries = loadEntries(conn, version);
-            if (entries.isEmpty()) {
-                return Optional.empty();
-            }
-            return Optional.of(new CodeSampleIndex(entries));
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to read code sample index for version: " + version, e);
-        }
+    /**
+     * Protected no-arg constructor for Quarkus ARC proxy creation.
+     */
+    protected CodeSampleIndexStore() {
+        super();
     }
 
-    public void write(String version, CodeSampleIndex index) {
-        InputValidator.validateVersion(version);
-
-        try (Connection conn = dataSource.getConnection()) {
-            conn.setAutoCommit(false);
-            try {
-                deleteVersion(conn, version);
-                insertIndex(conn, version, index);
-                conn.commit();
-            } catch (SQLException e) {
-                conn.rollback();
-                throw e;
-            } finally {
-                conn.setAutoCommit(true);
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to write code sample index for version: " + version, e);
-        }
+    @Override
+    protected String indexName() {
+        return "code sample index";
     }
 
-    public void deleteVersion(String version) {
-        InputValidator.validateVersion(version);
-
-        try (Connection conn = dataSource.getConnection()) {
-            deleteVersion(conn, version);
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to delete code sample index for version: " + version, e);
-        }
+    @Override
+    protected String existsQuery() {
+        return "SELECT 1 FROM code_samples WHERE version = ? LIMIT 1";
     }
 
-    private void deleteVersion(Connection conn, String version) throws SQLException {
+    @Override
+    protected Optional<CodeSampleIndex> doRead(Connection conn, String version) throws SQLException {
+        List<CodeSampleEntry> entries = loadEntries(conn, version);
+        if (entries.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(new CodeSampleIndex(entries));
+    }
+
+    @Override
+    protected void doDelete(Connection conn, String version) throws SQLException {
         // Due to ON DELETE CASCADE, deleting code_samples also removes code_sample_keywords
         try (PreparedStatement stmt = conn.prepareStatement("DELETE FROM code_samples WHERE version = ?")) {
             stmt.setString(1, version);
@@ -86,7 +63,8 @@ public class CodeSampleIndexStore {
         }
     }
 
-    private void insertIndex(Connection conn, String version, CodeSampleIndex index) throws SQLException {
+    @Override
+    protected void doInsert(Connection conn, String version, CodeSampleIndex index) throws SQLException {
         if (index.samples == null || index.samples.isEmpty()) {
             return;
         }

@@ -1,85 +1,62 @@
 package com.fvd.indexs.stores;
 
-import com.fvd.common.validators.InputValidator;
 import com.fvd.indexs.indexers.FileKeywordEntry;
 import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.indexs.indexers.SectionKeywordEntry;
 import jakarta.enterprise.context.ApplicationScoped;
-import lombok.RequiredArgsConstructor;
+import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.sql.DataSource;
-import java.sql.*;
-import java.util.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @ApplicationScoped
-@RequiredArgsConstructor
-public class KeywordIndexStore {
+public class KeywordIndexStore extends AbstractVersionedStore<KeywordIndex> {
 
-    private final DataSource dataSource;
-
-    public boolean exists(String version) {
-        InputValidator.validateVersion(version);
-
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT 1 FROM files WHERE version = ? LIMIT 1")) {
-            stmt.setString(1, version);
-            try (ResultSet rs = stmt.executeQuery()) {
-                return rs.next();
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to check keyword index existence for version: " + version, e);
-        }
+    @Inject
+    public KeywordIndexStore(DataSource dataSource) {
+        super(dataSource);
     }
 
-    public Optional<KeywordIndex> read(String version) {
-        InputValidator.validateVersion(version);
-
-        try (Connection conn = dataSource.getConnection()) {
-            List<FileKeywordEntry> fileEntries = loadFileEntries(conn, version);
-            if (fileEntries.isEmpty()) {
-                return Optional.empty();
-            }
-            return Optional.of(new KeywordIndex(fileEntries));
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to read keyword index for version: " + version, e);
-        }
+    /**
+     * Protected no-arg constructor for Quarkus ARC proxy creation.
+     */
+    protected KeywordIndexStore() {
+        super();
     }
 
-    public void write(String version, KeywordIndex index) {
-        InputValidator.validateVersion(version);
-
-        try (Connection conn = dataSource.getConnection()) {
-            conn.setAutoCommit(false);
-            try {
-                deleteVersion(conn, version);
-                insertIndex(conn, version, index);
-                conn.commit();
-            } catch (SQLException e) {
-                conn.rollback();
-                throw e;
-            } finally {
-                conn.setAutoCommit(true);
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to write keyword index for version: " + version, e);
-        }
+    @Override
+    protected String indexName() {
+        return "keyword index";
     }
 
-    public void deleteVersion(String version) {
-        InputValidator.validateVersion(version);
-
-        try (Connection conn = dataSource.getConnection()) {
-            deleteVersion(conn, version);
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to delete keyword index for version: " + version, e);
-        }
+    @Override
+    protected String existsQuery() {
+        return "SELECT 1 FROM files WHERE version = ? LIMIT 1";
     }
 
-    private void deleteVersion(Connection conn, String version) throws SQLException {
+    @Override
+    protected Optional<KeywordIndex> doRead(Connection conn, String version) throws SQLException {
+        List<FileKeywordEntry> fileEntries = loadFileEntries(conn, version);
+        if (fileEntries.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(new KeywordIndex(fileEntries));
+    }
+
+    @Override
+    protected void doDelete(Connection conn, String version) throws SQLException {
         // Due to ON DELETE CASCADE, deleting files also removes file_keywords, sections, section_keywords
         try (PreparedStatement stmt = conn.prepareStatement("DELETE FROM files WHERE version = ?")) {
             stmt.setString(1, version);
@@ -87,7 +64,8 @@ public class KeywordIndexStore {
         }
     }
 
-    private void insertIndex(Connection conn, String version, KeywordIndex index) throws SQLException {
+    @Override
+    protected void doInsert(Connection conn, String version, KeywordIndex index) throws SQLException {
         if (index.files == null || index.files.isEmpty()) {
             return;
         }
@@ -188,8 +166,8 @@ public class KeywordIndexStore {
                         int score = rs.getInt("score");
                         String source = rs.getString("source");
                         int frequency = rs.getInt("frequency");
-                        entry.keywords.add(new KeywordScore(word, score, 
-                                source != null ? source : "body", 
+                        entry.keywords.add(new KeywordScore(word, score,
+                                source != null ? source : "body",
                                 frequency > 0 ? frequency : 1));
                     }
                 }
