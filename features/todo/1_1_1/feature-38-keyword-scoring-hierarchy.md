@@ -62,29 +62,29 @@ Where:
 **Description:** Extract section titles from AsciiDoc documents and index them as keywords with section-level weight.
 
 **Acceptance Criteria:**
-- [ ] H2 sections (`==`) extracted with their titles
-- [ ] Section keywords weighted at 5x multiplier
-- [ ] Section boundaries tracked for content association
-- [ ] Empty sections handled gracefully
+- [x] H2 sections (`==`) extracted with their titles
+- [x] Section keywords weighted at 5x multiplier
+- [x] Section boundaries tracked for content association
+- [x] Empty sections handled gracefully
 
 ### R2: Subtitle Extraction
 
 **Description:** Extract H3+ headings and index them with subtitle-level weight.
 
 **Acceptance Criteria:**
-- [ ] H3, H4, H5+ headings extracted
-- [ ] Subtitle keywords weighted at 2x multiplier
-- [ ] Heading level preserved in index for debugging
+- [x] H3, H4, H5+ headings extracted
+- [x] Subtitle keywords weighted at 2x multiplier
+- [x] Heading level preserved in index for debugging
 
 ### R3: Filename Keyword Extraction
 
 **Description:** Extract meaningful keywords from document filenames.
 
 **Acceptance Criteria:**
-- [ ] File extension removed before extraction
-- [ ] Hyphens and underscores treated as word separators
-- [ ] Common stopwords filtered (e.g., "guide", "tutorial", "doc")
-- [ ] Filename keywords weighted at 10x multiplier
+- [x] File extension removed before extraction
+- [x] Hyphens and underscores treated as word separators
+- [x] Common stopwords filtered (e.g., "guide", "tutorial", "doc")
+- [x] Filename keywords weighted at 10x multiplier
 
 **Example:**
 ```
@@ -98,20 +98,20 @@ security-jwt-authentication.adoc
 **Description:** Extract the H1 document title and index with high weight.
 
 **Acceptance Criteria:**
-- [ ] First `= Title` in document extracted
-- [ ] Title keywords weighted at 8x multiplier
-- [ ] Handles multi-word titles correctly
-- [ ] Handles titles with special characters
+- [x] First `= Title` in document extracted
+- [x] Title keywords weighted at 8x multiplier
+- [x] Handles multi-word titles correctly
+- [x] Handles titles with special characters
 
 ### R5: Compound Score Calculation
 
 **Description:** When a keyword appears in multiple locations, calculate compound score.
 
 **Acceptance Criteria:**
-- [ ] Same keyword in multiple locations uses highest weight (not sum)
-- [ ] Frequency factor applied after location weight
-- [ ] Final score normalized to 0.0 - 1.0 range for display
-- [ ] Raw scores preserved for ranking
+- [x] Same keyword in multiple locations uses highest weight (not sum)
+- [x] Frequency factor applied after location weight
+- [x] Final score normalized to 0.0 - 1.0 range for display
+- [x] Raw scores preserved for ranking
 
 **Example:**
 ```
@@ -128,10 +128,10 @@ Result: weight = 10x (highest), frequency = 1 + log(5) ≈ 1.7
 **Description:** Include keyword context in search results.
 
 **Acceptance Criteria:**
-- [ ] `matchedKeywords` array includes all matched keywords
-- [ ] Each matched keyword indicates its source location
-- [ ] Score reflects weighted calculation
-- [ ] Results sorted by weighted score descending
+- [x] `matchedKeywords` array includes all matched keywords
+- [x] Each matched keyword indicates its source location
+- [x] Score reflects weighted calculation
+- [x] Results sorted by weighted score descending
 
 **Response Example:**
 ```json
@@ -217,3 +217,32 @@ CREATE INDEX IF NOT EXISTS idx_section_keywords_source ON section_keywords(sourc
 | Over-weighting filenames | Poor results for generic filenames | Filter common terms ("guide", "tutorial") |
 | Stemmer inconsistency | Different results SQLite vs PostgreSQL | Accept minor differences, document behavior |
 | Index size increase | Slower indexing | Batch inserts, optimize storage |
+
+---
+
+## Implementation Notes
+
+**Implemented:** Thu Feb 12 2026
+
+**Files Created:**
+- `com.fvd.search.KeywordScoringConfig` - @ConfigMapping with weight multipliers
+- `com.fvd.search.services.KeywordScorer` - Score calculation with frequency factor
+- Unit tests for KeywordScorer
+
+**Files Modified:**
+- `KeywordIndexer` - Now extracts keywords with source metadata (filename, title, section, subtitle, body)
+- `KeywordWeight`, `MatchedKeyword` - Added source field
+- `SearchService` - Uses weighted scoring for result ranking
+- Repository implementations - Support source column
+
+**Weight Configuration:**
+- Filename: 10x
+- Title: 8x
+- Section: 5x
+- Subtitle: 2x
+- Body: 1x
+
+**Review Status:**
+- Code Review: PASS
+- Security Review: PASS
+- 534 tests passing
