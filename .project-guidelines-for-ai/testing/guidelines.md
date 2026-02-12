@@ -1,9 +1,5 @@
 # Testing Guidelines
 
-## Project Context
-
-Quarkus REST API (Java 21, Gradle wrapper) that caches and indexes Quarkus documentation from GitHub. SQLite-backed indexes. This project follows TDD.
-
 ## Philosophy
 
 - This project uses TDD. Tests should be written or updated before implementation.
@@ -35,9 +31,3 @@ When running tests, report:
 - Total tests run, passed, failed, skipped.
 - For failures: the test class, method name, and failure message.
 - If the build itself fails (compilation error), report the compilation error.
-
-## Do Not
-
-- Do not run native tests unless explicitly requested.
-- Do not modify test code -- that is the coding agent's responsibility.
-- Do not modify `application.properties` test profile settings unless explicitly requested.

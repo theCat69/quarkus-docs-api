@@ -1,9 +1,5 @@
 # Building Guidelines
 
-## Project Context
-
-Quarkus REST API (Java 21, Gradle wrapper) that caches and indexes Quarkus documentation from GitHub. SQLite-backed indexes. Lombok enabled.
-
 ## Build Tool
 
 - Always use `./gradlew` (the Gradle wrapper). Never invoke a system-installed Gradle.
