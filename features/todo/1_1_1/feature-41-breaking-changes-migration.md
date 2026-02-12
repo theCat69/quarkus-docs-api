@@ -342,8 +342,51 @@ For migration assistance:
 
 ## Acceptance Criteria
 
-- [ ] All v1 endpoints return 404 in v1.1.1
-- [ ] New endpoints functional per specifications
-- [ ] Migration documentation complete
-- [ ] Error responses follow RFC 7807
-- [ ] OpenAPI spec updated for new endpoints
+- [x] All v1 endpoints return 404 in v1.1.1
+- [x] New endpoints functional per specifications
+- [x] Migration documentation complete
+- [x] Error responses follow RFC 7807
+- [x] OpenAPI spec updated for new endpoints
+
+---
+
+## Implementation Notes
+
+**Implemented:** 2026-02-12
+
+**Files Created:**
+- `com.fvd.common.resources.ProblemDetail` - RFC 7807 Problem Details DTO
+- `com.fvd.common.exceptions.GenericExceptionMapper` - 500 error handler
+- `com.fvd.common.exceptions.NotFoundExceptionMapper` - 404 for unmatched routes
+- Tests: ProblemDetailErrorResponseTest, RemovedV1EndpointsTest
+
+**Files Modified:**
+- InvalidInputExceptionMapper - Returns ProblemDetail (400)
+- DocNotFoundExceptionMapper - Returns ProblemDetail (404)
+- UpstreamExceptionMapper - Returns ProblemDetail (502)
+- All API resources - Updated OpenAPI error response annotations
+
+**Files Removed:**
+- DocsResource (/api/doc)
+- SearchResource (/api/search/*)  [old v1 version]
+- IndexResource (/api/index)
+- DocResponse, SearchResponse DTOs
+- ErrorResponse DTO
+- Associated tests
+
+**RFC 7807 Error Format:**
+```json
+{
+  "type": "about:blank",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "Document not found: path.adoc",
+  "instance": "/api/documents",
+  "timestamp": "2026-02-12T..."
+}
+```
+
+**Review Status:**
+- Code Review: PASS
+- Security Review: PASS
+- All tests passing

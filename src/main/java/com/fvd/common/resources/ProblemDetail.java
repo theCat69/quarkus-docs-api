@@ -17,6 +17,10 @@ import java.time.Instant;
 @Schema(description = "RFC 7807 Problem Details error response")
 public class ProblemDetail {
 
+    @Schema(description = "A URI reference identifying the problem type (about:blank for HTTP status-based errors)",
+            example = "about:blank")
+    public String type;
+
     @Schema(description = "A short, human-readable summary of the problem type", example = "Not Found")
     public String title;
 
@@ -45,6 +49,6 @@ public class ProblemDetail {
      * @return new ProblemDetail instance
      */
     public static ProblemDetail of(int status, String title, String detail, String instance) {
-        return new ProblemDetail(title, status, detail, instance, Instant.now().toString());
+        return new ProblemDetail("about:blank", title, status, detail, instance, Instant.now().toString());
     }
 }
