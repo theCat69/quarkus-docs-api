@@ -1,22 +1,19 @@
 package com.fvd.github.services;
 
 import com.fvd.cache.services.CacheService;
+import com.fvd.common.utils.FileUtils;
 import com.fvd.common.validators.InputValidator;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.exceptions.UpstreamException;
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -66,10 +63,10 @@ public class ZipDownloadService {
                 log.info("Extracted {} asciidoc files for version {}", extractedFiles.size(), version);
             }
         } catch (IOException e) {
-            stagingDirs.values().forEach(this::cleanupStagingDir);
+            stagingDirs.values().forEach(FileUtils::deleteDirectoryQuietly);
             throw new UpstreamException("Failed to extract zip for versions: " + versions, e);
         } catch (UpstreamException e) {
-            stagingDirs.values().forEach(this::cleanupStagingDir);
+            stagingDirs.values().forEach(FileUtils::deleteDirectoryQuietly);
             throw e;
         }
 
@@ -123,32 +120,7 @@ public class ZipDownloadService {
             String content = Files.readString(staged);
             docStore.write(version, relativePath, content);
         }
-        cleanupStagingDir(stagingDir);
-    }
-
-    private void cleanupStagingDir(Path stagingDir) {
-        if (!Files.exists(stagingDir)) {
-            return;
-        }
-        try {
-            Files.walkFileTree(stagingDir, new SimpleFileVisitor<>() {
-                @Override
-                @Nonnull
-                public FileVisitResult visitFile(@Nonnull Path file, @Nonnull BasicFileAttributes attrs) throws IOException {
-                    Files.delete(file);
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                @Nonnull
-                public FileVisitResult postVisitDirectory(@Nonnull Path dir, IOException exc) throws IOException {
-                    Files.delete(dir);
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-        } catch (IOException e) {
-            log.error("Failed to clean up staging directory: {}", stagingDir, e);
-        }
+        FileUtils.deleteDirectoryQuietly(stagingDir);
     }
 
     /**

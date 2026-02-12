@@ -9,6 +9,7 @@ import com.fvd.github.services.GitHubService;
 import com.fvd.indexs.indexers.CodeSampleIndexer;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.stores.IndexStore;
+import com.fvd.common.utils.ExtensionPathUtils;
 import com.fvd.quarkiverse.services.QuarkiverseService;
 import com.fvd.search.services.SearchService;
 import io.quarkus.scheduler.Scheduled;
@@ -17,9 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -129,7 +128,7 @@ public class CacheRefreshJob {
 
             // Get all files currently on disk for "main" (includes quarkiverse)
             List<String> allFiles = docStore.listDocFiles("main");
-            Map<String, List<String>> filePathsByExtension = buildExtensionMap(allFiles);
+            Map<String, List<String>> filePathsByExtension = ExtensionPathUtils.groupByExtension(allFiles);
 
             keywordIndexer.build("main", filePathsByExtension);
             codeSampleIndexer.build("main", filePathsByExtension);
@@ -141,28 +140,6 @@ public class CacheRefreshJob {
         } catch (Exception e) {
             log.error("Failed to refresh quarkiverse docs, main core indexes remain intact", e);
         }
-    }
-
-    static Map<String, List<String>> buildExtensionMap(List<String> allFiles) {
-        Map<String, List<String>> map = new LinkedHashMap<>();
-        List<String> coreFiles = new ArrayList<>();
-        Map<String, List<String>> quarkiverseGroups = new LinkedHashMap<>();
-
-        for (String path : allFiles) {
-            if (path.startsWith("quarkiverse/")) {
-                String[] parts = path.split("/", 3);
-                if (parts.length >= 2) {
-                    String extensionName = parts[1];
-                    quarkiverseGroups.computeIfAbsent(extensionName, k -> new ArrayList<>()).add(path);
-                }
-            } else {
-                coreFiles.add(path);
-            }
-        }
-
-        map.put("quarkus-core", coreFiles);
-        map.putAll(quarkiverseGroups);
-        return map;
     }
 
     private void fetchAndCacheDoc(String version, String filePath) {

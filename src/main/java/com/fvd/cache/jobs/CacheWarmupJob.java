@@ -6,6 +6,7 @@ import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.CodeSampleIndexer;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.services.IndexService;
+import com.fvd.common.utils.ExtensionPathUtils;
 import com.fvd.quarkiverse.services.QuarkiverseService;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.annotation.Priority;
@@ -15,8 +16,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -116,7 +115,7 @@ public class CacheWarmupJob {
             return;
         }
 
-        Map<String, List<String>> filePathsByExtension = buildExtensionMap(coreFiles, quarkiversePaths);
+        Map<String, List<String>> filePathsByExtension = ExtensionPathUtils.groupByExtension(coreFiles, quarkiversePaths);
         log.info("Building main indexes with {} core files and {} quarkiverse files across {} extensions",
                 coreFiles.size(), quarkiversePaths.size(), filePathsByExtension.size() - 1);
 
@@ -125,22 +124,6 @@ public class CacheWarmupJob {
 
         codeSampleIndexer.build("main", filePathsByExtension);
         log.info("Code sample index built for version main (merged)");
-    }
-
-    static Map<String, List<String>> buildExtensionMap(List<String> coreFiles, List<String> quarkiversePaths) {
-        Map<String, List<String>> map = new LinkedHashMap<>();
-        map.put("quarkus-core", coreFiles);
-
-        for (String path : quarkiversePaths) {
-            // Path format: quarkiverse/<ext-name>/<file>.adoc
-            String[] parts = path.split("/", 3);
-            if (parts.length >= 2) {
-                String extensionName = parts[1];
-                map.computeIfAbsent(extensionName, k -> new ArrayList<>()).add(path);
-            }
-        }
-
-        return map;
     }
 
     private void buildIndexes(String version, List<String> extractedFiles) {

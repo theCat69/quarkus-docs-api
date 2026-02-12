@@ -1,34 +1,27 @@
 package com.fvd.docs.exceptions;
 
-import com.fvd.common.resources.ProblemDetail;
-import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.MediaType;
+import com.fvd.common.exceptions.AbstractProblemDetailMapper;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.UriInfo;
-import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 
 /**
  * Maps DocNotFoundException to RFC 7807 Problem Details response with 404 Not Found.
  */
 @Provider
-public class DocNotFoundExceptionMapper implements ExceptionMapper<DocNotFoundException> {
-
-    @Context
-    UriInfo uriInfo;
+public class DocNotFoundExceptionMapper extends AbstractProblemDetailMapper<DocNotFoundException> {
 
     @Override
-    public Response toResponse(DocNotFoundException exception) {
-        String instance = uriInfo != null ? uriInfo.getPath() : "/api";
-        ProblemDetail problem = ProblemDetail.of(
-                404,
-                "Not Found",
-                exception.getMessage(),
-                instance
-        );
-        return Response.status(Response.Status.NOT_FOUND)
-                .entity(problem)
-                .type(MediaType.APPLICATION_JSON)
-                .build();
+    protected Response.Status getStatus() {
+        return Response.Status.NOT_FOUND;
+    }
+
+    @Override
+    protected String getTitle() {
+        return "Not Found";
+    }
+
+    @Override
+    protected String getDetail(DocNotFoundException exception) {
+        return exception.getMessage();
     }
 }

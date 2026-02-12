@@ -1,11 +1,6 @@
 package com.fvd.common.exceptions;
 
-import com.fvd.common.resources.ProblemDetail;
-import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.UriInfo;
-import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import lombok.extern.slf4j.Slf4j;
 
@@ -15,24 +10,21 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Provider
 @Slf4j
-public class GenericExceptionMapper implements ExceptionMapper<Exception> {
-
-    @Context
-    UriInfo uriInfo;
+public class GenericExceptionMapper extends AbstractProblemDetailMapper<Exception> {
 
     @Override
-    public Response toResponse(Exception exception) {
+    protected Response.Status getStatus() {
+        return Response.Status.INTERNAL_SERVER_ERROR;
+    }
+
+    @Override
+    protected String getTitle() {
+        return "Internal Server Error";
+    }
+
+    @Override
+    protected String getDetail(Exception exception) {
         log.error("Unhandled exception", exception);
-        String instance = uriInfo != null ? uriInfo.getPath() : "/api";
-        ProblemDetail problem = ProblemDetail.of(
-                500,
-                "Internal Server Error",
-                "An unexpected error occurred",
-                instance
-        );
-        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                .entity(problem)
-                .type(MediaType.APPLICATION_JSON)
-                .build();
+        return "An unexpected error occurred";
     }
 }
