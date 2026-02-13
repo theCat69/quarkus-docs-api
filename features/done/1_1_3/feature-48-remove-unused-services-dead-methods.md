@@ -176,20 +176,20 @@ All 4 methods are `private` — the Java compiler would catch any internal call 
 
 ## Tasks
 
-- [ ] Grep for `DocService` across entire codebase — confirm only 2 files reference it
-- [ ] Delete `src/main/java/com/fvd/docs/services/DocService.java`
-- [ ] Delete `src/test/java/com/fvd/docs/services/DocServiceTest.java`
-- [ ] Grep for `ZipStreamProcessor` across entire codebase — confirm only 2 files reference it
-- [ ] Delete `src/main/java/com/fvd/common/utils/ZipStreamProcessor.java`
-- [ ] Delete `src/test/java/com/fvd/common/utils/ZipStreamProcessorTest.java`
-- [ ] Remove `filterFileEntries` method from `KeywordIndexer.java`
-- [ ] Remove `applyFilenameBoost` method from `KeywordIndexer.java`
-- [ ] Remove `applyTitleBoost` method from `KeywordIndexer.java`
-- [ ] Remove `toSortedScores` method from `KeywordIndexer.java`
-- [ ] Remove "Legacy methods" comment block
-- [ ] Check and remove any unused imports in `KeywordIndexer.java`
-- [ ] Run `./gradlew test` — all tests must pass
-- [ ] Verify application starts cleanly (no CDI errors)
+- [x] Grep for `DocService` across entire codebase — confirm only 2 files reference it
+- [x] Delete `src/main/java/com/fvd/docs/services/DocService.java`
+- [x] Delete `src/test/java/com/fvd/docs/services/DocServiceTest.java`
+- [x] Grep for `ZipStreamProcessor` across entire codebase — confirm only 2 files reference it
+- [x] Delete `src/main/java/com/fvd/common/utils/ZipStreamProcessor.java`
+- [x] Delete `src/test/java/com/fvd/common/utils/ZipStreamProcessorTest.java`
+- [x] Remove `filterFileEntries` method from `KeywordIndexer.java`
+- [x] Remove `applyFilenameBoost` method from `KeywordIndexer.java`
+- [x] Remove `applyTitleBoost` method from `KeywordIndexer.java`
+- [x] Remove `toSortedScores` method from `KeywordIndexer.java`
+- [x] Remove "Legacy methods" comment block
+- [x] Check and remove any unused imports in `KeywordIndexer.java`
+- [x] Run `./gradlew test` — all tests must pass
+- [x] Verify application starts cleanly (no CDI errors)
 
 ---
 

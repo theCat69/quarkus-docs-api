@@ -218,25 +218,25 @@ No changes to `build.gradle` are needed — there are no repository-specific dep
 
 ## Tasks
 
-- [ ] Relocate `MatchedKeyword.java` to `com.fvd.search.services` package (change `package` statement)
-- [ ] Update imports in `DocumentService.java` (`com.fvd.api.services`)
-- [ ] Update imports in `CodeSampleService.java` (`com.fvd.api.services`)
-- [ ] Update imports in `QuickSearchService.java` (`com.fvd.api.services`)
-- [ ] Remove import in `SqliteSearchScorer.java` (same package now)
-- [ ] Remove import in `SearchScorer.java` (same package now)
-- [ ] Remove import in `CodeSampleSearchResult.java` (same package now)
-- [ ] Remove import in `SectionSearchResult.java` (same package now)
-- [ ] Remove import in `FileSearchResult.java` (same package now)
-- [ ] Update imports in `SqliteSearchScorerTest.java`
-- [ ] Update imports in `SearchServiceTest.java`
-- [ ] Delete `src/main/java/com/fvd/repository/api/` (5 files)
-- [ ] Delete `src/main/java/com/fvd/repository/domain/` (14 remaining files)
-- [ ] Delete `src/main/java/com/fvd/repository/sqlite/` (9 files)
-- [ ] Delete `src/main/java/com/fvd/repository/exceptions/` (1 file)
-- [ ] Delete `src/test/java/com/fvd/repository/` (3 test files)
-- [ ] Remove `app.database.type=sqlite` and its comment from `application.properties`
-- [ ] Run `./gradlew test` — all tests must pass
-- [ ] Verify application starts cleanly (`./gradlew quarkusDev` — no CDI errors)
+- [x] Relocate `MatchedKeyword.java` to `com.fvd.search.services` package (change `package` statement)
+- [x] Update imports in `DocumentService.java` (`com.fvd.api.services`)
+- [x] Update imports in `CodeSampleService.java` (`com.fvd.api.services`)
+- [x] Update imports in `QuickSearchService.java` (`com.fvd.api.services`)
+- [x] Remove import in `SqliteSearchScorer.java` (same package now)
+- [x] Remove import in `SearchScorer.java` (same package now)
+- [x] Remove import in `CodeSampleSearchResult.java` (same package now)
+- [x] Remove import in `SectionSearchResult.java` (same package now)
+- [x] Remove import in `FileSearchResult.java` (same package now)
+- [x] Update imports in `SqliteSearchScorerTest.java`
+- [x] Update imports in `SearchServiceTest.java`
+- [x] Delete `src/main/java/com/fvd/repository/api/` (5 files)
+- [x] Delete `src/main/java/com/fvd/repository/domain/` (14 remaining files)
+- [x] Delete `src/main/java/com/fvd/repository/sqlite/` (9 files)
+- [x] Delete `src/main/java/com/fvd/repository/exceptions/` (1 file)
+- [x] Delete `src/test/java/com/fvd/repository/` (3 test files)
+- [x] Remove `app.database.type=sqlite` and its comment from `application.properties`
+- [x] Run `./gradlew test` — all tests must pass
+- [x] Verify application starts cleanly (`./gradlew quarkusDev` — no CDI errors)
 
 ---
 
