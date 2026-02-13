@@ -36,6 +36,14 @@ public class SqliteSchemaInitializerImpl implements SchemaInitializer {
     @ConfigProperty(name = "app.cache.dir", defaultValue = ".cache")
     String cacheDir;
 
+    /**
+     * Package-private constructor for testing, allowing explicit cache directory configuration.
+     */
+    SqliteSchemaInitializerImpl(DataSource dataSource, String cacheDir) {
+        this.dataSource = dataSource;
+        this.cacheDir = cacheDir;
+    }
+
     void onStartup(@Observes @Priority(100) StartupEvent event) {
         initSchema();
     }
@@ -101,6 +109,8 @@ public class SqliteSchemaInitializerImpl implements SchemaInitializer {
                         file_id INTEGER NOT NULL,
                         word TEXT NOT NULL,
                         score INTEGER NOT NULL,
+                        source TEXT NOT NULL DEFAULT 'body',
+                        frequency INTEGER NOT NULL DEFAULT 1,
                         FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
                     )
                     """);
@@ -122,6 +132,8 @@ public class SqliteSchemaInitializerImpl implements SchemaInitializer {
                         section_id INTEGER NOT NULL,
                         word TEXT NOT NULL,
                         score INTEGER NOT NULL,
+                        source TEXT NOT NULL DEFAULT 'body',
+                        frequency INTEGER NOT NULL DEFAULT 1,
                         FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
                     )
                     """);
