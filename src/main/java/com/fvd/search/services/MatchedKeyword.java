@@ -1,4 +1,4 @@
-package com.fvd.repository.domain;
+package com.fvd.search.services;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
 

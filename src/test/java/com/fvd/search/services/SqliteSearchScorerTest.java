@@ -1,7 +1,6 @@
 package com.fvd.search.services;
 
 import com.fvd.indexs.indexers.KeywordScore;
-import com.fvd.repository.domain.MatchedKeyword;
 import com.fvd.search.TestSearchConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

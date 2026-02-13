@@ -10,7 +10,6 @@ import com.fvd.indexs.indexers.*;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.indexs.stores.SqliteSchemaInitializer;
-import com.fvd.repository.domain.MatchedKeyword;
 import com.fvd.search.SearchConfig;
 import com.fvd.search.TestSearchConfig;
 import org.junit.jupiter.api.BeforeEach;

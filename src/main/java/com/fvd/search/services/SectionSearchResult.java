@@ -1,6 +1,5 @@
 package com.fvd.search.services;
 
-import com.fvd.repository.domain.MatchedKeyword;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 

@@ -1,7 +1,6 @@
 package com.fvd.search.services;
 
 import com.fvd.indexs.indexers.KeywordScore;
-import com.fvd.repository.domain.MatchedKeyword;
 import com.fvd.search.SearchConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;

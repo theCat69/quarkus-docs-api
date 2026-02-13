@@ -6,7 +6,7 @@ import com.fvd.common.SearchConstants;
 import com.fvd.common.utils.DocumentTitleExtractor;
 import com.fvd.common.utils.FilterUtils;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.repository.domain.MatchedKeyword;
+import com.fvd.search.services.MatchedKeyword;
 import com.fvd.search.services.FileSearchResult;
 import com.fvd.search.services.PaginatedResult;
 import com.fvd.search.services.SearchService;

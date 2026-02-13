@@ -1,7 +1,6 @@
 package com.fvd.search.services;
 
 import com.fvd.indexs.indexers.KeywordScore;
-import com.fvd.repository.domain.MatchedKeyword;
 
 import java.util.List;
 import java.util.Set;

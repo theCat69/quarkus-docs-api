@@ -11,7 +11,7 @@ import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.indexers.FileKeywordEntry;
 import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.stores.KeywordIndexStore;
-import com.fvd.repository.domain.MatchedKeyword;
+import com.fvd.search.services.MatchedKeyword;
 import com.fvd.search.services.FileSearchResult;
 import com.fvd.search.services.PaginatedResult;
 import com.fvd.search.services.SearchService;
