@@ -5,7 +5,6 @@ import com.fvd.common.StopWords;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
-import com.fvd.search.KeywordScoringConfig;
 import com.fvd.search.SearchConfig;
 import com.fvd.search.services.KeywordScorer;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -81,17 +80,6 @@ public class KeywordIndexer {
         KeywordIndex index = new KeywordIndex(fileEntries);
         persist(version, index);
         return index;
-    }
-
-    private Map<String, Integer> filterFileEntries(Map<String, Integer> originalFileKeywords) {
-        int minScore = searchConfig.index().minKeywordScore();
-        Map<String, Integer> filteredFileKeywords = new HashMap<>();
-        for (Map.Entry<String, Integer> fileEntry : originalFileKeywords.entrySet()) {
-            if (fileEntry.getValue() >= minScore) {
-                filteredFileKeywords.put(fileEntry.getKey(), fileEntry.getValue());
-            }
-        }
-        return filteredFileKeywords;
     }
 
     /**
@@ -259,39 +247,6 @@ public class KeywordIndexer {
     private int detectHeadingLevel(String title) {
         // Default to section level for parsed sections
         return 2;
-    }
-
-    // Legacy methods for backward compatibility
-    private void applyFilenameBoost(String filePath, Map<String, Integer> keywords) {
-        String filename = filePath;
-        int lastSlash = filePath.lastIndexOf('/');
-        if (lastSlash >= 0) {
-            filename = filePath.substring(lastSlash + 1);
-        }
-        // Remove file extension
-        if (filename.endsWith(parser.fileSuffix())) {
-            filename = filename.substring(0, filename.length() - parser.fileSuffix().length());
-        }
-        int boost = searchConfig.boost().filenameBoost();
-        List<String> filenameTokens = parser.tokenize(filename.replace("-", " ").replace("_", " "));
-        for (String token : filenameTokens) {
-            keywords.merge(Stemmer.stem(token), boost, Integer::sum);
-        }
-    }
-
-    private void applyTitleBoost(String title, Map<String, Integer> keywords) {
-        if (title == null || title.isBlank()) {
-            return;
-        }
-        int boost = searchConfig.boost().titleBoost();
-        List<String> titleTokens = parser.tokenize(title);
-        for (String token : titleTokens) {
-            keywords.merge(Stemmer.stem(token), boost, Integer::sum);
-        }
-    }
-
-    private List<KeywordScore> toSortedScores(Map<String, Integer> keywords) {
-        return KeywordScoreUtils.toSortedScores(keywords);
     }
 
     /**
