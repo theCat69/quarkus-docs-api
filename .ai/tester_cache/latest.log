@@ -1,5 +1,0 @@
-[2026-02-11T21:59:15+01:00] BUILD: cleanTest test
-Compilation: SUCCESS (compileJava UP-TO-DATE, compileTestJava UP-TO-DATE)
-Total tests: 422 | Passed: 422 | Failed: 0 | Errors: 0 | Skipped: 0
-Result: BUILD SUCCESSFUL in 30s
-Note: Stack traces in output are expected test behavior (mocked upstream failures)
