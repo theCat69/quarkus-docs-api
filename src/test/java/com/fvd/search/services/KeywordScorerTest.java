@@ -3,8 +3,13 @@ package com.fvd.search.services;
 import com.fvd.search.TestKeywordScoringConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -19,66 +24,88 @@ class KeywordScorerTest {
     }
 
     // ========================================
-    // R1: Section Title Extraction (5x weight)
+    // Multiplier tests (all sources)
     // ========================================
 
-    @Test
-    void shouldReturnSectionWeightMultiplier() {
-        double multiplier = scorer.getMultiplier(KeywordScorer.SOURCE_SECTION);
-        assertThat(multiplier).isEqualTo(5.0);
+    private static Stream<Arguments> multiplierCases() {
+        return Stream.of(
+                Arguments.of("filename", 10.0),
+                Arguments.of("title", 8.0),
+                Arguments.of("section", 5.0),
+                Arguments.of("subtitle", 2.0),
+                Arguments.of("body", 1.0),
+                Arguments.of("unknown", 1.0),
+                Arguments.of(null, 1.0)
+        );
     }
 
-    @Test
-    void shouldCalculateScoreForSectionKeyword() {
-        double score = scorer.calculateScore(KeywordScorer.SOURCE_SECTION, 1);
-        // 5.0 * (1.0 + log(1)) = 5.0 * 1.0 = 5.0
-        assertThat(score).isCloseTo(5.0, within(0.001));
-    }
-
-    // ========================================
-    // R2: Subtitle Extraction (2x weight)
-    // ========================================
-
-    @Test
-    void shouldReturnSubtitleWeightMultiplier() {
-        double multiplier = scorer.getMultiplier(KeywordScorer.SOURCE_SUBTITLE);
-        assertThat(multiplier).isEqualTo(2.0);
-    }
-
-    @Test
-    void shouldCalculateScoreForSubtitleKeyword() {
-        double score = scorer.calculateScore(KeywordScorer.SOURCE_SUBTITLE, 1);
-        // 2.0 * 1.0 = 2.0
-        assertThat(score).isCloseTo(2.0, within(0.001));
-    }
-
-    @Test
-    void shouldIdentifyH3AsSubtitle() {
-        String source = scorer.getSourceFromHeadingLevel(3);
-        assertThat(source).isEqualTo(KeywordScorer.SOURCE_SUBTITLE);
-    }
-
-    @Test
-    void shouldIdentifyH4AsSubtitle() {
-        String source = scorer.getSourceFromHeadingLevel(4);
-        assertThat(source).isEqualTo(KeywordScorer.SOURCE_SUBTITLE);
-    }
-
-    @Test
-    void shouldIdentifyH5AsSubtitle() {
-        String source = scorer.getSourceFromHeadingLevel(5);
-        assertThat(source).isEqualTo(KeywordScorer.SOURCE_SUBTITLE);
+    @ParameterizedTest(name = "getMultiplier(\"{0}\") = {1}")
+    @MethodSource("multiplierCases")
+    void shouldReturnCorrectMultiplier(String source, double expected) {
+        assertThat(scorer.getMultiplier(source)).isEqualTo(expected);
     }
 
     // ========================================
-    // R3: Filename Keyword Extraction (10x weight)
+    // calculateScore for single occurrence
     // ========================================
 
-    @Test
-    void shouldReturnFilenameWeightMultiplier() {
-        double multiplier = scorer.getMultiplier(KeywordScorer.SOURCE_FILENAME);
-        assertThat(multiplier).isEqualTo(10.0);
+    // Correct values guarantee ranking: filename > title > section > subtitle > body
+    @ParameterizedTest(name = "calculateScore(\"{0}\", 1) = {1}")
+    @CsvSource({
+            "filename, 10.0",
+            "title, 8.0",
+            "section, 5.0",
+            "subtitle, 2.0"
+    })
+    void shouldCalculateScoreForSingleOccurrence(String source, double expected) {
+        double score = scorer.calculateScore(source, 1);
+        assertThat(score).isCloseTo(expected, within(0.001));
     }
+
+    // ========================================
+    // Heading level identification
+    // ========================================
+
+    @ParameterizedTest(name = "getSourceFromHeadingLevel({0}) = \"{1}\"")
+    @CsvSource({
+            "1, title",
+            "2, section",
+            "3, subtitle",
+            "4, subtitle",
+            "5, subtitle"
+    })
+    void shouldIdentifyCorrectSourceFromHeadingLevel(int level, String expectedSource) {
+        assertThat(scorer.getSourceFromHeadingLevel(level)).isEqualTo(expectedSource);
+    }
+
+    // ========================================
+    // parseHeadingLevel
+    // ========================================
+
+    private static Stream<Arguments> parseHeadingLevelCases() {
+        return Stream.of(
+                Arguments.of("= Document Title", 1),
+                Arguments.of("== Section Title", 2),
+                Arguments.of("=== Subsection Title", 3),
+                Arguments.of("= Security and Authentication Guide", 1),
+                Arguments.of("= OAuth2 / OIDC Configuration", 1),
+                Arguments.of("   == Section Title", 2),
+                Arguments.of("Regular text content", 0),
+                Arguments.of("==NoSpace", 0),
+                Arguments.of("   ", 0),
+                Arguments.of(null, 0)
+        );
+    }
+
+    @ParameterizedTest(name = "parseHeadingLevel(\"{0}\") = {1}")
+    @MethodSource("parseHeadingLevelCases")
+    void shouldParseHeadingLevelCorrectly(String line, int expectedLevel) {
+        assertThat(scorer.parseHeadingLevel(line)).isEqualTo(expectedLevel);
+    }
+
+    // ========================================
+    // Filename Keyword Extraction
+    // ========================================
 
     @Test
     void shouldExtractKeywordsFromFilename() {
@@ -133,154 +160,41 @@ class KeywordScorerTest {
     }
 
     @Test
-    void shouldCalculateScoreForFilenameKeyword() {
-        double score = scorer.calculateScore(KeywordScorer.SOURCE_FILENAME, 1);
-        // 10.0 * 1.0 = 10.0
-        assertThat(score).isCloseTo(10.0, within(0.001));
-    }
-
-    @Test
     void shouldReturnEmptyListForNullFilename() {
-        List<String> keywords = scorer.extractFilenameKeywords(null);
-        assertThat(keywords).isEmpty();
+        assertThat(scorer.extractFilenameKeywords(null)).isEmpty();
     }
-
     @Test
     void shouldReturnEmptyListForBlankFilename() {
-        List<String> keywords = scorer.extractFilenameKeywords("   ");
-        assertThat(keywords).isEmpty();
+        assertThat(scorer.extractFilenameKeywords("   ")).isEmpty();
     }
 
     // ========================================
-    // R4: Document Title Extraction (8x weight)
+    // Compound Score Calculation
     // ========================================
-
-    @Test
-    void shouldReturnTitleWeightMultiplier() {
-        double multiplier = scorer.getMultiplier(KeywordScorer.SOURCE_TITLE);
-        assertThat(multiplier).isEqualTo(8.0);
-    }
-
-    @Test
-    void shouldIdentifyH1AsTitle() {
-        String source = scorer.getSourceFromHeadingLevel(1);
-        assertThat(source).isEqualTo(KeywordScorer.SOURCE_TITLE);
-    }
-
-    @Test
-    void shouldIdentifyH2AsSection() {
-        String source = scorer.getSourceFromHeadingLevel(2);
-        assertThat(source).isEqualTo(KeywordScorer.SOURCE_SECTION);
-    }
-
-    @Test
-    void shouldParseH1HeadingLevel() {
-        int level = scorer.parseHeadingLevel("= Document Title");
-        assertThat(level).isEqualTo(1);
-    }
-
-    @Test
-    void shouldParseH2HeadingLevel() {
-        int level = scorer.parseHeadingLevel("== Section Title");
-        assertThat(level).isEqualTo(2);
-    }
-
-    @Test
-    void shouldParseH3HeadingLevel() {
-        int level = scorer.parseHeadingLevel("=== Subsection Title");
-        assertThat(level).isEqualTo(3);
-    }
-
-    @Test
-    void shouldReturnZeroForNonHeading() {
-        int level = scorer.parseHeadingLevel("Regular text content");
-        assertThat(level).isEqualTo(0);
-    }
-
-    @Test
-    void shouldReturnZeroForBlankLine() {
-        int level = scorer.parseHeadingLevel("   ");
-        assertThat(level).isEqualTo(0);
-    }
-
-    @Test
-    void shouldReturnZeroForNullLine() {
-        int level = scorer.parseHeadingLevel(null);
-        assertThat(level).isEqualTo(0);
-    }
-
-    @Test
-    void shouldHandleMultiWordTitle() {
-        // Verify parsing works with multi-word titles
-        int level = scorer.parseHeadingLevel("= Security and Authentication Guide");
-        assertThat(level).isEqualTo(1);
-    }
-
-    @Test
-    void shouldHandleSpecialCharactersInTitle() {
-        int level = scorer.parseHeadingLevel("= OAuth2 / OIDC Configuration");
-        assertThat(level).isEqualTo(1);
-    }
-
-    @Test
-    void shouldCalculateScoreForTitleKeyword() {
-        double score = scorer.calculateScore(KeywordScorer.SOURCE_TITLE, 1);
-        // 8.0 * 1.0 = 8.0
-        assertThat(score).isCloseTo(8.0, within(0.001));
-    }
-
-    // ========================================
-    // R5: Compound Score Calculation
-    // ========================================
-
-    @Test
-    void shouldReturnBodyWeightMultiplier() {
-        double multiplier = scorer.getMultiplier(KeywordScorer.SOURCE_BODY);
-        assertThat(multiplier).isEqualTo(1.0);
-    }
-
-    @Test
-    void shouldReturnBodyWeightForUnknownSource() {
-        double multiplier = scorer.getMultiplier("unknown");
-        assertThat(multiplier).isEqualTo(1.0);
-    }
-
-    @Test
-    void shouldReturnBodyWeightForNullSource() {
-        double multiplier = scorer.getMultiplier(null);
-        assertThat(multiplier).isEqualTo(1.0);
-    }
 
     @Test
     void shouldCalculateFrequencyFactorForSingleOccurrence() {
-        double factor = scorer.calculateFrequencyFactor(1);
         // 1.0 + log(1) = 1.0 + 0 = 1.0
-        assertThat(factor).isCloseTo(1.0, within(0.001));
+        assertThat(scorer.calculateFrequencyFactor(1)).isCloseTo(1.0, within(0.001));
     }
 
     @Test
     void shouldCalculateFrequencyFactorForMultipleOccurrences() {
-        double factor = scorer.calculateFrequencyFactor(3);
         // 1.0 + log(3) ≈ 1.0 + 1.099 ≈ 2.0 (capped)
-        assertThat(factor).isCloseTo(2.0, within(0.001));
+        assertThat(scorer.calculateFrequencyFactor(3)).isCloseTo(2.0, within(0.001));
     }
 
     @Test
     void shouldCapFrequencyFactorAtTwo() {
-        double factor = scorer.calculateFrequencyFactor(100);
-        assertThat(factor).isEqualTo(2.0);
+        assertThat(scorer.calculateFrequencyFactor(100)).isEqualTo(2.0);
     }
-
     @Test
     void shouldReturnZeroFrequencyFactorForZeroCount() {
-        double factor = scorer.calculateFrequencyFactor(0);
-        assertThat(factor).isEqualTo(0.0);
+        assertThat(scorer.calculateFrequencyFactor(0)).isEqualTo(0.0);
     }
-
     @Test
     void shouldReturnZeroFrequencyFactorForNegativeCount() {
-        double factor = scorer.calculateFrequencyFactor(-1);
-        assertThat(factor).isEqualTo(0.0);
+        assertThat(scorer.calculateFrequencyFactor(-1)).isEqualTo(0.0);
     }
 
     @Test
@@ -290,20 +204,16 @@ class KeywordScorerTest {
                 KeywordScorer.SOURCE_SECTION,
                 KeywordScorer.SOURCE_FILENAME
         );
-        double highestMultiplier = scorer.getHighestMultiplier(sources);
-        assertThat(highestMultiplier).isEqualTo(10.0); // filename weight
+        assertThat(scorer.getHighestMultiplier(sources)).isEqualTo(10.0);
     }
 
     @Test
     void shouldReturnBodyWeightForEmptySourceList() {
-        double highestMultiplier = scorer.getHighestMultiplier(List.of());
-        assertThat(highestMultiplier).isEqualTo(1.0);
+        assertThat(scorer.getHighestMultiplier(List.of())).isEqualTo(1.0);
     }
-
     @Test
     void shouldReturnBodyWeightForNullSourceList() {
-        double highestMultiplier = scorer.getHighestMultiplier(null);
-        assertThat(highestMultiplier).isEqualTo(1.0);
+        assertThat(scorer.getHighestMultiplier(null)).isEqualTo(1.0);
     }
 
     @Test
@@ -313,41 +223,35 @@ class KeywordScorerTest {
                 new KeywordScorer.SourceFrequency(KeywordScorer.SOURCE_SECTION, 1),
                 new KeywordScorer.SourceFrequency(KeywordScorer.SOURCE_TITLE, 1)
         );
-        double combined = scorer.combineScores(scores);
         // Uses highest weight (title = 8.0) with total frequency 4
-        // 8.0 * min(1.0 + log(4), 2.0) = 8.0 * min(2.386, 2.0) = 8.0 * 2.0 = 16.0
-        assertThat(combined).isCloseTo(16.0, within(0.001));
+        // 8.0 * min(1.0 + log(4), 2.0) = 8.0 * 2.0 = 16.0
+        assertThat(scorer.combineScores(scores)).isCloseTo(16.0, within(0.001));
     }
 
     @Test
     void shouldReturnZeroForEmptyScoresList() {
-        double combined = scorer.combineScores(List.of());
-        assertThat(combined).isEqualTo(0.0);
+        assertThat(scorer.combineScores(List.of())).isEqualTo(0.0);
     }
-
     @Test
     void shouldReturnZeroForNullScoresList() {
-        double combined = scorer.combineScores(null);
-        assertThat(combined).isEqualTo(0.0);
+        assertThat(scorer.combineScores(null)).isEqualTo(0.0);
     }
 
     @Test
     void shouldApplyFrequencyFactorAfterLocationWeight() {
-        // Frequency = 2: factor = min(1.0 + log(2), 2.0) ≈ 1.693
+        // Frequency = 2: factor = min(1.0 + log(2), 2.0) ≈ 1.693; 5.0 * 1.693 ≈ 8.466
         double score = scorer.calculateScore(KeywordScorer.SOURCE_SECTION, 2);
-        // 5.0 * 1.693 ≈ 8.466
         assertThat(score).isCloseTo(8.466, within(0.01));
     }
-
     @Test
     void shouldCalculateScoreWithBaseScore() {
-        double score = scorer.calculateScore(2.0, KeywordScorer.SOURCE_SECTION, 1);
         // 2.0 * 5.0 * 1.0 = 10.0
+        double score = scorer.calculateScore(2.0, KeywordScorer.SOURCE_SECTION, 1);
         assertThat(score).isCloseTo(10.0, within(0.001));
     }
 
     // ========================================
-    // R6: Additional Edge Cases
+    // Additional Edge Cases
     // ========================================
 
     @Test
@@ -364,7 +268,6 @@ class KeywordScorerTest {
 
     @Test
     void shouldFilterShortTokens() {
-        // Single character tokens should be filtered
         List<String> keywords = scorer.extractFilenameKeywords("a-b-config.adoc");
         assertThat(keywords).contains("config");
         assertThat(keywords).doesNotContain("a", "b");
@@ -374,30 +277,5 @@ class KeywordScorerTest {
     void shouldHandleMixedSeparators() {
         List<String> keywords = scorer.extractFilenameKeywords("rest-client_config.adoc");
         assertThat(keywords).containsExactlyInAnyOrder("rest", "client", "config");
-    }
-
-    @Test
-    void shouldPreserveRawScoresForRanking() {
-        // Different sources should produce different raw scores
-        double filenameScore = scorer.calculateScore(KeywordScorer.SOURCE_FILENAME, 1);
-        double titleScore = scorer.calculateScore(KeywordScorer.SOURCE_TITLE, 1);
-        double sectionScore = scorer.calculateScore(KeywordScorer.SOURCE_SECTION, 1);
-        double bodyScore = scorer.calculateScore(KeywordScorer.SOURCE_BODY, 1);
-
-        assertThat(filenameScore).isGreaterThan(titleScore);
-        assertThat(titleScore).isGreaterThan(sectionScore);
-        assertThat(sectionScore).isGreaterThan(bodyScore);
-    }
-
-    @Test
-    void shouldNotTreatEqualsSignsWithoutSpaceAsHeading() {
-        int level = scorer.parseHeadingLevel("==NoSpace");
-        assertThat(level).isEqualTo(0);
-    }
-
-    @Test
-    void shouldHandleHeadingWithLeadingWhitespace() {
-        int level = scorer.parseHeadingLevel("   == Section Title");
-        assertThat(level).isEqualTo(2);
     }
 }
