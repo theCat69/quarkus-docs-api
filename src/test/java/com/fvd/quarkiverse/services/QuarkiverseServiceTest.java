@@ -66,13 +66,7 @@ class QuarkiverseServiceTest {
                       start_path: docs
                 """;
 
-        GithubApiFile playbookFile = new GithubApiFile();
-        playbookFile.content = java.util.Base64.getEncoder().encodeToString(playbookYaml.getBytes());
-        playbookFile.encoding = "base64";
-
-        when(gitHubService.fetchFileContentForRepo(
-                "quarkiverse", "quarkiverse-docs", "antora-playbook.yml", "main"))
-                .thenReturn(playbookFile);
+        stubPlaybook(playbookYaml);
 
         byte[] zipBytes = TestZipHelper.createZip(
                 "quarkus-openapi-generator-main/docs/modules/ROOT/pages/index.adoc", "= OpenAPI Generator"
@@ -98,13 +92,7 @@ class QuarkiverseServiceTest {
                       start_path: docs
                 """;
 
-        GithubApiFile playbookFile = new GithubApiFile();
-        playbookFile.content = java.util.Base64.getEncoder().encodeToString(playbookYaml.getBytes());
-        playbookFile.encoding = "base64";
-
-        when(gitHubService.fetchFileContentForRepo(
-                "quarkiverse", "quarkiverse-docs", "antora-playbook.yml", "main"))
-                .thenReturn(playbookFile);
+        stubPlaybook(playbookYaml);
 
         // First extension fails
         when(gitHubService.fetchZipStreamForRepo("quarkiverse", "quarkus-failing-ext", "main"))
@@ -143,13 +131,7 @@ class QuarkiverseServiceTest {
                       start_path: docs
                 """;
 
-        GithubApiFile playbookFile = new GithubApiFile();
-        playbookFile.content = java.util.Base64.getEncoder().encodeToString(playbookYaml.getBytes());
-        playbookFile.encoding = "base64";
-
-        when(gitHubService.fetchFileContentForRepo(
-                "quarkiverse", "quarkiverse-docs", "antora-playbook.yml", "main"))
-                .thenReturn(playbookFile);
+        stubPlaybook(playbookYaml);
 
         // New index from GitHub
         List<GithubApiIndex> newIndex = List.of(
@@ -191,13 +173,7 @@ class QuarkiverseServiceTest {
                       start_path: docs
                 """;
 
-        GithubApiFile playbookFile = new GithubApiFile();
-        playbookFile.content = java.util.Base64.getEncoder().encodeToString(playbookYaml.getBytes());
-        playbookFile.encoding = "base64";
-
-        when(gitHubService.fetchFileContentForRepo(
-                "quarkiverse", "quarkiverse-docs", "antora-playbook.yml", "main"))
-                .thenReturn(playbookFile);
+        stubPlaybook(playbookYaml);
 
         // Same SHA in both old and new
         List<GithubApiIndex> index = List.of(
@@ -227,13 +203,7 @@ class QuarkiverseServiceTest {
                       start_path: docs
                 """;
 
-        GithubApiFile playbookFile = new GithubApiFile();
-        playbookFile.content = java.util.Base64.getEncoder().encodeToString(playbookYaml.getBytes());
-        playbookFile.encoding = "base64";
-
-        when(gitHubService.fetchFileContentForRepo(
-                "quarkiverse", "quarkiverse-docs", "antora-playbook.yml", "main"))
-                .thenReturn(playbookFile);
+        stubPlaybook(playbookYaml);
 
         List<GithubApiIndex> newIndex = List.of(
                 new GithubApiIndex("index.adoc", "docs/modules/ROOT/pages/index.adoc", "abc123")
@@ -258,6 +228,16 @@ class QuarkiverseServiceTest {
         boolean result = service.refreshAll();
 
         assertThat(result).isTrue();
+    }
+
+    private void stubPlaybook(String yamlContent) {
+        GithubApiFile playbookFile = new GithubApiFile();
+        playbookFile.content = java.util.Base64.getEncoder().encodeToString(yamlContent.getBytes());
+        playbookFile.encoding = "base64";
+
+        when(gitHubService.fetchFileContentForRepo(
+                "quarkiverse", "quarkiverse-docs", "antora-playbook.yml", "main"))
+                .thenReturn(playbookFile);
     }
 
 }

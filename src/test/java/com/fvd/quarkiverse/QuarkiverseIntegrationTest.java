@@ -15,7 +15,11 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,21 +74,7 @@ class QuarkiverseIntegrationTest {
 
     @Test
     void quarkiverseDocsAppearInSearchResultsForMainVersion() {
-        // Extract quarkiverse docs
-        List<String> quarkiversePaths = quarkiverseService.fetchAndExtractAll();
-
-        // Build indexes with quarkiverse docs only (no core docs in this test)
-        Map<String, List<String>> filePathsByExtension = new LinkedHashMap<>();
-        filePathsByExtension.put("quarkus-core", List.of());
-        for (String path : quarkiversePaths) {
-            String[] parts = path.split("/", 3);
-            if (parts.length >= 2) {
-                String extName = parts[1];
-                filePathsByExtension.computeIfAbsent(extName, k -> new ArrayList<>()).add(path);
-            }
-        }
-        keywordIndexer.build("main", filePathsByExtension);
-        codeSampleIndexer.build("main", filePathsByExtension);
+        buildQuarkiverseIndexes();
 
         // Search for keywords from the quarkiverse doc using new /api/search endpoint
         given()
@@ -118,19 +108,7 @@ class QuarkiverseIntegrationTest {
 
     @Test
     void quarkiverseDocsNotInIndexEndpoint() {
-        // Extract quarkiverse docs and build indexes
-        List<String> quarkiversePaths = quarkiverseService.fetchAndExtractAll();
-
-        Map<String, List<String>> filePathsByExtension = new LinkedHashMap<>();
-        filePathsByExtension.put("quarkus-core", List.of());
-        for (String path : quarkiversePaths) {
-            String[] parts = path.split("/", 3);
-            if (parts.length >= 2) {
-                String extName = parts[1];
-                filePathsByExtension.computeIfAbsent(extName, k -> new ArrayList<>()).add(path);
-            }
-        }
-        keywordIndexer.build("main", filePathsByExtension);
+        buildQuarkiverseIndexes();
 
         // The old /api/index endpoint is removed
         // We verify that the catalog endpoint works and includes versions
@@ -144,19 +122,7 @@ class QuarkiverseIntegrationTest {
 
     @Test
     void quarkiverseDocsNotInVersionedSearch() {
-        // Extract quarkiverse docs and build indexes for "main" only
-        List<String> quarkiversePaths = quarkiverseService.fetchAndExtractAll();
-
-        Map<String, List<String>> filePathsByExtension = new LinkedHashMap<>();
-        filePathsByExtension.put("quarkus-core", List.of());
-        for (String path : quarkiversePaths) {
-            String[] parts = path.split("/", 3);
-            if (parts.length >= 2) {
-                String extName = parts[1];
-                filePathsByExtension.computeIfAbsent(extName, k -> new ArrayList<>()).add(path);
-            }
-        }
-        keywordIndexer.build("main", filePathsByExtension);
+        buildQuarkiverseIndexes();
 
         // Search for 3.27 should not return quarkiverse results
         given()
@@ -171,20 +137,7 @@ class QuarkiverseIntegrationTest {
 
     @Test
     void quarkiverseCodeSamplesAppearInSearch() {
-        // Extract quarkiverse docs
-        List<String> quarkiversePaths = quarkiverseService.fetchAndExtractAll();
-
-        // Build indexes
-        Map<String, List<String>> filePathsByExtension = new LinkedHashMap<>();
-        filePathsByExtension.put("quarkus-core", List.of());
-        for (String path : quarkiversePaths) {
-            String[] parts = path.split("/", 3);
-            if (parts.length >= 2) {
-                String extName = parts[1];
-                filePathsByExtension.computeIfAbsent(extName, k -> new ArrayList<>()).add(path);
-            }
-        }
-        codeSampleIndexer.build("main", filePathsByExtension);
+        buildQuarkiverseIndexes();
 
         // Search for code samples from the quarkiverse doc using new /api/code-samples endpoint
         given()
@@ -197,6 +150,22 @@ class QuarkiverseIntegrationTest {
                 .body("totalCount", greaterThan(0))
                 .body("results[0].documentPath", equalTo("quarkiverse/quarkus-test-extension/index.adoc"))
                 .body("results[0].extension", equalTo("quarkus-test-extension"));
+    }
+
+    private void buildQuarkiverseIndexes() {
+        List<String> paths = quarkiverseService.fetchAndExtractAll();
+
+        Map<String, List<String>> filePathsByExtension = new LinkedHashMap<>();
+        filePathsByExtension.put("quarkus-core", List.of());
+        for (String path : paths) {
+            String[] parts = path.split("/", 3);
+            if (parts.length >= 2) {
+                String extName = parts[1];
+                filePathsByExtension.computeIfAbsent(extName, k -> new ArrayList<>()).add(path);
+            }
+        }
+        keywordIndexer.build("main", filePathsByExtension);
+        codeSampleIndexer.build("main", filePathsByExtension);
     }
 
 }
