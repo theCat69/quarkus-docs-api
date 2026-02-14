@@ -1,192 +1,58 @@
 package com.fvd.common;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class StemmerTest {
 
-    // --- Basic suffix stripping ---
-
-    @Test
-    void stemConfigurationStripsAtion() {
-        assertThat(Stemmer.stem("configuration")).isEqualTo("configur");
-    }
-
-    @Test
-    void stemSecurityStripsIty() {
-        assertThat(Stemmer.stem("security")).isEqualTo("secur");
-    }
-
-    @Test
-    void stemRunningStripsIngAndReducesDuplicate() {
-        // "running" → strip -ing → "runn" → reduce dup → "run"
-        assertThat(Stemmer.stem("running")).isEqualTo("run");
-    }
-
-    @Test
-    void stemClassesStripsEs() {
-        assertThat(Stemmer.stem("classes")).isEqualTo("class");
-    }
-
-    @Test
-    void stemUsedDoesNotStripEdWhenTooShort() {
-        // "used" → strip -ed → "us" (length 2 < 3) → no strip → "used"
-        assertThat(Stemmer.stem("used")).isEqualTo("used");
-    }
-
-    @Test
-    void stemStoppingStripsIngAndReducesDuplicate() {
-        // "stopping" → strip -ing → "stopp" → reduce dup → "stop"
-        assertThat(Stemmer.stem("stopping")).isEqualTo("stop");
-    }
-
-    // --- Various suffix rules ---
-
-    @Test
-    void stemActionTooShortAfterTionStrip() {
-        // "action" → strip -tion → "ac" (length 2 < 3) → no strip → "action"
-        assertThat(Stemmer.stem("action")).isEqualTo("action");
-    }
-
-    @Test
-    void stemExpressionStripsSion() {
-        assertThat(Stemmer.stem("expression")).isEqualTo("expres");
-    }
-
-    @Test
-    void stemManagementStripsMent() {
-        assertThat(Stemmer.stem("management")).isEqualTo("manage");
-    }
-
-    @Test
-    void stemDarknessStripsNess() {
-        assertThat(Stemmer.stem("darkness")).isEqualTo("dark");
-    }
-
-    @Test
-    void stemConfigurableStripsAble() {
-        assertThat(Stemmer.stem("configurable")).isEqualTo("configur");
-    }
-
-    @Test
-    void stemAccessibleStripsIble() {
-        assertThat(Stemmer.stem("accessible")).isEqualTo("access");
-    }
-
-    @Test
-    void stemDangerousStripsOus() {
-        assertThat(Stemmer.stem("dangerous")).isEqualTo("danger");
-    }
-
-    @Test
-    void stemActiveStripsIve() {
-        assertThat(Stemmer.stem("active")).isEqualTo("act");
-    }
-
-    @Test
-    void stemPowerfulStripsFul() {
-        assertThat(Stemmer.stem("powerful")).isEqualTo("power");
-    }
-
-    @Test
-    void stemPowerlessStripsLess() {
-        assertThat(Stemmer.stem("powerless")).isEqualTo("power");
-    }
-
-    @Test
-    void stemQuicklyStripsLy() {
-        assertThat(Stemmer.stem("quickly")).isEqualTo("quick");
-    }
-
-    @Test
-    void stemFastestStripsEst() {
-        assertThat(Stemmer.stem("fastest")).isEqualTo("fast");
-    }
-
-    @Test
-    void stemRunnerStripsErAndReducesDuplicate() {
-        // "runner" → strip -er → "runn" → reduce dup → "run"
-        assertThat(Stemmer.stem("runner")).isEqualTo("run");
-    }
-
-    @Test
-    void stemConfiguredStripsEd() {
-        assertThat(Stemmer.stem("configured")).isEqualTo("configur");
-    }
-
-    // --- -s stripping ---
-
-    @Test
-    void stemEndpointsStripsS() {
-        assertThat(Stemmer.stem("endpoints")).isEqualTo("endpoint");
-    }
-
-    @Test
-    void stemDoesNotStripSFromSsEnding() {
-        // "class" ends in "ss" — don't strip -s
-        assertThat(Stemmer.stem("class")).isEqualTo("class");
-    }
-
-    // --- Edge cases ---
-
-    @Test
-    void stemShortWordUnchanged() {
-        assertThat(Stemmer.stem("go")).isEqualTo("go");
+    @ParameterizedTest(name = "stem(\"{0}\") → \"{1}\"")
+    @CsvSource({
+            // Basic suffix stripping
+            "configuration, configur",
+            "security,      secur",
+            "running,       run",
+            "classes,       class",
+            "used,          used",
+            "stopping,      stop",
+            // Various suffix rules
+            "action,        action",
+            "expression,    expres",
+            "management,    manage",
+            "darkness,      dark",
+            "configurable,  configur",
+            "accessible,    access",
+            "dangerous,     danger",
+            "active,        act",
+            "powerful,      power",
+            "powerless,     power",
+            "quickly,       quick",
+            "fastest,       fast",
+            "runner,        run",
+            "configured,    configur",
+            // -s stripping
+            "endpoints,     endpoint",
+            "class,         class",
+            // Edge cases (non-null)
+            "'',            ''",
+            "go,            go",
+            "to,            to",
+            "configur,      configur",
+            "quarkus,       quarku",
+            "ing,           ing",
+            // Trailing duplicate consonant behavior
+            "runn,          runn",
+            "see,           see"
+    })
+    void stemProducesExpectedResult(String input, String expected) {
+        assertThat(Stemmer.stem(input)).isEqualTo(expected);
     }
 
     @Test
     void stemNullReturnsNull() {
         assertThat(Stemmer.stem(null)).isNull();
-    }
-
-    @Test
-    void stemEmptyStringReturnsEmpty() {
-        assertThat(Stemmer.stem("")).isEqualTo("");
-    }
-
-    @Test
-    void stemTwoCharWordUnchanged() {
-        assertThat(Stemmer.stem("to")).isEqualTo("to");
-    }
-
-    @Test
-    void stemAlreadyStemmedWordUnchanged() {
-        // "configur" doesn't match any suffix rule
-        assertThat(Stemmer.stem("configur")).isEqualTo("configur");
-    }
-
-    @Test
-    void stemWordEndingInSStripsS() {
-        // "quarkus" → strip -s → "quarku" (length 6 >= 3, not ending in "ss")
-        assertThat(Stemmer.stem("quarkus")).isEqualTo("quarku");
-    }
-
-    @Test
-    void stemWordShorterThanSuffixUnchanged() {
-        // "ing" is the same length as the suffix "ing"
-        assertThat(Stemmer.stem("ing")).isEqualTo("ing");
-    }
-
-    // --- Trailing duplicate consonant reduction ---
-
-    @Test
-    void stemTrailingDuplicateConsonantReducedAfterIngStrip() {
-        // "running" → strip -ing → "runn" → reduce dup → "run"
-        // Dup reduction only applies after -ing, -ed, -er suffix stripping
-        assertThat(Stemmer.stem("running")).isEqualTo("run");
-    }
-
-    @Test
-    void stemStandaloneDoubleConsonantNotReduced() {
-        // "runn" has no suffix stripped, so dup reduction does not apply
-        assertThat(Stemmer.stem("runn")).isEqualTo("runn");
-    }
-
-    @Test
-    void stemTrailingDuplicateVowelNotReduced() {
-        // Vowel duplicates are not reduced: "see" stays "see"
-        assertThat(Stemmer.stem("see")).isEqualTo("see");
     }
 
     // --- Consistency: morphological variants map to same stem ---
