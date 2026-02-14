@@ -2,10 +2,10 @@ package com.fvd.indexs.indexers;
 
 import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.cache.services.CacheService;
+import com.fvd.common.TestSqliteHelper;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
-import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import com.fvd.search.TestKeywordScoringConfig;
 import com.fvd.search.TestSearchConfig;
 import com.fvd.search.services.KeywordScorer;
@@ -33,10 +33,7 @@ class KeywordIndexerTest {
     void setUp() {
         CacheService cacheService = new CacheService(tempDir.toString());
         docStore = new DocStore(cacheService);
-        SQLiteDataSource ds = new SQLiteDataSource();
-        ds.setUrl("jdbc:sqlite:" + tempDir.resolve("test.db"));
-        SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
-        initializer.initSchema();
+        SQLiteDataSource ds = TestSqliteHelper.createInitializedDataSource(tempDir);
         keywordIndexStore = new KeywordIndexStore(ds);
         DocParser parser = new AsciidocParser(new TestSearchConfig());
         KeywordScorer keywordScorer = new KeywordScorer(new TestKeywordScoringConfig());

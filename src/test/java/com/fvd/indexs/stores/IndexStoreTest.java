@@ -1,5 +1,6 @@
 package com.fvd.indexs.stores;
 
+import com.fvd.common.TestSqliteHelper;
 import com.fvd.common.exceptions.InvalidInputException;
 import com.fvd.github.clients.GithubApiIndex;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,10 +24,7 @@ class IndexStoreTest {
 
     @BeforeEach
     void setUp() {
-        SQLiteDataSource ds = new SQLiteDataSource();
-        ds.setUrl("jdbc:sqlite:" + tempDir.resolve("test.db"));
-        SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
-        initializer.initSchema();
+        SQLiteDataSource ds = TestSqliteHelper.createInitializedDataSource(tempDir);
         indexStore = new IndexStore(ds);
     }
 

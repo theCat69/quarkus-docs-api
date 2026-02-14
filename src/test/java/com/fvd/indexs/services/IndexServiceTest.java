@@ -1,9 +1,9 @@
 package com.fvd.indexs.services;
 
+import com.fvd.common.TestSqliteHelper;
 import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.services.GitHubService;
 import com.fvd.indexs.stores.IndexStore;
-import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,10 +32,7 @@ class IndexServiceTest {
 
     @BeforeEach
     void setUp() {
-        SQLiteDataSource ds = new SQLiteDataSource();
-        ds.setUrl("jdbc:sqlite:" + tempDir.resolve("test.db"));
-        SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
-        initializer.initSchema();
+        SQLiteDataSource ds = TestSqliteHelper.createInitializedDataSource(tempDir);
         indexStore = new IndexStore(ds);
         indexService = new IndexService(indexStore, gitHubService);
     }

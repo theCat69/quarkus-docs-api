@@ -2,6 +2,7 @@ package com.fvd.search.services;
 
 import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.cache.services.CacheService;
+import com.fvd.common.TestSqliteHelper;
 import com.fvd.common.matchers.FuzzyMatcher;
 import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.docs.parser.DocParser;
@@ -14,7 +15,6 @@ import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.indexs.indexers.SectionKeywordEntry;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
-import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import com.fvd.search.SearchConfig;
 import com.fvd.search.TestSearchConfig;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,10 +48,7 @@ class SearchServiceTest {
 
     @BeforeEach
     void setUp() {
-        SQLiteDataSource ds = new SQLiteDataSource();
-        ds.setUrl("jdbc:sqlite:" + tempDir.resolve("test.db"));
-        SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
-        initializer.initSchema();
+        SQLiteDataSource ds = TestSqliteHelper.createInitializedDataSource(tempDir);
         keywordIndexStore = new KeywordIndexStore(ds);
         codeSampleIndexStore = new CodeSampleIndexStore(ds);
         docParser = new AsciidocParser(new TestSearchConfig());
@@ -64,6 +61,15 @@ class SearchServiceTest {
 
     private void seedIndex(String version, KeywordIndex index) {
         keywordIndexStore.write(version, index);
+    }
+
+    private SearchService createSearchServiceWithDocStore(DocStore docStore) {
+        CacheService cs = new CacheService(tempDir.toString());
+        SearchConfig searchConfig = new TestSearchConfig();
+        FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
+        SearchScorer searchScorer = new SqliteSearchScorer(searchConfig);
+        return new SearchService(
+                keywordIndexStore, codeSampleIndexStore, docStore, docParser, cs, searchConfig, fuzzyMatcher, searchScorer);
     }
 
     // --- File search tests ---
@@ -547,13 +553,9 @@ class SearchServiceTest {
 
         @BeforeEach
         void setUpSectionContent() {
-            CacheService cacheService = new CacheService(tempDir.toString());
-            realDocStore = new DocStore(cacheService);
-            SearchConfig searchConfig = new TestSearchConfig();
-            FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
-            SearchScorer searchScorer = new SqliteSearchScorer(searchConfig);
-            sectionSearchService = new SearchService(
-                    keywordIndexStore, codeSampleIndexStore, realDocStore, docParser, cacheService, searchConfig, fuzzyMatcher, searchScorer);
+            CacheService cs = new CacheService(tempDir.toString());
+            realDocStore = new DocStore(cs);
+            sectionSearchService = createSearchServiceWithDocStore(realDocStore);
         }
 
         @Test
@@ -734,13 +736,9 @@ class SearchServiceTest {
 
         @BeforeEach
         void setUpSnippetTests() {
-            CacheService cacheService = new CacheService(tempDir.toString());
-            realDocStore = new DocStore(cacheService);
-            SearchConfig searchConfig = new TestSearchConfig();
-            FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
-            SearchScorer searchScorer = new SqliteSearchScorer(searchConfig);
-            snippetSearchService = new SearchService(
-                    keywordIndexStore, codeSampleIndexStore, realDocStore, docParser, cacheService, searchConfig, fuzzyMatcher, searchScorer);
+            CacheService cs = new CacheService(tempDir.toString());
+            realDocStore = new DocStore(cs);
+            snippetSearchService = createSearchServiceWithDocStore(realDocStore);
         }
 
         @Test

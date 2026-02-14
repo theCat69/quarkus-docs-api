@@ -1,5 +1,6 @@
 package com.fvd.indexs.stores;
 
+import com.fvd.common.TestSqliteHelper;
 import com.fvd.common.exceptions.InvalidInputException;
 import com.fvd.indexs.indexers.FileKeywordEntry;
 import com.fvd.indexs.indexers.KeywordIndex;
@@ -26,10 +27,7 @@ class KeywordIndexStoreTest {
 
     @BeforeEach
     void setUp() {
-        SQLiteDataSource ds = new SQLiteDataSource();
-        ds.setUrl("jdbc:sqlite:" + tempDir.resolve("test.db"));
-        SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
-        initializer.initSchema();
+        SQLiteDataSource ds = TestSqliteHelper.createInitializedDataSource(tempDir);
         keywordIndexStore = new KeywordIndexStore(ds);
     }
 

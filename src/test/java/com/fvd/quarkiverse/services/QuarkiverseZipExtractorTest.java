@@ -1,18 +1,15 @@
 package com.fvd.quarkiverse.services;
 
 import com.fvd.cache.services.CacheService;
+import com.fvd.common.TestZipHelper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -35,7 +32,7 @@ class QuarkiverseZipExtractorTest {
 
     @Test
     void extractsAdocFilesFromRootModulePages() throws Exception {
-        InputStream zip = createZip(
+        InputStream zip = TestZipHelper.createZipAsStream(
                 "quarkus-openapi-generator-main/docs/modules/ROOT/pages/index.adoc", "= Index",
                 "quarkus-openapi-generator-main/docs/modules/ROOT/pages/usage.adoc", "= Usage"
         );
@@ -55,7 +52,7 @@ class QuarkiverseZipExtractorTest {
 
     @Test
     void ignoresNonAdocFiles() throws Exception {
-        InputStream zip = createZip(
+        InputStream zip = TestZipHelper.createZipAsStream(
                 "repo-main/docs/modules/ROOT/pages/index.adoc", "= Index",
                 "repo-main/docs/modules/ROOT/pages/image.png", "binary-data",
                 "repo-main/docs/modules/ROOT/pages/readme.md", "# Readme"
@@ -68,7 +65,7 @@ class QuarkiverseZipExtractorTest {
 
     @Test
     void ignoresNonRootModules() throws Exception {
-        InputStream zip = createZip(
+        InputStream zip = TestZipHelper.createZipAsStream(
                 "repo-main/docs/modules/ROOT/pages/index.adoc", "= Index",
                 "repo-main/docs/modules/reference/pages/ref.adoc", "= Reference"
         );
@@ -80,7 +77,7 @@ class QuarkiverseZipExtractorTest {
 
     @Test
     void handlesEmptyStartPath() throws Exception {
-        InputStream zip = createZip(
+        InputStream zip = TestZipHelper.createZipAsStream(
                 "repo-main/modules/ROOT/pages/index.adoc", "= Index"
         );
 
@@ -91,7 +88,7 @@ class QuarkiverseZipExtractorTest {
 
     @Test
     void handlesNestedPagesDirectory() throws Exception {
-        InputStream zip = createZip(
+        InputStream zip = TestZipHelper.createZipAsStream(
                 "repo-main/docs/modules/ROOT/pages/sub/nested.adoc", "= Nested"
         );
 
@@ -102,7 +99,7 @@ class QuarkiverseZipExtractorTest {
 
     @Test
     void returnsEmptyForZipWithNoMatchingEntries() throws Exception {
-        InputStream zip = createZip(
+        InputStream zip = TestZipHelper.createZipAsStream(
                 "repo-main/src/main/java/Foo.java", "class Foo {}"
         );
 
@@ -111,17 +108,4 @@ class QuarkiverseZipExtractorTest {
         assertThat(result).isEmpty();
     }
 
-    private InputStream createZip(String... nameContentPairs) throws Exception {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (ZipOutputStream zos = new ZipOutputStream(baos)) {
-            for (int i = 0; i < nameContentPairs.length; i += 2) {
-                String name = nameContentPairs[i];
-                String content = nameContentPairs[i + 1];
-                zos.putNextEntry(new ZipEntry(name));
-                zos.write(content.getBytes());
-                zos.closeEntry();
-            }
-        }
-        return new ByteArrayInputStream(baos.toByteArray());
-    }
 }

@@ -1,12 +1,12 @@
 package com.fvd.quarkiverse.services;
 
 import com.fvd.cache.services.CacheService;
+import com.fvd.common.TestZipHelper;
 import com.fvd.github.clients.GithubApiFile;
 import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.services.GitHubService;
 import com.fvd.indexs.stores.IndexStore;
 import com.fvd.quarkiverse.parser.AntoraPlaybookParser;
-import com.fvd.quarkiverse.parser.ResolvedContentSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,14 +15,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -79,7 +74,7 @@ class QuarkiverseServiceTest {
                 "quarkiverse", "quarkiverse-docs", "antora-playbook.yml", "main"))
                 .thenReturn(playbookFile);
 
-        byte[] zipBytes = createZip(
+        byte[] zipBytes = TestZipHelper.createZip(
                 "quarkus-openapi-generator-main/docs/modules/ROOT/pages/index.adoc", "= OpenAPI Generator"
         );
         when(gitHubService.fetchZipStreamForRepo("quarkiverse", "quarkus-openapi-generator", "main"))
@@ -116,7 +111,7 @@ class QuarkiverseServiceTest {
                 .thenThrow(new RuntimeException("Download failed"));
 
         // Second extension succeeds
-        byte[] zipBytes = createZip(
+        byte[] zipBytes = TestZipHelper.createZip(
                 "quarkus-good-ext-main/docs/modules/ROOT/pages/index.adoc", "= Good Extension"
         );
         when(gitHubService.fetchZipStreamForRepo("quarkiverse", "quarkus-good-ext", "main"))
@@ -265,15 +260,4 @@ class QuarkiverseServiceTest {
         assertThat(result).isTrue();
     }
 
-    private byte[] createZip(String... nameContentPairs) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (ZipOutputStream zos = new ZipOutputStream(baos)) {
-            for (int i = 0; i < nameContentPairs.length; i += 2) {
-                zos.putNextEntry(new ZipEntry(nameContentPairs[i]));
-                zos.write(nameContentPairs[i + 1].getBytes());
-                zos.closeEntry();
-            }
-        }
-        return baos.toByteArray();
-    }
 }

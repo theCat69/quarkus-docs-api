@@ -2,10 +2,10 @@ package com.fvd.indexs.indexers;
 
 import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.cache.services.CacheService;
+import com.fvd.common.TestSqliteHelper;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
-import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import com.fvd.search.TestSearchConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,10 +35,7 @@ class CodeSampleIndexerTest {
         CacheService cacheService = new CacheService(tempDir.toString());
         docStore = new DocStore(cacheService);
 
-        SQLiteDataSource ds = new SQLiteDataSource();
-        ds.setUrl("jdbc:sqlite:" + tempDir.resolve("test.db"));
-        SqliteSchemaInitializer schemaInitializer = new SqliteSchemaInitializer(ds);
-        schemaInitializer.initSchema();
+        SQLiteDataSource ds = TestSqliteHelper.createInitializedDataSource(tempDir);
 
         store = new CodeSampleIndexStore(ds);
         DocParser parser = new AsciidocParser(new TestSearchConfig());
