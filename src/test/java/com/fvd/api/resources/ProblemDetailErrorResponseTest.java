@@ -1,35 +1,18 @@
 package com.fvd.api.resources;
 
-import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
-import org.apache.commons.io.FileUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.nio.file.Path;
-
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 
 /**
  * Tests verifying RFC 7807 Problem Details error responses.
  */
 @QuarkusTest
-class ProblemDetailErrorResponseTest {
-
-    @Inject
-    SqliteSchemaInitializer schemaInitializer;
-
-    @BeforeEach
-    void cleanTestCache() throws IOException {
-        var cachePath = Path.of("build/test-cache").toFile();
-        if (cachePath.exists()) {
-            FileUtils.cleanDirectory(cachePath);
-        }
-        schemaInitializer.resetSchema();
-    }
+class ProblemDetailErrorResponseTest extends AbstractApiResourceTest {
 
     @Test
     void testBadRequestReturnsProblemDetail() {

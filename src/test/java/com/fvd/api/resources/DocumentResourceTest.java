@@ -1,51 +1,22 @@
 package com.fvd.api.resources;
 
-import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.indexers.FileKeywordEntry;
 import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.indexs.indexers.SectionKeywordEntry;
-import com.fvd.indexs.stores.KeywordIndexStore;
-import com.fvd.indexs.stores.SqliteSchemaInitializer;
-import com.fvd.search.services.SearchService;
 import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
-import org.apache.commons.io.FileUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 
 @QuarkusTest
-class DocumentResourceTest {
-
-    @Inject
-    KeywordIndexStore keywordIndexStore;
-
-    @Inject
-    DocStore docStore;
-
-    @Inject
-    SqliteSchemaInitializer schemaInitializer;
-
-    @Inject
-    SearchService searchService;
-
-    @BeforeEach
-    void cleanTestCache() throws IOException {
-        var cachePath = Path.of("build/test-cache").toFile();
-        if (cachePath.exists()) {
-            FileUtils.cleanDirectory(cachePath);
-        }
-        schemaInitializer.resetSchema();
-        searchService.invalidateCache("3.27");
-        searchService.invalidateCache("main");
-    }
+class DocumentResourceTest extends AbstractApiResourceTest {
 
     // --- Path mode tests ---
 
@@ -62,27 +33,6 @@ class DocumentResourceTest {
                 .body("path", equalTo("security.adoc"))
                 .body("sections", notNullValue())
                 .body("codeBlocks", notNullValue());
-    }
-
-    @Test
-    void testGetDocumentByPathNotFound() {
-        given()
-                .queryParam("version", "3.27")
-                .queryParam("path", "nonexistent.adoc")
-                .when().get("/api/documents")
-                .then()
-                .statusCode(404)
-                .body("detail", containsString("Document not found"));
-    }
-
-    @Test
-    void testGetDocumentByPathInvalid() {
-        given()
-                .queryParam("version", "3.27")
-                .queryParam("path", "../../etc/passwd")
-                .when().get("/api/documents")
-                .then()
-                .statusCode(400);
     }
 
     @Test
@@ -149,7 +99,7 @@ class DocumentResourceTest {
 
     @Test
     void testSearchDocumentsWithPagination() {
-        seedDocFileMultiple();
+        seedDocFilesMultiple();
         seedKeywordIndexMultiple();
         given()
                 .queryParam("version", "3.27")
@@ -165,7 +115,7 @@ class DocumentResourceTest {
 
     @Test
     void testSearchDocumentsWithExtensionFilter() {
-        seedDocFileMultiple();
+        seedDocFilesMultiple();
         seedKeywordIndexWithExtensions();
         given()
                 .queryParam("version", "3.27")
@@ -176,18 +126,6 @@ class DocumentResourceTest {
                 .statusCode(200)
                 .body("results.size()", is(1))
                 .body("results[0].extension", equalTo("quarkus-core"));
-    }
-
-    // --- Error cases ---
-
-    @Test
-    void testMissingPathAndKeywords() {
-        given()
-                .queryParam("version", "3.27")
-                .when().get("/api/documents")
-                .then()
-                .statusCode(400)
-                .body("detail", containsString("path"));
     }
 
     @Test
@@ -242,43 +180,12 @@ class DocumentResourceTest {
         docStore.write("3.27", "rest.adoc", docContent);
     }
 
-    private void seedDocFileMultiple() {
-        docStore.write("3.27", "security.adoc", "= Security\nContent about security.");
-        docStore.write("3.27", "config.adoc", "= Config\nContent about config.");
-    }
-
     private void seedKeywordIndex() {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("security.adoc",
                         List.of(new KeywordScore("security", 15)),
                         List.of(new SectionKeywordEntry("Overview", 4, 8,
                                 List.of(new KeywordScore("security", 12)))))
-        ));
-        keywordIndexStore.write("3.27", index);
-    }
-
-    private void seedKeywordIndexMultiple() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("security.adoc",
-                        List.of(new KeywordScore("security", 15), new KeywordScore("quarkus", 8)),
-                        List.of()),
-                new FileKeywordEntry("config.adoc",
-                        List.of(new KeywordScore("config", 10), new KeywordScore("quarkus", 5)),
-                        List.of())
-        ));
-        keywordIndexStore.write("3.27", index);
-    }
-
-    private void seedKeywordIndexWithExtensions() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("security.adoc",
-                        List.of(new KeywordScore("security", 15)),
-                        List.of(),
-                        "quarkus-core"),
-                new FileKeywordEntry("config.adoc",
-                        List.of(new KeywordScore("security", 10)),
-                        List.of(),
-                        "quarkus-openapi-generator")
         ));
         keywordIndexStore.write("3.27", index);
     }
