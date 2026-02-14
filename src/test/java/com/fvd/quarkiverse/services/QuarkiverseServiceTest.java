@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayInputStream;
 import java.nio.file.Path;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 
@@ -150,7 +151,7 @@ class QuarkiverseServiceTest {
 
         // Provide file content for the changed file
         GithubApiFile changedFile = new GithubApiFile();
-        changedFile.content = java.util.Base64.getEncoder().encodeToString("= Updated Content".getBytes());
+        changedFile.content = Base64.getEncoder().encodeToString("= Updated Content".getBytes());
         changedFile.encoding = "base64";
         when(gitHubService.fetchFileContentForRepo(
                 "quarkiverse", "quarkus-openapi-generator",
@@ -218,7 +219,7 @@ class QuarkiverseServiceTest {
 
         // Provide file content
         GithubApiFile file = new GithubApiFile();
-        file.content = java.util.Base64.getEncoder().encodeToString("= New Extension".getBytes());
+        file.content = Base64.getEncoder().encodeToString("= New Extension".getBytes());
         file.encoding = "base64";
         when(gitHubService.fetchFileContentForRepo(
                 "quarkiverse", "quarkus-new-ext",
@@ -232,7 +233,7 @@ class QuarkiverseServiceTest {
 
     private void stubPlaybook(String yamlContent) {
         GithubApiFile playbookFile = new GithubApiFile();
-        playbookFile.content = java.util.Base64.getEncoder().encodeToString(yamlContent.getBytes());
+        playbookFile.content = Base64.getEncoder().encodeToString(yamlContent.getBytes());
         playbookFile.encoding = "base64";
 
         when(gitHubService.fetchFileContentForRepo(
