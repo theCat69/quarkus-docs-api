@@ -172,15 +172,15 @@ The parameterized test with 30 rows produces 30 test invocations. Combined with 
 
 ## Tasks
 
-- [ ] Add imports for `ParameterizedTest` and `CsvSource`
-- [ ] Create `stemProducesExpectedResult()` with `@CsvSource` (~30 rows)
-- [ ] Delete all 31 old methods (30 unique + 1 duplicate)
-- [ ] Keep `stemNullReturnsNull` as standalone `@Test`
-- [ ] Keep `stemMorphologicalVariantsProduceSameStem` as standalone `@Test`
-- [ ] Remove old section comment blocks
-- [ ] Run `./gradlew test --tests "com.fvd.common.StemmerTest"` — all pass
-- [ ] Run `./gradlew test` — full suite passes
-- [ ] Confirm file is ≤ 80 lines (down from 204)
+- [x] Add imports for `ParameterizedTest` and `CsvSource`
+- [x] Create `stemProducesExpectedResult()` with `@CsvSource` (~30 rows)
+- [x] Delete all 31 old methods (30 unique + 1 duplicate)
+- [x] Keep `stemNullReturnsNull` as standalone `@Test`
+- [x] Keep `stemMorphologicalVariantsProduceSameStem` as standalone `@Test`
+- [x] Remove old section comment blocks
+- [x] Run `./gradlew test --tests "com.fvd.common.StemmerTest"` — all pass
+- [x] Run `./gradlew test` — full suite passes
+- [x] Confirm file is ≤ 80 lines (down from 204)
 
 ---
 

@@ -119,13 +119,13 @@ All three search methods call `FilterUtils.matchesFilter(extension, entry.extens
 
 ## Tasks
 
-- [ ] Delete 6 redundant extension-filtering tests (3 section + 3 code sample)
-- [ ] Add Javadoc to `ExtensionFilteringTests` explaining dedup rationale
-- [ ] Merge null + blank extension tests into parameterized test
-- [ ] Merge null + empty filePaths tests into parameterized test
-- [ ] Add parameterized test imports
-- [ ] Run `./gradlew test` — all tests pass
-- [ ] Verify test count decreased by ~8 methods
+- [x] Delete 6 redundant extension-filtering tests (3 section + 3 code sample)
+- [x] Add Javadoc to `ExtensionFilteringTests` explaining dedup rationale
+- [x] Merge null + blank extension tests into parameterized test
+- [x] Merge null + empty filePaths tests into parameterized test
+- [x] Add parameterized test imports
+- [x] Run `./gradlew test` — all tests pass
+- [x] Verify test count decreased by ~8 methods
 
 ---
 

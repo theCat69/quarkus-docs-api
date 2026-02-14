@@ -170,15 +170,15 @@ All `extractFilenameKeywords` tests (varied assertions), `extractStemmedFilename
 
 ## Tasks
 
-- [ ] Add parameterized test imports
-- [ ] Implement Group 1 consolidation (multiplier: 7 → 1)
-- [ ] Implement Group 2 consolidation (calculateScore: 5 → 1)
-- [ ] Implement Group 3 consolidation (heading level: 5 → 1)
-- [ ] Implement Group 4 consolidation (parseHeadingLevel: 10 → 1)
-- [ ] Reorganize section comments
-- [ ] Clean up imports
-- [ ] Run `./gradlew test` — all tests pass
-- [ ] Verify test count: ~31 methods, ~54 test executions
+- [x] Add parameterized test imports
+- [x] Implement Group 1 consolidation (multiplier: 7 → 1)
+- [x] Implement Group 2 consolidation (calculateScore: 5 → 1)
+- [x] Implement Group 3 consolidation (heading level: 5 → 1)
+- [x] Implement Group 4 consolidation (parseHeadingLevel: 10 → 1)
+- [x] Reorganize section comments
+- [x] Clean up imports
+- [x] Run `./gradlew test` — all tests pass
+- [x] Verify test count: ~31 methods, ~54 test executions
 
 ---
 

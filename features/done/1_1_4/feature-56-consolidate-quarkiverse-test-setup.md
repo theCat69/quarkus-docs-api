@@ -179,14 +179,14 @@ This feature modifies **only** test files:
 
 ## Tasks
 
-- [ ] Add `buildQuarkiverseIndexes()` private method to `QuarkiverseIntegrationTest`
-- [ ] Replace inline index-building blocks in 4 test methods with `buildQuarkiverseIndexes()` call
-- [ ] Add `stubPlaybook(String yamlContent)` private method to `QuarkiverseServiceTest`
-- [ ] Replace inline `GithubApiFile` creation + mock stubbing in 5 test methods with `stubPlaybook(yamlContent)` call
-- [ ] Verify the 3 unchanged tests remain unmodified
-- [ ] Run `./gradlew test --tests "com.fvd.quarkiverse.*"` — all quarkiverse tests pass
-- [ ] Run `./gradlew test` — full suite passes
-- [ ] Verify no production code files are modified
+- [x] Add `buildQuarkiverseIndexes()` private method to `QuarkiverseIntegrationTest`
+- [x] Replace inline index-building blocks in 4 test methods with `buildQuarkiverseIndexes()` call
+- [x] Add `stubPlaybook(String yamlContent)` private method to `QuarkiverseServiceTest`
+- [x] Replace inline `GithubApiFile` creation + mock stubbing in 5 test methods with `stubPlaybook(yamlContent)` call
+- [x] Verify the 3 unchanged tests remain unmodified
+- [x] Run `./gradlew test --tests "com.fvd.quarkiverse.*"` — all quarkiverse tests pass
+- [x] Run `./gradlew test` — full suite passes
+- [x] Verify no production code files are modified
 
 ---
 

@@ -238,15 +238,15 @@ This feature modifies **only** test files:
 
 ## Tasks
 
-- [ ] Create `AbstractCacheJobIntegrationTest.java` with 8 `@Inject` fields, `cleanTestCache()`, and `simulateWarmup()`
-- [ ] Modify `CacheWarmupJobIntegrationTest` to extend base class; remove 8 fields and `cleanTestCache()`
-- [ ] Modify `CacheRefreshJobIntegrationTest` to extend base class; remove 8 fields and `cleanTestCache()`
-- [ ] Replace 3 warmup preamble blocks in refresh test with `simulateWarmup("3.27")`
-- [ ] Strip redundant warmup assertions from refresh tests
-- [ ] Replace `hasSizeGreaterThanOrEqualTo(warmupSampleCount)` with `isNotEmpty()` in both refresh tests
-- [ ] Clean up imports in all 3 files
-- [ ] Run `./gradlew test` — all tests pass
-- [ ] Verify combined line count decreased (354 lines → ~200 lines across 3 files)
+- [x] Create `AbstractCacheJobIntegrationTest.java` with 8 `@Inject` fields, `cleanTestCache()`, and `simulateWarmup()`
+- [x] Modify `CacheWarmupJobIntegrationTest` to extend base class; remove 8 fields and `cleanTestCache()`
+- [x] Modify `CacheRefreshJobIntegrationTest` to extend base class; remove 8 fields and `cleanTestCache()`
+- [x] Replace 3 warmup preamble blocks in refresh test with `simulateWarmup("3.27")`
+- [x] Strip redundant warmup assertions from refresh tests
+- [x] Replace `hasSizeGreaterThanOrEqualTo(warmupSampleCount)` with `isNotEmpty()` in both refresh tests
+- [x] Clean up imports in all 3 files
+- [x] Run `./gradlew test` — all tests pass
+- [x] Verify combined line count decreased (354 lines → ~200 lines across 3 files)
 
 ---
 

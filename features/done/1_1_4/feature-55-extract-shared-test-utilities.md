@@ -281,21 +281,21 @@ Lombok's `@UtilityClass` makes the class `final`, adds a private no-args constru
 
 ## Tasks
 
-- [ ] Create `src/test/java/com/fvd/common/TestSqliteHelper.java` with `@UtilityClass` and `createInitializedDataSource(Path)` method
-- [ ] Create `src/test/java/com/fvd/common/TestZipHelper.java` with `@UtilityClass`, `createZip()` and `createZipAsStream()` methods
-- [ ] Update `IndexStoreTest.java` — replace 4-line block with `TestSqliteHelper.createInitializedDataSource(tempDir)`, clean imports
-- [ ] Update `KeywordIndexStoreTest.java` — replace 4-line block, clean imports
-- [ ] Update `IndexServiceTest.java` — replace 4-line block, clean imports
-- [ ] Update `KeywordIndexerTest.java` — replace 4-line block, clean imports
-- [ ] Update `CodeSampleIndexerTest.java` — replace 4-line block, clean imports
-- [ ] Update `SearchServiceTest.java` root `setUp()` — replace 4-line block, clean imports
-- [ ] Extract `createSearchServiceWithDocStore(DocStore)` helper in `SearchServiceTest`
-- [ ] Update `SectionContentTests.setUpSectionContent()` to use the helper
-- [ ] Update `SectionSearchSnippetAndFilterTests.setUpSnippetTests()` to use the helper
-- [ ] Update `QuarkiverseServiceTest.java` — delete `createZip()`, replace calls with `TestZipHelper.createZip(...)`, clean imports
-- [ ] Update `QuarkiverseZipExtractorTest.java` — delete `createZip()`, replace calls with `TestZipHelper.createZipAsStream(...)`, clean imports
-- [ ] Verify no new wildcard imports introduced in any new or modified file
-- [ ] Run `./gradlew test` — all tests pass with zero failures
+- [x] Create `src/test/java/com/fvd/common/TestSqliteHelper.java` with `@UtilityClass` and `createInitializedDataSource(Path)` method
+- [x] Create `src/test/java/com/fvd/common/TestZipHelper.java` with `@UtilityClass`, `createZip()` and `createZipAsStream()` methods
+- [x] Update `IndexStoreTest.java` — replace 4-line block with `TestSqliteHelper.createInitializedDataSource(tempDir)`, clean imports
+- [x] Update `KeywordIndexStoreTest.java` — replace 4-line block, clean imports
+- [x] Update `IndexServiceTest.java` — replace 4-line block, clean imports
+- [x] Update `KeywordIndexerTest.java` — replace 4-line block, clean imports
+- [x] Update `CodeSampleIndexerTest.java` — replace 4-line block, clean imports
+- [x] Update `SearchServiceTest.java` root `setUp()` — replace 4-line block, clean imports
+- [x] Extract `createSearchServiceWithDocStore(DocStore)` helper in `SearchServiceTest`
+- [x] Update `SectionContentTests.setUpSectionContent()` to use the helper
+- [x] Update `SectionSearchSnippetAndFilterTests.setUpSnippetTests()` to use the helper
+- [x] Update `QuarkiverseServiceTest.java` — delete `createZip()`, replace calls with `TestZipHelper.createZip(...)`, clean imports
+- [x] Update `QuarkiverseZipExtractorTest.java` — delete `createZip()`, replace calls with `TestZipHelper.createZipAsStream(...)`, clean imports
+- [x] Verify no new wildcard imports introduced in any new or modified file
+- [x] Run `./gradlew test` — all tests pass with zero failures
 
 ---
 

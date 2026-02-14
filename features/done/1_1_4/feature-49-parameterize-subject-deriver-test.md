@@ -213,14 +213,14 @@ This feature modifies **only** `src/test/java/com/fvd/subject/services/SubjectDe
 
 ## Tasks
 
-- [ ] Add parameterized test imports (`ParameterizedTest`, `CsvSource`, `MethodSource`, `Arguments`, `Stream`)
-- [ ] Delete 30 pattern-matching test methods (lines 37–215)
-- [ ] Add `deriveSubjectReturnsExpectedSubjectForFilename()` with `@CsvSource` (30 rows)
-- [ ] Delete 3 null/empty/blank test methods (lines 219–232)
-- [ ] Add `nullEmptyBlankInputs()` method source and `deriveSubjectReturnsMiscForNullEmptyOrBlank()` parameterized test
-- [ ] Verify all remaining test methods are unchanged
-- [ ] Run `./gradlew test` — all tests must pass
-- [ ] Verify file is ~200 lines (down from 481)
+- [x] Add parameterized test imports (`ParameterizedTest`, `CsvSource`, `MethodSource`, `Arguments`, `Stream`)
+- [x] Delete 30 pattern-matching test methods (lines 37–215)
+- [x] Add `deriveSubjectReturnsExpectedSubjectForFilename()` with `@CsvSource` (30 rows)
+- [x] Delete 3 null/empty/blank test methods (lines 219–232)
+- [x] Add `nullEmptyBlankInputs()` method source and `deriveSubjectReturnsMiscForNullEmptyOrBlank()` parameterized test
+- [x] Verify all remaining test methods are unchanged
+- [x] Run `./gradlew test` — all tests must pass
+- [x] Verify file is ~200 lines (down from 481)
 
 ---
 

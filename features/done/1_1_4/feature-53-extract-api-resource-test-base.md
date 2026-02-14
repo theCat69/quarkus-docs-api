@@ -319,15 +319,15 @@ JUnit 5 `@BeforeEach` on a superclass runs **before** any `@BeforeEach` on the s
 
 ## Tasks
 
-- [ ] Create `AbstractApiResourceTest.java` with 6 `@Inject` fields, unified `cleanTestCache()`, and 4 shared seed helpers
-- [ ] Refactor `ApiSearchResourceTest` to extend base class; remove duplicated fields, setup, seeds, and 1 redundant test
-- [ ] Refactor `CodeSampleResourceTest` to extend base class; remove duplicated fields, setup, seeds, and 1 redundant test
-- [ ] Refactor `DocumentResourceTest` to extend base class; remove duplicated fields, setup, seeds, and 3 redundant tests; fix wildcard import; rename `seedDocFileMultiple()` calls
-- [ ] Refactor `CatalogResourceTest` to extend base class; remove duplicated fields, setup, and 1 redundant test
-- [ ] Refactor `ProblemDetailErrorResponseTest` to extend base class; remove duplicated fields and setup; fix wildcard import
-- [ ] Run `./gradlew test` — all tests pass
-- [ ] Verify 6 redundant error-case tests are deleted
-- [ ] Verify no wildcard imports remain in any of the 6 files
+- [x] Create `AbstractApiResourceTest.java` with 6 `@Inject` fields, unified `cleanTestCache()`, and 4 shared seed helpers
+- [x] Refactor `ApiSearchResourceTest` to extend base class; remove duplicated fields, setup, seeds, and 1 redundant test
+- [x] Refactor `CodeSampleResourceTest` to extend base class; remove duplicated fields, setup, seeds, and 1 redundant test
+- [x] Refactor `DocumentResourceTest` to extend base class; remove duplicated fields, setup, seeds, and 3 redundant tests; fix wildcard import; rename `seedDocFileMultiple()` calls
+- [x] Refactor `CatalogResourceTest` to extend base class; remove duplicated fields, setup, and 1 redundant test
+- [x] Refactor `ProblemDetailErrorResponseTest` to extend base class; remove duplicated fields and setup; fix wildcard import
+- [x] Run `./gradlew test` — all tests pass
+- [x] Verify 6 redundant error-case tests are deleted
+- [x] Verify no wildcard imports remain in any of the 6 files
 
 ---
 
