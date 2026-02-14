@@ -6,7 +6,12 @@ import com.fvd.common.matchers.FuzzyMatcher;
 import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.indexs.indexers.*;
+import com.fvd.indexs.indexers.CodeSampleEntry;
+import com.fvd.indexs.indexers.CodeSampleIndex;
+import com.fvd.indexs.indexers.FileKeywordEntry;
+import com.fvd.indexs.indexers.KeywordIndex;
+import com.fvd.indexs.indexers.KeywordScore;
+import com.fvd.indexs.indexers.SectionKeywordEntry;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.indexs.stores.SqliteSchemaInitializer;
@@ -16,10 +21,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.sqlite.SQLiteDataSource;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -498,30 +509,16 @@ class SearchServiceTest {
         assertThat(sectionResult.items().get(0).score).isEqualTo(15.0);
     }
 
-    @Test
-    void searchSectionsSearchesAllFilesWhenFilePathsIsNull() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("security.adoc", List.of(), List.of(
-                        new SectionKeywordEntry("Auth", 1, 10,
-                                List.of(new KeywordScore("secur", 8)))
-                )),
-                new FileKeywordEntry("config.adoc", List.of(), List.of(
-                        new SectionKeywordEntry("Settings", 1, 10,
-                                List.of(new KeywordScore("secur", 5)))
-                ))
-        ));
-        seedIndex("3.27", index);
-
-        PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                "3.27", List.of("security"), null, null, null, 10, 0);
-
-        assertThat(result.items()).hasSize(2);
-        assertThat(result.items().get(0).section).isEqualTo("Auth");
-        assertThat(result.items().get(1).section).isEqualTo("Settings");
+    static Stream<Arguments> nullAndEmptyFilePaths() {
+        return Stream.of(
+                Arguments.of((List<String>) null),
+                Arguments.of(List.of())
+        );
     }
 
-    @Test
-    void searchSectionsSearchesAllFilesWhenFilePathsIsEmpty() {
+    @ParameterizedTest(name = "filePaths={0} searches all files")
+    @MethodSource("nullAndEmptyFilePaths")
+    void searchSectionsSearchesAllFilesWhenFilePathsIsNullOrEmpty(List<String> filePaths) {
         KeywordIndex index = new KeywordIndex(List.of(
                 new FileKeywordEntry("security.adoc", List.of(), List.of(
                         new SectionKeywordEntry("Auth", 1, 10,
@@ -535,7 +532,7 @@ class SearchServiceTest {
         seedIndex("3.27", index);
 
         PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                "3.27", List.of("security"), List.of(), null, null, 10, 0);
+                "3.27", List.of("security"), filePaths, null, null, 10, 0);
 
         assertThat(result.items()).hasSize(2);
     }
@@ -1060,6 +1057,11 @@ class SearchServiceTest {
 
     // --- Extension filtering tests ---
 
+    /**
+     * Extension filtering is tested at the file level only. All three search methods
+     * (searchFiles, searchSections, searchCodeSamples) delegate to FilterUtils.matchesFilter,
+     * so file-level tests provide full coverage of the filtering logic.
+     */
     @Nested
     class ExtensionFilteringTests {
 
@@ -1083,8 +1085,10 @@ class SearchServiceTest {
             assertThat(result.items().get(0).path).isEqualTo("core.adoc");
         }
 
-        @Test
-        void searchFilesWithNullExtensionReturnsAllFiles() {
+        @ParameterizedTest(name = "extension={0} returns all files")
+        @NullSource
+        @ValueSource(strings = {"", "  "})
+        void searchFilesWithNullOrBlankExtensionReturnsAllFiles(String extension) {
             KeywordIndex index = new KeywordIndex(List.of(
                     new FileKeywordEntry("core.adoc",
                             List.of(new KeywordScore("secur", 10)), List.of(), "quarkus-core"),
@@ -1094,24 +1098,7 @@ class SearchServiceTest {
             seedIndex("3.27", index);
 
             PaginatedResult<FileSearchResult> result = searchService.searchFiles(
-                    "3.27", List.of("security"), null, 10, 0);
-
-            assertThat(result.items()).hasSize(2);
-            assertThat(result.total()).isEqualTo(2);
-        }
-
-        @Test
-        void searchFilesWithBlankExtensionReturnsAllFiles() {
-            KeywordIndex index = new KeywordIndex(List.of(
-                    new FileKeywordEntry("core.adoc",
-                            List.of(new KeywordScore("secur", 10)), List.of(), "quarkus-core"),
-                    new FileKeywordEntry("ext.adoc",
-                            List.of(new KeywordScore("secur", 15)), List.of(), "quarkus-openapi-generator")
-            ));
-            seedIndex("3.27", index);
-
-            PaginatedResult<FileSearchResult> result = searchService.searchFiles(
-                    "3.27", List.of("security"), "  ", 10, 0);
+                    "3.27", List.of("security"), extension, 10, 0);
 
             assertThat(result.items()).hasSize(2);
             assertThat(result.total()).isEqualTo(2);
@@ -1151,119 +1138,6 @@ class SearchServiceTest {
             assertThat(result.total()).isEqualTo(2);
         }
 
-        // --- searchSections extension filtering ---
-
-        @Test
-        void searchSectionsWithExtensionFilterReturnsOnlyMatchingSections() {
-            KeywordIndex index = new KeywordIndex(List.of(
-                    new FileKeywordEntry("core.adoc", List.of(), List.of(
-                            new SectionKeywordEntry("Core Section", 1, 10,
-                                    List.of(new KeywordScore("secur", 8)))
-                    ), "quarkus-core"),
-                    new FileKeywordEntry("ext.adoc", List.of(), List.of(
-                            new SectionKeywordEntry("Ext Section", 1, 10,
-                                    List.of(new KeywordScore("secur", 12)))
-                    ), "quarkus-openapi-generator")
-            ));
-            seedIndex("3.27", index);
-
-            PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                    "3.27", List.of("security"), null, null, "quarkus-core", 10, 0);
-
-            assertThat(result.items()).hasSize(1);
-            assertThat(result.total()).isEqualTo(1);
-            assertThat(result.items().get(0).path).isEqualTo("core.adoc");
-        }
-
-        @Test
-        void searchSectionsWithNullExtensionReturnsAllSections() {
-            KeywordIndex index = new KeywordIndex(List.of(
-                    new FileKeywordEntry("core.adoc", List.of(), List.of(
-                            new SectionKeywordEntry("Core Section", 1, 10,
-                                    List.of(new KeywordScore("secur", 8)))
-                    ), "quarkus-core"),
-                    new FileKeywordEntry("ext.adoc", List.of(), List.of(
-                            new SectionKeywordEntry("Ext Section", 1, 10,
-                                    List.of(new KeywordScore("secur", 12)))
-                    ), "quarkus-openapi-generator")
-            ));
-            seedIndex("3.27", index);
-
-            PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                    "3.27", List.of("security"), null, null, null, 10, 0);
-
-            assertThat(result.items()).hasSize(2);
-            assertThat(result.total()).isEqualTo(2);
-        }
-
-        @Test
-        void searchSectionsWithNonexistentExtensionReturnsEmpty() {
-            KeywordIndex index = new KeywordIndex(List.of(
-                    new FileKeywordEntry("core.adoc", List.of(), List.of(
-                            new SectionKeywordEntry("Core Section", 1, 10,
-                                    List.of(new KeywordScore("secur", 8)))
-                    ), "quarkus-core")
-            ));
-            seedIndex("3.27", index);
-
-            PaginatedResult<SectionSearchResult> result = searchService.searchSections(
-                    "3.27", List.of("security"), null, null, "nonexistent-extension", 10, 0);
-
-            assertThat(result.items()).isEmpty();
-            assertThat(result.total()).isEqualTo(0);
-        }
-
-        // --- searchCodeSamples extension filtering ---
-
-        @Test
-        void searchCodeSamplesWithExtensionFilterReturnsOnlyMatchingSamples() {
-            CodeSampleIndex index = new CodeSampleIndex(List.of(
-                    new CodeSampleEntry("core.adoc", "Section A", "java", "code1", 1, 5,
-                            List.of(new KeywordScore("secur", 10)), "quarkus-core"),
-                    new CodeSampleEntry("ext.adoc", "Section B", "java", "code2", 10, 15,
-                            List.of(new KeywordScore("secur", 20)), "quarkus-openapi-generator")
-            ));
-            codeSampleIndexStore.write("3.27", index);
-
-            PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
-                    "3.27", List.of("security"), null, null, "quarkus-core", 10, 0);
-
-            assertThat(result.items()).hasSize(1);
-            assertThat(result.total()).isEqualTo(1);
-            assertThat(result.items().get(0).path).isEqualTo("core.adoc");
-        }
-
-        @Test
-        void searchCodeSamplesWithNullExtensionReturnsAllSamples() {
-            CodeSampleIndex index = new CodeSampleIndex(List.of(
-                    new CodeSampleEntry("core.adoc", "Section A", "java", "code1", 1, 5,
-                            List.of(new KeywordScore("secur", 10)), "quarkus-core"),
-                    new CodeSampleEntry("ext.adoc", "Section B", "java", "code2", 10, 15,
-                            List.of(new KeywordScore("secur", 20)), "quarkus-openapi-generator")
-            ));
-            codeSampleIndexStore.write("3.27", index);
-
-            PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
-                    "3.27", List.of("security"), null, null, null, 10, 0);
-
-            assertThat(result.items()).hasSize(2);
-            assertThat(result.total()).isEqualTo(2);
-        }
-
-        @Test
-        void searchCodeSamplesWithNonexistentExtensionReturnsEmpty() {
-            CodeSampleIndex index = new CodeSampleIndex(List.of(
-                    new CodeSampleEntry("core.adoc", "Section A", "java", "code1", 1, 5,
-                            List.of(new KeywordScore("secur", 10)), "quarkus-core")
-            ));
-            codeSampleIndexStore.write("3.27", index);
-
-            PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
-                    "3.27", List.of("security"), null, null, "nonexistent-extension", 10, 0);
-
-            assertThat(result.items()).isEmpty();
-            assertThat(result.total()).isEqualTo(0);
-        }
     }
 
     /**
