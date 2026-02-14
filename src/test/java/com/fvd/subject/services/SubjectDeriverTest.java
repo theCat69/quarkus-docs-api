@@ -4,10 +4,15 @@ import com.fvd.subject.Subject;
 import com.fvd.subject.SubjectConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -34,201 +39,58 @@ class SubjectDeriverTest {
 
     // --- Pattern matching tests ---
 
-    @Test
-    void deriveSubjectReturnsGettingStartedForQuickstart() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/getting-started.adoc"))
-                .isEqualTo("getting-started");
-    }
-
-    @Test
-    void deriveSubjectReturnsGettingStartedForTutorial() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/tutorial-getting-started.adoc"))
-                .isEqualTo("getting-started");
-    }
-
-    @Test
-    void deriveSubjectReturnsSecurityForOidc() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/security-oidc.adoc"))
-                .isEqualTo("security");
-    }
-
-    @Test
-    void deriveSubjectReturnsSecurityForJwt() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/security-jwt.adoc"))
-                .isEqualTo("security");
-    }
-
-    @Test
-    void deriveSubjectReturnsSecurityForKeycloak() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/keycloak-admin-client.adoc"))
-                .isEqualTo("security");
-    }
-
-    @Test
-    void deriveSubjectReturnsRestApisForRest() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/rest-client.adoc"))
-                .isEqualTo("rest-apis");
-    }
-
-    @Test
-    void deriveSubjectReturnsRestApisForResteasy() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/resteasy-reactive.adoc"))
-                .isEqualTo("rest-apis");
-    }
-
-    @Test
-    void deriveSubjectReturnsDataPersistenceForHibernate() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/hibernate-orm.adoc"))
-                .isEqualTo("data-persistence");
-    }
-
-    @Test
-    void deriveSubjectReturnsDataPersistenceForPanache() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/hibernate-orm-panache.adoc"))
-                .isEqualTo("data-persistence");
-    }
-
-    @Test
-    void deriveSubjectReturnsDataPersistenceForDatasource() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/datasource.adoc"))
-                .isEqualTo("data-persistence");
-    }
-
-    @Test
-    void deriveSubjectReturnsCoreConceptsForCdi() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/cdi.adoc"))
-                .isEqualTo("core-concepts");
-    }
-
-    @Test
-    void deriveSubjectReturnsCoreConceptsForConfiguration() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/configuration.adoc"))
-                .isEqualTo("core-concepts");
-    }
-
-    @Test
-    void deriveSubjectReturnsCoreConceptsForConfig() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/config.adoc"))
-                .isEqualTo("core-concepts");
-    }
-
-    @Test
-    void deriveSubjectReturnsMessagingForKafka() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/kafka.adoc"))
-                .isEqualTo("messaging");
-    }
-
-    @Test
-    void deriveSubjectReturnsMessagingForAmqp() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/amqp.adoc"))
-                .isEqualTo("messaging");
-    }
-
-    @Test
-    void deriveSubjectReturnsCloudForKubernetes() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/kubernetes.adoc"))
-                .isEqualTo("cloud");
-    }
-
-    @Test
-    void deriveSubjectReturnsCloudForDocker() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/container-image-docker.adoc"))
-                .isEqualTo("cloud");
-    }
-
-    @Test
-    void deriveSubjectReturnsCloudForOpenshift() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/openshift.adoc"))
-                .isEqualTo("cloud");
-    }
-
-    @Test
-    void deriveSubjectReturnsObservabilityForMetrics() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/metrics.adoc"))
-                .isEqualTo("observability");
-    }
-
-    @Test
-    void deriveSubjectReturnsObservabilityForHealth() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/health.adoc"))
-                .isEqualTo("observability");
-    }
-
-    @Test
-    void deriveSubjectReturnsObservabilityForTracing() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/opentelemetry.adoc"))
-                .isEqualTo("observability");
-    }
-
-    @Test
-    void deriveSubjectReturnsTestingForTest() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/test.adoc"))
-                .isEqualTo("testing");
-    }
-
-    @Test
-    void deriveSubjectReturnsTestingForJunit() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/junit.adoc"))
-                .isEqualTo("testing");
-    }
-
-    @Test
-    void deriveSubjectReturnsToolingForCli() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/cli.adoc"))
-                .isEqualTo("tooling");
-    }
-
-    @Test
-    void deriveSubjectReturnsToolingForDevServices() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/dev-services.adoc"))
-                .isEqualTo("tooling");
-    }
-
-    @Test
-    void deriveSubjectReturnsToolingForMaven() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/maven-tooling.adoc"))
-                .isEqualTo("tooling");
-    }
-
-    @Test
-    void deriveSubjectReturnsToolingForGradle() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/gradle-tooling.adoc"))
-                .isEqualTo("tooling");
-    }
-
-    @Test
-    void deriveSubjectReturnsExtensionsForExtension() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/extension-development.adoc"))
-                .isEqualTo("extensions");
-    }
-
-    @Test
-    void deriveSubjectReturnsExtensionsForQuarkiverse() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/quarkiverse.adoc"))
-                .isEqualTo("extensions");
-    }
-
-    @Test
-    void deriveSubjectReturnsMiscForUnmatchedPath() {
-        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/some-random-topic.adoc"))
-                .isEqualTo("misc");
+    @ParameterizedTest(name = "[{index}] {0} → {1}")
+    @CsvSource({
+            "getting-started.adoc,          getting-started",
+            "tutorial-getting-started.adoc, getting-started",
+            "security-oidc.adoc,            security",
+            "security-jwt.adoc,             security",
+            "keycloak-admin-client.adoc,    security",
+            "rest-client.adoc,              rest-apis",
+            "resteasy-reactive.adoc,        rest-apis",
+            "hibernate-orm.adoc,            data-persistence",
+            "hibernate-orm-panache.adoc,    data-persistence",
+            "datasource.adoc,              data-persistence",
+            "cdi.adoc,                     core-concepts",
+            "configuration.adoc,           core-concepts",
+            "config.adoc,                  core-concepts",
+            "kafka.adoc,                   messaging",
+            "amqp.adoc,                    messaging",
+            "kubernetes.adoc,              cloud",
+            "container-image-docker.adoc,  cloud",
+            "openshift.adoc,               cloud",
+            "metrics.adoc,                 observability",
+            "health.adoc,                  observability",
+            "opentelemetry.adoc,           observability",
+            "test.adoc,                    testing",
+            "junit.adoc,                   testing",
+            "cli.adoc,                     tooling",
+            "dev-services.adoc,            tooling",
+            "maven-tooling.adoc,           tooling",
+            "gradle-tooling.adoc,          tooling",
+            "extension-development.adoc,   extensions",
+            "quarkiverse.adoc,             extensions",
+            "some-random-topic.adoc,       misc"
+    })
+    void deriveSubjectReturnsExpectedSubjectForFilename(String filename, String expectedSubject) {
+        assertThat(subjectDeriver.deriveSubject("docs/src/main/asciidoc/" + filename))
+                .isEqualTo(expectedSubject);
     }
 
     // --- Edge cases ---
 
-    @Test
-    void deriveSubjectReturnsMiscForNull() {
-        assertThat(subjectDeriver.deriveSubject(null)).isEqualTo("misc");
+    static Stream<Arguments> nullEmptyBlankInputs() {
+        return Stream.of(
+                Arguments.of((String) null, "null input"),
+                Arguments.of("", "empty input"),
+                Arguments.of("   ", "blank input")
+        );
     }
 
-    @Test
-    void deriveSubjectReturnsMiscForEmpty() {
-        assertThat(subjectDeriver.deriveSubject("")).isEqualTo("misc");
-    }
-
-    @Test
-    void deriveSubjectReturnsMiscForBlank() {
-        assertThat(subjectDeriver.deriveSubject("   ")).isEqualTo("misc");
+    @ParameterizedTest(name = "[{index}] {1} → misc")
+    @MethodSource("nullEmptyBlankInputs")
+    void deriveSubjectReturnsMiscForNullEmptyOrBlank(String input, String description) {
+        assertThat(subjectDeriver.deriveSubject(input)).isEqualTo("misc");
     }
 
     @Test
@@ -248,7 +110,7 @@ class SubjectDeriverTest {
     @Test
     void deriveSubjectUsesExactOverride() {
         when(config.overrides()).thenReturn(Map.of("docs/special-file.adoc", "special-subject"));
-        
+
         SubjectDeriver deriver = new SubjectDeriver(config);
         deriver.init();
 
@@ -258,7 +120,7 @@ class SubjectDeriverTest {
     @Test
     void deriveSubjectPrioritizesOverridesOverPatterns() {
         when(config.overrides()).thenReturn(Map.of("docs/security.adoc", "custom-subject"));
-        
+
         SubjectDeriver deriver = new SubjectDeriver(config);
         deriver.init();
 
@@ -451,14 +313,14 @@ class SubjectDeriverTest {
     @Test
     void caseSensitiveMatchingWhenConfigured() {
         when(config.caseInsensitive()).thenReturn(false);
-        
+
         SubjectDeriver caseSensitiveDeriver = new SubjectDeriver(config);
         caseSensitiveDeriver.init();
 
         // Lowercase should still match since patterns are lowercase
         assertThat(caseSensitiveDeriver.deriveSubject("docs/security.adoc"))
                 .isEqualTo("security");
-        
+
         // Uppercase path won't match lowercase pattern in case-sensitive mode
         assertThat(caseSensitiveDeriver.deriveSubject("docs/SECURITY.adoc"))
                 .isEqualTo("misc");
@@ -467,7 +329,7 @@ class SubjectDeriverTest {
     @Test
     void deriveSubjectReturnsMiscWhenDisabled() {
         when(config.enabled()).thenReturn(false);
-        
+
         SubjectDeriver disabledDeriver = new SubjectDeriver(config);
         disabledDeriver.init();
 
