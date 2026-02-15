@@ -1,5 +1,6 @@
 package com.fvd.indexs.indexers;
 
+import com.fvd.asciidocs.model.DocumentMetadata;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
@@ -13,12 +14,20 @@ public class FileKeywordEntry {
     public List<KeywordScore> keywords;
     public List<SectionKeywordEntry> sections;
     public String extension;
+    public DocumentMetadata metadata;
 
     /**
-     * Constructor without extension for backward compatibility.
+     * Constructor without extension and metadata for backward compatibility.
      */
     public FileKeywordEntry(String path, List<KeywordScore> keywords, List<SectionKeywordEntry> sections) {
-        this(path, keywords, sections, "quarkus-core");
+        this(path, keywords, sections, "quarkus-core", null);
+    }
+
+    /**
+     * Constructor without metadata for backward compatibility.
+     */
+    public FileKeywordEntry(String path, List<KeywordScore> keywords, List<SectionKeywordEntry> sections, String extension) {
+        this(path, keywords, sections, extension, null);
     }
 
 }

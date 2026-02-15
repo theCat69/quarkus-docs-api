@@ -28,7 +28,7 @@ class KeywordIndexStoreTest {
     @BeforeEach
     void setUp() {
         SQLiteDataSource ds = TestSqliteHelper.createInitializedDataSource(tempDir);
-        keywordIndexStore = new KeywordIndexStore(ds);
+        keywordIndexStore = new KeywordIndexStore(ds, new DocumentMetadataStore(ds));
     }
 
     @Test

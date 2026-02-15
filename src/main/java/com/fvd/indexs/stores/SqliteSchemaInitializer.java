@@ -47,6 +47,7 @@ public class SqliteSchemaInitializer {
             stmt.execute("DROP TABLE IF EXISTS section_keywords");
             stmt.execute("DROP TABLE IF EXISTS sections");
             stmt.execute("DROP TABLE IF EXISTS file_keywords");
+            stmt.execute("DROP TABLE IF EXISTS document_metadata");
             stmt.execute("DROP TABLE IF EXISTS files");
             stmt.execute("DROP TABLE IF EXISTS github_index");
         } catch (SQLException e) {
@@ -155,6 +156,19 @@ public class SqliteSchemaInitializer {
                     )
                     """);
 
+            stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS document_metadata (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        file_id INTEGER NOT NULL UNIQUE,
+                        categories TEXT,
+                        topics TEXT,
+                        extensions_gav TEXT,
+                        summary TEXT,
+                        diataxis_type TEXT,
+                        FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
+                    )
+                    """);
+
             // Create indexes for efficient lookups
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_files_version ON files(version)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_keywords_file_id ON file_keywords(file_id)");
@@ -166,6 +180,7 @@ public class SqliteSchemaInitializer {
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_code_samples_version ON code_samples(version)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_code_sample_keywords_sample_id ON code_sample_keywords(sample_id)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_code_sample_keywords_word ON code_sample_keywords(word)");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_document_metadata_file_id ON document_metadata(file_id)");
 
             log.info("SQLite schema initialized successfully");
         } catch (SQLException e) {

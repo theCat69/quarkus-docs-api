@@ -24,9 +24,12 @@ import java.util.Optional;
 @ApplicationScoped
 public class KeywordIndexStore extends AbstractVersionedStore<KeywordIndex> {
 
+    private final DocumentMetadataStore documentMetadataStore;
+
     @Inject
-    public KeywordIndexStore(DataSource dataSource) {
+    public KeywordIndexStore(DataSource dataSource, DocumentMetadataStore documentMetadataStore) {
         super(dataSource);
+        this.documentMetadataStore = documentMetadataStore;
     }
 
     /**
@@ -34,6 +37,7 @@ public class KeywordIndexStore extends AbstractVersionedStore<KeywordIndex> {
      */
     protected KeywordIndexStore() {
         super();
+        this.documentMetadataStore = null;
     }
 
     @Override
@@ -91,6 +95,11 @@ public class KeywordIndexStore extends AbstractVersionedStore<KeywordIndex> {
                 try (ResultSet keys = fileStmt.getGeneratedKeys()) {
                     keys.next();
                     fileId = keys.getLong(1);
+                }
+
+                // Insert document metadata if present
+                if (file.metadata != null && documentMetadataStore != null) {
+                    documentMetadataStore.insert(conn, fileId, file.metadata);
                 }
 
                 // Insert file-level keywords with source and frequency

@@ -34,7 +34,7 @@ class KeywordIndexerTest {
         CacheService cacheService = new CacheService(tempDir.toString());
         docStore = new DocStore(cacheService);
         SQLiteDataSource ds = TestSqliteHelper.createInitializedDataSource(tempDir);
-        keywordIndexStore = new KeywordIndexStore(ds);
+        keywordIndexStore = new KeywordIndexStore(ds, new com.fvd.indexs.stores.DocumentMetadataStore(ds));
         DocParser parser = new AsciidocParser(new TestSearchConfig());
         KeywordScorer keywordScorer = new KeywordScorer(new TestKeywordScoringConfig());
         indexer = new KeywordIndexer(docStore, keywordIndexStore, parser, new TestSearchConfig(), keywordScorer);

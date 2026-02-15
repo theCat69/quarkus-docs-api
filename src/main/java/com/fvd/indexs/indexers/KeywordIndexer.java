@@ -1,5 +1,6 @@
 package com.fvd.indexs.indexers;
 
+import com.fvd.asciidocs.model.DocumentMetadata;
 import com.fvd.common.Stemmer;
 import com.fvd.common.StopWords;
 import com.fvd.docs.parser.DocParser;
@@ -112,7 +113,10 @@ public class KeywordIndexer {
                     section.title(), section.startLine(), section.endLine(), sectionScores));
         }
 
-        return new FileKeywordEntry(filePath, fileScores, sectionEntries);
+        // Extract document metadata from header attributes
+        DocumentMetadata metadata = parser.extractMetadata(content);
+
+        return new FileKeywordEntry(filePath, fileScores, sectionEntries, "quarkus-core", metadata);
     }
 
     /**

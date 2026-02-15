@@ -1,5 +1,7 @@
 package com.fvd.docs.parser;
 
+import com.fvd.asciidocs.model.DocumentMetadata;
+
 import java.util.List;
 import java.util.Map;
 
@@ -61,4 +63,15 @@ public interface DocParser {
      * containing section title, and line range.
      */
     List<CodeBlock> parseCodeBlocks(String text);
+
+    /**
+     * Extracts document metadata from document header attributes.
+     * Default implementation returns empty metadata.
+     *
+     * @param content the full document content
+     * @return extracted metadata (never null)
+     */
+    default DocumentMetadata extractMetadata(String content) {
+        return DocumentMetadata.empty();
+    }
 }

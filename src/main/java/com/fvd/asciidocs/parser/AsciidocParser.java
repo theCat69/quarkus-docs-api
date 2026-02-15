@@ -1,5 +1,6 @@
 package com.fvd.asciidocs.parser;
 
+import com.fvd.asciidocs.model.DocumentMetadata;
 import com.fvd.common.Stemmer;
 import com.fvd.common.utils.AsciiDocCleaner;
 import com.fvd.docs.parser.DocParser;
@@ -26,6 +27,8 @@ public class AsciidocParser implements DocParser {
     private static final Pattern SOURCE_ATTRIBUTE = Pattern.compile("^\\[source(?:,\\s*([^\\]]+))?\\]$");
     private static final Pattern NON_WORD = Pattern.compile("[^a-zA-Z0-9-]");
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+    private static final Pattern HEADER_ATTRIBUTE = Pattern.compile(
+            "^:([a-zA-Z][a-zA-Z0-9_-]*):\\s*(.*)$", Pattern.MULTILINE);
 
     private final SearchConfig searchConfig;
 
@@ -218,5 +221,42 @@ public class AsciidocParser implements DocParser {
     @Override
     public String fileSuffix() {
         return FILE_SUFFIX;
+    }
+
+    /**
+     * Extracts document metadata attributes from the AsciiDoc header block.
+     * Parses :categories:, :topics:, :extensions:, :summary:, and :diataxis-type:.
+     *
+     * @param content the full AsciiDoc content
+     * @return extracted metadata (never null; fields may be empty lists or null)
+     */
+    @Override
+    public DocumentMetadata extractMetadata(String content) {
+        if (content == null || content.isBlank()) {
+            return DocumentMetadata.empty();
+        }
+        String headerBlock = extractHeaderBlock(content);
+        Map<String, String> attributes = new HashMap<>();
+        Matcher matcher = HEADER_ATTRIBUTE.matcher(headerBlock);
+        while (matcher.find()) {
+            attributes.put(matcher.group(1), matcher.group(2).trim());
+        }
+        return DocumentMetadata.fromAttributes(attributes);
+    }
+
+    /**
+     * Extracts the header block from AsciiDoc content.
+     * The header block starts at the beginning of the file and ends at the first
+     * level-2 section header (== ).
+     */
+    String extractHeaderBlock(String content) {
+        StringBuilder header = new StringBuilder();
+        for (String line : content.split("\n")) {
+            if (line.startsWith("== ")) {
+                break;
+            }
+            header.append(line).append("\n");
+        }
+        return header.toString();
     }
 }

@@ -54,7 +54,7 @@ class SearchServiceTest {
     @BeforeEach
     void setUp() {
         SQLiteDataSource ds = TestSqliteHelper.createInitializedDataSource(tempDir);
-        keywordIndexStore = new KeywordIndexStore(ds);
+        keywordIndexStore = new KeywordIndexStore(ds, new com.fvd.indexs.stores.DocumentMetadataStore(ds));
         codeSampleIndexStore = new CodeSampleIndexStore(ds);
         docParser = new AsciidocParser(new TestSearchConfig());
         cacheService = new CacheService(tempDir.toString());
