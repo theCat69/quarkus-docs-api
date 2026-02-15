@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @ApplicationScoped
 @RequiredArgsConstructor
@@ -17,7 +16,7 @@ public class SqliteSearchScorer implements SearchScorer {
     private final SearchConfig searchConfig;
 
     @Override
-    public MatchResult computeScore(List<KeywordScore> indexedKeywords, Set<String> queryKeywords) {
+    public MatchResult computeScore(List<KeywordScore> indexedKeywords, Map<String, String> stemmedToOriginal) {
         double prefixMultiplier = searchConfig.boost().prefixMatchMultiplier();
         double totalScore = 0;
         Map<String, MatchedKeyword> matchedByQuery = new HashMap<>();
@@ -26,7 +25,7 @@ public class SqliteSearchScorer implements SearchScorer {
             double bestScore = 0;
             String bestQueryKeyword = null;
 
-            for (String query : queryKeywords) {
+            for (String query : stemmedToOriginal.keySet()) {
                 if (ks.word.equals(query)) {
                     // Exact match — full score, takes precedence
                     bestScore = ks.score;
@@ -49,8 +48,9 @@ public class SqliteSearchScorer implements SearchScorer {
                 String source = ks.source != null ? ks.source : "body";
                 MatchedKeyword existing = matchedByQuery.get(bestQueryKeyword);
                 if (existing == null || bestScore > existing.weight()) {
+                    String original = stemmedToOriginal.getOrDefault(bestQueryKeyword, bestQueryKeyword);
                     matchedByQuery.put(bestQueryKeyword,
-                            new MatchedKeyword(bestQueryKeyword, source, bestScore));
+                            new MatchedKeyword(bestQueryKeyword, original, source, bestScore));
                 }
             }
         }

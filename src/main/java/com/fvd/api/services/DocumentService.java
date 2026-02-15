@@ -93,7 +93,7 @@ public class DocumentService {
             }
 
             List<String> matchedKws = fileResult.matchedKeywords.stream()
-                    .map(MatchedKeyword::keyword)
+                    .map(MatchedKeyword::originalKeyword)
                     .toList();
 
             DocumentResponse doc = buildDocumentResponse(

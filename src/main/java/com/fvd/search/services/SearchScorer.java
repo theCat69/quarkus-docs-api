@@ -3,7 +3,7 @@ package com.fvd.search.services;
 import com.fvd.indexs.indexers.KeywordScore;
 
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 /**
  * Abstracts search scoring to support multiple backend implementations.
@@ -12,7 +12,7 @@ import java.util.Set;
  */
 public interface SearchScorer {
 
-    MatchResult computeScore(List<KeywordScore> indexedKeywords, Set<String> queryKeywords);
+    MatchResult computeScore(List<KeywordScore> indexedKeywords, Map<String, String> stemmedToOriginal);
 
     record MatchResult(double score, int matchedCount, List<MatchedKeyword> matchedKeywords) {
         public static final MatchResult EMPTY = new MatchResult(0.0, 0, List.of());

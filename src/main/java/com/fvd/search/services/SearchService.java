@@ -60,15 +60,15 @@ public class SearchService {
             return new PaginatedResult<>(List.of(), 0);
         }
 
-        Set<String> keywordSet = SearchKeywords.prepare(keywords);
-        List<FileSearchResult> all = getFileResults(index, keywordSet, extension, subject);
+        Map<String, String> stemmedToOriginal = SearchKeywords.prepareWithOriginals(keywords);
+        List<FileSearchResult> all = getFileResults(index, stemmedToOriginal, extension, subject);
 
         all.sort(Comparator.comparingDouble((FileSearchResult r) -> r.score).reversed());
         return paginate(all, limit, offset);
     }
 
     @Nonnull
-    private List<FileSearchResult> getFileResults(KeywordIndex index, Set<String> keywordSet, String extension, String subject) {
+    private List<FileSearchResult> getFileResults(KeywordIndex index, Map<String, String> stemmedToOriginal, String extension, String subject) {
         double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
         List<FileSearchResult> results = new ArrayList<>();
 
@@ -80,7 +80,7 @@ public class SearchService {
             if (!FilterUtils.matchesFilter(subject, derivedSubject)) {
                 continue;
             }
-            SearchScorer.MatchResult matchResult = searchScorer.computeScore(file.keywords, keywordSet);
+            SearchScorer.MatchResult matchResult = searchScorer.computeScore(file.keywords, stemmedToOriginal);
             if (matchResult.score() > 0) {
                 double finalScore = matchResult.score();
                 if (matchResult.matchedCount() > 1) {
@@ -101,7 +101,7 @@ public class SearchService {
             return new PaginatedResult<>(List.of(), 0);
         }
 
-        Set<String> keywordSet = SearchKeywords.prepare(keywords);
+        Map<String, String> stemmedToOriginal = SearchKeywords.prepareWithOriginals(keywords);
         Set<String> originalKeywords = new HashSet<>(keywords.stream()
                 .map(String::toLowerCase).toList());
         Set<String> filePathSet = (filePaths == null || filePaths.isEmpty())
@@ -117,7 +117,7 @@ public class SearchService {
                 continue;
             }
             for (SectionKeywordEntry section : file.sections) {
-                SearchScorer.MatchResult matchResult = searchScorer.computeScore(section.keywords, keywordSet);
+                SearchScorer.MatchResult matchResult = searchScorer.computeScore(section.keywords, stemmedToOriginal);
                 if (matchResult.score() > 0) {
                     double finalScore = matchResult.score();
                     if (matchResult.matchedCount() > 1) {
@@ -157,7 +157,7 @@ public class SearchService {
 
         // Generate snippets for paginated results only
         for (SectionSearchResult result : paginated.items()) {
-            generateSectionSnippet(version, result, originalKeywords, keywordSet);
+            generateSectionSnippet(version, result, originalKeywords, stemmedToOriginal.keySet());
         }
 
         return paginated;
@@ -272,7 +272,7 @@ public class SearchService {
             return new PaginatedResult<>(List.of(), 0);
         }
 
-        Set<String> keywordSet = SearchKeywords.prepare(keywords);
+        Map<String, String> stemmedToOriginal = SearchKeywords.prepareWithOriginals(keywords);
         double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
 
         // Resolve fuzzy section title match if sectionTitle filter is provided
@@ -317,7 +317,7 @@ public class SearchService {
                 continue;
             }
 
-            SearchScorer.MatchResult matchResult = searchScorer.computeScore(sample.keywords, keywordSet);
+            SearchScorer.MatchResult matchResult = searchScorer.computeScore(sample.keywords, stemmedToOriginal);
             if (matchResult.score() > 0) {
                 double finalScore = matchResult.score();
                 if (matchResult.matchedCount() > 1) {

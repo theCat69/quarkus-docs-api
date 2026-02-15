@@ -6,7 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,7 +22,7 @@ class SqliteSearchScorerTest {
     @Test
     void exactMatchReturnsFullScore() {
         List<KeywordScore> indexed = List.of(new KeywordScore("secur", 10));
-        Set<String> query = Set.of("secur");
+        Map<String, String> query = Map.of("secur", "secur");
 
         SearchScorer.MatchResult result = scorer.computeScore(indexed, query);
 
@@ -34,7 +34,7 @@ class SqliteSearchScorerTest {
     @Test
     void prefixMatchReturnsDiscountedScore() {
         List<KeywordScore> indexed = List.of(new KeywordScore("configur", 10));
-        Set<String> query = Set.of("config");
+        Map<String, String> query = Map.of("config", "config");
 
         SearchScorer.MatchResult result = scorer.computeScore(indexed, query);
 
@@ -51,7 +51,7 @@ class SqliteSearchScorerTest {
         List<KeywordScore> indexed = List.of(
                 new KeywordScore("secur", 10),
                 new KeywordScore("security", 5));
-        Set<String> query = Set.of("secur");
+        Map<String, String> query = Map.of("secur", "secur");
 
         SearchScorer.MatchResult result = scorer.computeScore(indexed, query);
 
@@ -69,7 +69,7 @@ class SqliteSearchScorerTest {
         List<KeywordScore> indexed = List.of(
                 new KeywordScore("secur", 10),
                 new KeywordScore("oidc", 8));
-        Set<String> query = Set.of("secur", "oidc");
+        Map<String, String> query = Map.of("secur", "secur", "oidc", "oidc");
 
         SearchScorer.MatchResult result = scorer.computeScore(indexed, query);
 
@@ -81,7 +81,7 @@ class SqliteSearchScorerTest {
     @Test
     void noMatchesReturnsEmpty() {
         List<KeywordScore> indexed = List.of(new KeywordScore("secur", 10));
-        Set<String> query = Set.of("nonexistent");
+        Map<String, String> query = Map.of("nonexistent", "nonexistent");
 
         SearchScorer.MatchResult result = scorer.computeScore(indexed, query);
 
@@ -94,7 +94,7 @@ class SqliteSearchScorerTest {
     @Test
     void sourcePropagatedFromKeywordScore() {
         List<KeywordScore> indexed = List.of(new KeywordScore("secur", 10, "filename", 1));
-        Set<String> query = Set.of("secur");
+        Map<String, String> query = Map.of("secur", "secur");
 
         SearchScorer.MatchResult result = scorer.computeScore(indexed, query);
 
@@ -112,7 +112,7 @@ class SqliteSearchScorerTest {
         List<KeywordScore> indexed = List.of(
                 new KeywordScore("secur", 5, "body", 1),
                 new KeywordScore("security", 20, "filename", 1));
-        Set<String> query = Set.of("secur");
+        Map<String, String> query = Map.of("secur", "secur");
 
         SearchScorer.MatchResult result = scorer.computeScore(indexed, query);
 
@@ -127,7 +127,7 @@ class SqliteSearchScorerTest {
     @Test
     void nullSourceDefaultsToBody() {
         List<KeywordScore> indexed = List.of(new KeywordScore("secur", 10, null, 1));
-        Set<String> query = Set.of("secur");
+        Map<String, String> query = Map.of("secur", "secur");
 
         SearchScorer.MatchResult result = scorer.computeScore(indexed, query);
 
@@ -141,5 +141,18 @@ class SqliteSearchScorerTest {
         assertThat(SearchScorer.MatchResult.EMPTY.matchedCount()).isEqualTo(0);
         assertThat(SearchScorer.MatchResult.EMPTY.matchedKeywords()).isEmpty();
         assertThat(SearchScorer.MatchResult.EMPTY.hasMatches()).isFalse();
+    }
+
+    @Test
+    void originalKeywordPopulatedFromMap() {
+        List<KeywordScore> indexed = List.of(new KeywordScore("secur", 10));
+        Map<String, String> stemmedToOriginal = Map.of("secur", "security");
+
+        SearchScorer.MatchResult result = scorer.computeScore(indexed, stemmedToOriginal);
+
+        assertThat(result.matchedKeywords()).hasSize(1);
+        MatchedKeyword matched = result.matchedKeywords().get(0);
+        assertThat(matched.keyword()).isEqualTo("secur");
+        assertThat(matched.originalKeyword()).isEqualTo("security");
     }
 }

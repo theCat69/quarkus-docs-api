@@ -61,7 +61,7 @@ public class CodeSampleService {
                     .orElse("");
 
             List<String> matchedKws = csResult.matchedKeywords.stream()
-                    .map(MatchedKeyword::keyword)
+                    .map(MatchedKeyword::originalKeyword)
                     .toList();
 
             results.add(new CodeSampleResult(

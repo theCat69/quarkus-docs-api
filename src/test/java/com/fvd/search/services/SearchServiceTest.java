@@ -243,6 +243,24 @@ class SearchServiceTest {
         assertThat(result.total()).isEqualTo(0);
     }
 
+    @Test
+    void searchFilesOriginalKeywordsPopulatedInMatchedKeywords() {
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("security.adoc",
+                        List.of(new KeywordScore("secur", 10)), List.of())
+        ));
+        seedIndex("3.27", index);
+
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles(
+                "3.27", List.of("security"), null, null, 10, 0);
+
+        assertThat(result.items()).hasSize(1);
+        List<MatchedKeyword> matched = result.items().get(0).matchedKeywords;
+        assertThat(matched).hasSize(1);
+        assertThat(matched.get(0).keyword()).isEqualTo("secur");
+        assertThat(matched.get(0).originalKeyword()).isEqualTo("security");
+    }
+
     // --- Prefix matching tests ---
 
     @Test
@@ -498,6 +516,26 @@ class SearchServiceTest {
         assertThat(result.items()).hasSize(1);
         // Only one keyword matched, no boost — raw score of 10
         assertThat(result.items().get(0).score).isEqualTo(10.0);
+    }
+
+    @Test
+    void searchSectionsOriginalKeywordsPopulatedInMatchedKeywords() {
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("security.adoc", List.of(), List.of(
+                        new SectionKeywordEntry("Overview", 1, 10,
+                                List.of(new KeywordScore("secur", 8)))
+                ))
+        ));
+        seedIndex("3.27", index);
+
+        PaginatedResult<SectionSearchResult> result = searchService.searchSections(
+                "3.27", List.of("security"), null, null, null, 10, 0);
+
+        assertThat(result.items()).hasSize(1);
+        List<MatchedKeyword> matched = result.items().get(0).matchedKeywords;
+        assertThat(matched).hasSize(1);
+        assertThat(matched.get(0).keyword()).isEqualTo("secur");
+        assertThat(matched.get(0).originalKeyword()).isEqualTo("security");
     }
 
     @Test
@@ -1012,6 +1050,24 @@ class SearchServiceTest {
             assertThat(r.matchedSectionTitle).isNull();
             assertThat(r.sectionMatchScore).isEqualTo(0.0);
         }
+
+        @Test
+        void searchCodeSamplesOriginalKeywordsPopulatedInMatchedKeywords() {
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("test.adoc", "Section A", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("secur", 10)))
+            ));
+            codeSampleIndexStore.write("3.27", index);
+
+            PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
+                    "3.27", List.of("security"), null, null, null, null, null, 10, 0);
+
+            assertThat(result.items()).hasSize(1);
+            List<MatchedKeyword> matched = result.items().get(0).matchedKeywords;
+            assertThat(matched).hasSize(1);
+            assertThat(matched.get(0).keyword()).isEqualTo("secur");
+            assertThat(matched.get(0).originalKeyword()).isEqualTo("security");
+        }
     }
 
     // --- Stemming equivalence tests ---
@@ -1332,4 +1388,5 @@ class SearchServiceTest {
                 .map(MatchedKeyword::keyword)
                 .toList();
     }
+
 }

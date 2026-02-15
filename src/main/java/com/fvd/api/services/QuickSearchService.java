@@ -63,7 +63,7 @@ public class QuickSearchService {
             String snippet = generateSnippet(version, fileResult.path, keywordSet);
 
             List<String> matchedKws = fileResult.matchedKeywords.stream()
-                    .map(MatchedKeyword::keyword)
+                    .map(MatchedKeyword::originalKeyword)
                     .toList();
 
             results.add(new SearchResultRef(
