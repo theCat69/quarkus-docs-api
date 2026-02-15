@@ -43,6 +43,13 @@ public class DocumentService {
 
     private static final Pattern SECTION_HEADER = Pattern.compile("^(={2,5})\\s+(.+)$");
 
+    /**
+     * Maximum number of documents returned with full content (brief=false).
+     * Loading full content (sections + codeBlocks) is expensive — each document
+     * requires file I/O and AsciiDoc parsing.
+     */
+    private static final int FULL_CONTENT_MAX_LIMIT = 5;
+
     private final DocStore docStore;
     private final DocParser docParser;
     private final KeywordIndexStore keywordIndexStore;
@@ -153,9 +160,12 @@ public class DocumentService {
     public DocumentSearchResponse searchDocuments(String version, List<String> keywords,
                                                   String subject, String extension,
                                                   int limit, int offset, boolean brief) {
+        // Enforce lower limit for non-brief mode to prevent timeout
+        int effectiveLimit = brief ? limit : Math.min(limit, FULL_CONTENT_MAX_LIMIT);
+
         // Use existing search service for keyword matching
         PaginatedResult<FileSearchResult> searchResult = searchService.searchFiles(
-                version, keywords, extension, subject, limit, offset);
+                version, keywords, extension, subject, effectiveLimit, offset);
 
         List<DocumentResponse> results = new ArrayList<>();
         Map<String, DocumentMetadata> metadataMap = metadataResolver.loadMetadataMap(version);
@@ -190,11 +200,18 @@ public class DocumentService {
             }
         }
 
-        return DocumentSearchResponse.builder()
+        DocumentSearchResponse.DocumentSearchResponseBuilder<?, ?> builder = DocumentSearchResponse.builder()
                 .results(results)
                 .totalCount(searchResult.total())
-                .returnedCount(results.size())
-                .build();
+                .returnedCount(results.size());
+
+        if (!brief && searchResult.total() > FULL_CONTENT_MAX_LIMIT) {
+            builder.warning("Full content mode (brief=false) is limited to " + FULL_CONTENT_MAX_LIMIT +
+                    " results for performance. Use brief=true (default) for larger result sets, " +
+                    "then fetch individual documents by path.");
+        }
+
+        return builder.build();
     }
 
     /**

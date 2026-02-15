@@ -191,6 +191,7 @@ class DocumentResourceTest extends AbstractApiResourceTest {
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
+                .queryParam("brief", "false")
                 .when().get("/api/documents")
                 .then()
                 .statusCode(200)

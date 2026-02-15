@@ -168,7 +168,7 @@ class DocumentServiceTest {
                 "security-overview.adoc", 10.0, matchedKeywords, "quarkus-core");
         PaginatedResult<FileSearchResult> searchResult = new PaginatedResult<>(List.of(fileResult), 1);
 
-        when(searchService.searchFiles("main", List.of("security"), null, null, 10, 0))
+        when(searchService.searchFiles("main", List.of("security"), null, null, 5, 0))
                 .thenReturn(searchResult);
         when(docStore.read("main", "security-overview.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
         when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
@@ -235,5 +235,108 @@ class DocumentServiceTest {
         verify(docStore, times(2)).read("main", "security-overview.adoc");
         // parseSections should be called (cache was not populated by brief mode)
         verify(docParser, times(1)).parseSections(SAMPLE_CONTENT);
+    }
+
+    @Test
+    void searchDocumentsNonBriefCapsLimitAtFullContentMaxLimit() {
+        List<MatchedKeyword> matchedKeywords = List.of(
+                new MatchedKeyword("security", "security", "body", 5.0));
+        FileSearchResult fileResult = new FileSearchResult(
+                "security-overview.adoc", 10.0, matchedKeywords, "quarkus-core");
+        PaginatedResult<FileSearchResult> searchResult = new PaginatedResult<>(List.of(fileResult), 1);
+
+        // When brief=false and limit=20, effective limit should be capped at 5
+        when(searchService.searchFiles("main", List.of("security"), null, null, 5, 0))
+                .thenReturn(searchResult);
+        when(docStore.read("main", "security-overview.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
+        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(eq("security-overview.adoc"), any(Map.class))).thenReturn("security");
+        when(metadataResolver.resolveSubject(eq("main"), eq("security-overview.adoc"))).thenReturn("security");
+        when(keywordIndexStore.read("main")).thenReturn(Optional.empty());
+        when(docParser.parseSections(SAMPLE_CONTENT)).thenReturn(List.of());
+        when(docParser.parseCodeBlocks(SAMPLE_CONTENT)).thenReturn(List.of());
+
+        DocumentSearchResponse response = documentService.searchDocuments(
+                "main", List.of("security"), null, null, 20, 0, false);
+        assertThat(response.getResults()).hasSize(1);
+
+        // Verify searchService was called with effective limit of 5 (not 20)
+        verify(searchService).searchFiles("main", List.of("security"), null, null, 5, 0);
+        verify(searchService, never()).searchFiles("main", List.of("security"), null, null, 20, 0);
+    }
+
+    @Test
+    void searchDocumentsBriefModeUsesOriginalLimit() {
+        List<MatchedKeyword> matchedKeywords = List.of(
+                new MatchedKeyword("security", "security", "body", 5.0));
+        FileSearchResult fileResult = new FileSearchResult(
+                "security-overview.adoc", 10.0, matchedKeywords, "quarkus-core");
+        PaginatedResult<FileSearchResult> searchResult = new PaginatedResult<>(List.of(fileResult), 1);
+
+        // When brief=true and limit=20, effective limit should remain 20
+        when(searchService.searchFiles("main", List.of("security"), null, null, 20, 0))
+                .thenReturn(searchResult);
+        when(docStore.read("main", "security-overview.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
+        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(eq("security-overview.adoc"), any(Map.class))).thenReturn("security");
+
+        DocumentSearchResponse response = documentService.searchDocuments(
+                "main", List.of("security"), null, null, 20, 0, true);
+        assertThat(response.getResults()).hasSize(1);
+
+        // Verify searchService was called with original limit of 20
+        verify(searchService).searchFiles("main", List.of("security"), null, null, 20, 0);
+    }
+
+    @Test
+    void searchDocumentsNonBriefSetsWarningWhenTotalExceedsLimit() {
+        List<MatchedKeyword> matchedKeywords = List.of(
+                new MatchedKeyword("rest", "rest", "body", 5.0));
+        FileSearchResult fileResult = new FileSearchResult(
+                "rest.adoc", 10.0, matchedKeywords, "quarkus-core");
+        // Total is 10, which exceeds FULL_CONTENT_MAX_LIMIT (5)
+        PaginatedResult<FileSearchResult> searchResult = new PaginatedResult<>(List.of(fileResult), 10);
+
+        when(searchService.searchFiles("main", List.of("rest"), null, null, 5, 0))
+                .thenReturn(searchResult);
+        when(docStore.read("main", "rest.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
+        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(eq("rest.adoc"), any(Map.class))).thenReturn("rest-apis");
+        when(metadataResolver.resolveSubject(eq("main"), eq("rest.adoc"))).thenReturn("rest-apis");
+        when(keywordIndexStore.read("main")).thenReturn(Optional.empty());
+        when(docParser.parseSections(SAMPLE_CONTENT)).thenReturn(List.of());
+        when(docParser.parseCodeBlocks(SAMPLE_CONTENT)).thenReturn(List.of());
+
+        DocumentSearchResponse response = documentService.searchDocuments(
+                "main", List.of("rest"), null, null, 20, 0, false);
+
+        assertThat(response.warning).isNotNull();
+        assertThat(response.warning).contains("brief=false");
+        assertThat(response.warning).contains("limited to 5");
+    }
+
+    @Test
+    void searchDocumentsNonBriefNoWarningWhenTotalBelowLimit() {
+        List<MatchedKeyword> matchedKeywords = List.of(
+                new MatchedKeyword("oidc", "oidc", "body", 5.0));
+        FileSearchResult fileResult = new FileSearchResult(
+                "oidc.adoc", 10.0, matchedKeywords, "quarkus-core");
+        // Total is 3, which is below FULL_CONTENT_MAX_LIMIT (5)
+        PaginatedResult<FileSearchResult> searchResult = new PaginatedResult<>(List.of(fileResult), 3);
+
+        when(searchService.searchFiles("main", List.of("oidc"), null, null, 5, 0))
+                .thenReturn(searchResult);
+        when(docStore.read("main", "oidc.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
+        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(eq("oidc.adoc"), any(Map.class))).thenReturn("security");
+        when(metadataResolver.resolveSubject(eq("main"), eq("oidc.adoc"))).thenReturn("security");
+        when(keywordIndexStore.read("main")).thenReturn(Optional.empty());
+        when(docParser.parseSections(SAMPLE_CONTENT)).thenReturn(List.of());
+        when(docParser.parseCodeBlocks(SAMPLE_CONTENT)).thenReturn(List.of());
+
+        DocumentSearchResponse response = documentService.searchDocuments(
+                "main", List.of("oidc"), null, null, 20, 0, false);
+
+        assertThat(response.warning).isNull();
     }
 }

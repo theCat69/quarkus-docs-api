@@ -54,8 +54,9 @@ public class DocumentResource {
                     "Mode 1 — Path lookup: If 'path' is provided, returns a single document with full " +
                     "structured content including sections and code blocks.\n" +
                     "Mode 2 — Keyword search: If 'keywords' is provided, searches documents and returns " +
-                    "matching results with scores. Supports optional 'subject' and 'extension' filters. " +
-                    "Use 'brief=true' to return only metadata without sections and codeBlocks.\n\n" +
+                    "matching results with scores. Brief mode (metadata only) is the default for performance. " +
+                    "Set brief=false to include full sections and codeBlocks (limited to 5 results max). " +
+                    "Supports optional 'subject' and 'extension' filters.\n\n" +
                     "If both 'path' and 'keywords' are provided, path takes precedence (keyword search is ignored)."
     )
     @APIResponse(
@@ -128,13 +129,13 @@ public class DocumentResource {
             @QueryParam("offset") Integer offset,
 
             @Parameter(
-                    description = "When true, returns only metadata (title, description, path, subject, " +
-                            "extension, matchedKeywords, score) without full sections and codeBlocks. " +
-                            "Useful for lightweight discovery before fetching full documents by path. " +
+                    description = "When true (default for keyword search), returns only metadata (title, description, " +
+                            "path, subject, extension, matchedKeywords, score) without full sections and codeBlocks. " +
+                            "Set to false to include full content (limited to 5 results max for performance). " +
                             "Only applies to search mode (ignored in path mode).",
                     required = false,
                     example = "true",
-                    schema = @Schema(defaultValue = "false")
+                    schema = @Schema(defaultValue = "true")
             )
             @QueryParam("brief") Boolean brief,
 
@@ -166,8 +167,10 @@ public class DocumentResource {
             InputValidator.validateVersionExists(params.version(), cacheService.listCachedVersions());
             InputValidator.validateSubjectExists(params.subject(), subjectDeriver.getValidSubjectNames());
 
+            // brief defaults to true for keyword searches (performance)
+            boolean briefMode = (brief == null) ? true : brief;
             return documentService.searchDocuments(params.version(), params.keywords(), params.subject(),
-                    params.extension(), params.limit(), params.offset(), Boolean.TRUE.equals(brief));
+                    params.extension(), params.limit(), params.offset(), briefMode);
         }
 
         // Neither provided
