@@ -10,6 +10,7 @@ public interface SearchConfig {
     Fuzzy fuzzy();
     Index index();
     Snippet snippet();
+    Related related();
 
     interface Boost {
         @WithDefault("10")
@@ -68,5 +69,19 @@ public interface SearchConfig {
     interface Snippet {
         @WithDefault("100")
         int contextSize();
+    }
+
+    interface Related {
+        @WithDefault("5")
+        int defaultLimit();
+
+        @WithDefault("20")
+        int maxLimit();
+
+        @WithDefault("0.05")
+        double minSimilarity();
+
+        @WithDefault("10")
+        int maxSharedKeywords();
     }
 }

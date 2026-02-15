@@ -38,6 +38,7 @@ public SomeResponse example(
 - Search syntax responses use `SearchSyntaxResponse` with static documentation of supported search operators, examples, and tips.
 - Meta responses use `MetaResponse` with `apiInfo`, `endpoints`, `searchSyntax`, `filters`, `pagination`.
 - Batch document responses use `BatchDocumentResponse` with `documents`, `errors`, `requestedCount`, `retrievedCount`, `errorCount`.
+- Related document responses use `RelatedDocumentResponse` with `RelatedDocumentRef` items containing `path`, `title`, `description`, `subject`, `extension`, `similarityScore`, and `sharedKeywords`.
 
 ## Code Documentation
 
@@ -84,6 +85,10 @@ public SomeResponse example(
 | `search.index.min-keyword-score` | `2` | Minimum keyword score for indexing |
 | `search.index.min-token-length` | `3` | Minimum token length for indexing |
 | `search.snippet.context-size` | `100` | Characters of context around matches |
+| `search.related.default-limit` | `5` | Default number of related documents to return |
+| `search.related.max-limit` | `20` | Maximum allowed limit for related documents |
+| `search.related.min-similarity` | `0.05` | Minimum similarity score to include a related document |
+| `search.related.max-shared-keywords` | `10` | Maximum shared keywords to consider for similarity |
 | `search.annotation-boost` | _(unset)_ | Score boost for annotation matches |
 | `search.annotation-packages` | _(unset)_ | Annotation packages to boost during indexing |
 

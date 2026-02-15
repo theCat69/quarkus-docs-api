@@ -41,6 +41,7 @@ All endpoints return JSON. The `version` parameter is **optional** on every endp
 | Method | Path | Summary | Key Parameters |
 |--------|------|---------|----------------|
 | `GET` | `/api/documents` | Get document by path or search by keywords | `version`, `path`, `keywords` (at least one of `path`/`keywords` required), `subject`, `extension`, `brief`, `limit`, `offset` |
+| `GET` | `/api/documents/related` | Find documents related to a given document (ranked by keyword overlap similarity) | `version`, `path` (required), `limit` |
 | `POST` | `/api/documents/batch` | Retrieve multiple documents by path in a single request | JSON body: `version`, `paths` (required, max `app.batch.max-size`), `brief` |
 
 - **Path mode:** provide `path` to retrieve a single document with full structured content (sections, code blocks).
@@ -153,6 +154,10 @@ All `search.*` keys are configurable via `application.properties` or environment
 | `search.index.min-keyword-score` | `2` | Minimum keyword score to include in index |
 | `search.index.min-token-length` | `3` | Minimum token length for indexing |
 | `search.snippet.context-size` | `100` | Characters of context around content search matches |
+| `search.related.default-limit` | `5` | Default number of related documents to return |
+| `search.related.max-limit` | `20` | Maximum allowed limit for related documents |
+| `search.related.min-similarity` | `0.05` | Minimum similarity score to include a related document |
+| `search.related.max-shared-keywords` | `10` | Maximum shared keywords to consider for similarity |
 | `search.annotation-boost` | _(unset)_ | Score boost for annotation matches |
 | `search.annotation-packages` | _(unset)_ | Annotation packages to boost during indexing |
 
@@ -238,6 +243,12 @@ curl "http://localhost:8080/api/documents?path=security-overview.adoc&version=ma
 curl -X POST "http://localhost:8080/api/documents/batch" \
   -H "Content-Type: application/json" \
   -d '{"paths": ["security-overview.adoc", "config-reference.adoc"], "version": "main", "brief": false}'
+```
+
+### Find related documents
+
+```bash
+curl "http://localhost:8080/api/documents/related?path=security-overview.adoc&limit=5"
 ```
 
 ### List catalog (subjects, extensions, versions)

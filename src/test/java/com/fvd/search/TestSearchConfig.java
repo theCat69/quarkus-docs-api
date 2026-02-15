@@ -27,6 +27,11 @@ public class TestSearchConfig implements SearchConfig {
         return new TestSnippet();
     }
 
+    @Override
+    public Related related() {
+        return new TestRelated();
+    }
+
     public static class TestBoost implements Boost {
         @Override
         public int filenameBoost() {
@@ -117,6 +122,28 @@ public class TestSearchConfig implements SearchConfig {
         @Override
         public int contextSize() {
             return 100;
+        }
+    }
+
+    public static class TestRelated implements Related {
+        @Override
+        public int defaultLimit() {
+            return 5;
+        }
+
+        @Override
+        public int maxLimit() {
+            return 20;
+        }
+
+        @Override
+        public double minSimilarity() {
+            return 0.05;
+        }
+
+        @Override
+        public int maxSharedKeywords() {
+            return 10;
         }
     }
 }

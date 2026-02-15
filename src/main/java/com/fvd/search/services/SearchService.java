@@ -343,6 +343,14 @@ public class SearchService {
         codeSampleIndexCache.remove(version);
     }
 
+    /**
+     * Returns the keyword index for a version, loading from SQLite and caching if needed.
+     * Returns null if no index exists for the version.
+     */
+    public KeywordIndex getKeywordIndex(String version) {
+        return getOrBuildIndex(version);
+    }
+
     private <T> PaginatedResult<T> paginate(List<T> all, int limit, int offset) {
         int total = all.size();
         if (offset >= total) {
