@@ -15,6 +15,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 
 @QuarkusTest
 class DocumentResourceTest extends AbstractApiResourceTest {
@@ -141,6 +142,72 @@ class DocumentResourceTest extends AbstractApiResourceTest {
                 .statusCode(200)
                 .body("title", equalTo("Security Guide"))
                 .body("path", equalTo("security.adoc"));
+    }
+
+    // --- Brief mode tests ---
+
+    @Test
+    void testSearchDocumentsWithBriefMode() {
+        seedDocFile();
+        seedKeywordIndex();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("brief", "true")
+                .when().get("/api/documents")
+                .then()
+                .statusCode(200)
+                .body("results.size()", greaterThan(0))
+                .body("results[0].title", notNullValue())
+                .body("results[0].path", notNullValue())
+                .body("results[0].subject", notNullValue())
+                .body("results[0].score", greaterThan(0f))
+                .body("results[0].matchedKeywords", notNullValue())
+                .body("results[0].sections", nullValue())
+                .body("results[0].codeBlocks", nullValue());
+    }
+
+    @Test
+    void testSearchDocumentsWithBriefModeHasDescription() {
+        seedDocFile();
+        seedKeywordIndex();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("brief", "true")
+                .when().get("/api/documents")
+                .then()
+                .statusCode(200)
+                .body("results[0].description", notNullValue());
+    }
+
+    @Test
+    void testSearchDocumentsWithoutBriefReturnsSections() {
+        seedDocFile();
+        seedKeywordIndex();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .when().get("/api/documents")
+                .then()
+                .statusCode(200)
+                .body("results[0].sections", notNullValue())
+                .body("results[0].sections.size()", greaterThan(0));
+    }
+
+    @Test
+    void testBriefIgnoredInPathMode() {
+        seedDocFile();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("path", "security.adoc")
+                .queryParam("brief", "true")
+                .when().get("/api/documents")
+                .then()
+                .statusCode(200)
+                .body("title", equalTo("Security Guide"))
+                .body("sections", notNullValue())
+                .body("sections.size()", greaterThan(0));
     }
 
     private void seedDocFile() {

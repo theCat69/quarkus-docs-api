@@ -73,11 +73,12 @@ public class DocumentService {
      * @param extension optional extension filter
      * @param limit max results
      * @param offset pagination offset
+     * @param brief when true, returns only title and description without sections and code blocks
      * @return search response with matching documents
      */
     public DocumentSearchResponse searchDocuments(String version, List<String> keywords,
                                                   String subject, String extension,
-                                                  int limit, int offset) {
+                                                  int limit, int offset, boolean brief) {
         // Use existing search service for keyword matching
         PaginatedResult<FileSearchResult> searchResult = searchService.searchFiles(
                 version, keywords, extension, subject, limit, offset);
@@ -86,25 +87,32 @@ public class DocumentService {
         for (FileSearchResult fileResult : searchResult.items()) {
             String derivedSubject = subjectDeriver.deriveSubject(fileResult.path);
 
-            // Get full document content
+            List<String> matchedKws = fileResult.matchedKeywords.stream()
+                    .map(MatchedKeyword::originalKeyword)
+                    .toList();
+
             Optional<String> contentOpt = docStore.read(version, fileResult.path);
             if (contentOpt.isEmpty()) {
                 continue;
             }
 
-            List<String> matchedKws = fileResult.matchedKeywords.stream()
-                    .map(MatchedKeyword::originalKeyword)
-                    .toList();
-
-            DocumentResponse doc = buildDocumentResponse(
-                    fileResult.path,
-                    contentOpt.get(),
-                    fileResult.extension,
-                    derivedSubject,
-                    matchedKws,
-                    fileResult.score
-            );
-            results.add(doc);
+            if (brief) {
+                String title = DocumentTitleExtractor.extractTitle(contentOpt.get());
+                String description = extractDescription(contentOpt.get());
+                results.add(new DocumentResponse(
+                        title, description, fileResult.path, derivedSubject,
+                        fileResult.extension, null, null, matchedKws, fileResult.score));
+            } else {
+                DocumentResponse doc = buildDocumentResponse(
+                        fileResult.path,
+                        contentOpt.get(),
+                        fileResult.extension,
+                        derivedSubject,
+                        matchedKws,
+                        fileResult.score
+                );
+                results.add(doc);
+            }
         }
 
         return DocumentSearchResponse.builder()
