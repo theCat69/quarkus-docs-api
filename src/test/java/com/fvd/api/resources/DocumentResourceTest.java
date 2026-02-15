@@ -16,9 +16,10 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
 
 @QuarkusTest
 class DocumentResourceTest extends AbstractApiResourceTest {
@@ -169,8 +170,8 @@ class DocumentResourceTest extends AbstractApiResourceTest {
                 .body("results[0].subject", notNullValue())
                 .body("results[0].score", greaterThan(0f))
                 .body("results[0].matchedKeywords", notNullValue())
-                .body("results[0].sections", nullValue())
-                .body("results[0].codeBlocks", nullValue());
+                .body("results[0]", not(hasKey("sections")))
+                .body("results[0]", not(hasKey("codeBlocks")));
     }
 
     @Test
@@ -443,8 +444,8 @@ class DocumentResourceTest extends AbstractApiResourceTest {
                 .body("documents.size()", is(1))
                 .body("documents[0].title", equalTo("Security Guide"))
                 .body("documents[0].description", notNullValue())
-                .body("documents[0].sections", nullValue())
-                .body("documents[0].codeBlocks", nullValue());
+                .body("documents[0]", not(hasKey("sections")))
+                .body("documents[0]", not(hasKey("codeBlocks")));
     }
 
     @Test

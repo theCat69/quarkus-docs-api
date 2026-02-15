@@ -14,9 +14,10 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
 
 /**
  * Integration tests for Feature 78 — Fix Slow Document Keyword Search.
@@ -38,8 +39,8 @@ class DocumentResourceSlowSearchTest extends AbstractApiResourceTest {
                 .body("results.size()", greaterThan(0))
                 .body("results[0].title", notNullValue())
                 .body("results[0].path", notNullValue())
-                .body("results[0].sections", nullValue())
-                .body("results[0].codeBlocks", nullValue());
+                .body("results[0]", not(hasKey("sections")))
+                .body("results[0]", not(hasKey("codeBlocks")));
     }
 
     @Test
@@ -104,7 +105,7 @@ class DocumentResourceSlowSearchTest extends AbstractApiResourceTest {
                 .then()
                 .statusCode(200)
                 .body("results.size()", is(3))
-                .body("warning", nullValue());
+                .body("$", not(hasKey("warning")));
     }
 
     @Test
@@ -120,8 +121,8 @@ class DocumentResourceSlowSearchTest extends AbstractApiResourceTest {
                 .statusCode(200)
                 .body("results.size()", greaterThan(0))
                 .body("results[0].title", notNullValue())
-                .body("results[0].sections", nullValue())
-                .body("results[0].codeBlocks", nullValue());
+                .body("results[0]", not(hasKey("sections")))
+                .body("results[0]", not(hasKey("codeBlocks")));
     }
 
     private void seedManyDocs(int count) {

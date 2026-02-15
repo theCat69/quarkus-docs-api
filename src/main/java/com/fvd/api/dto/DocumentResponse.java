@@ -1,6 +1,7 @@
 package com.fvd.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonFilter;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
@@ -10,6 +11,7 @@ import java.util.List;
 /**
  * Full document response with structured content.
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonFilter("fieldSelector")
 @RegisterForReflection
 @NoArgsConstructor
