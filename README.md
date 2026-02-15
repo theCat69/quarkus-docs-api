@@ -112,6 +112,7 @@ curl "http://localhost:8080/api/catalog"
 | `app.github.branch` | `main` | Branch to fetch from the website repository |
 | `app.versions` | `main` | Comma-separated list of versions to cache on startup |
 | `app.refresh.interval` | `6h` | How often to check for doc updates (SHA-based) |
+| `app.document-cache.enabled` | `true` | Enable in-memory caching of parsed document results |
 | `app.cache-warmup.full-reset` | _(unset)_ | Set to `true` to force full re-download on startup |
 | `app.quarkiverse.enabled` | `true` | Enable quarkiverse extension doc ingestion |
 | `app.quarkiverse.playbook-repo` | `quarkiverse/quarkiverse-docs` | Repository containing the Antora playbook |

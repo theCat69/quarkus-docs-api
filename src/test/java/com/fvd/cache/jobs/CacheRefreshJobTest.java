@@ -1,5 +1,6 @@
 package com.fvd.cache.jobs;
 
+import com.fvd.api.services.DocumentService;
 import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.parser.DocParser;
@@ -62,13 +63,16 @@ class CacheRefreshJobTest {
     @Mock
     private QuarkiverseService quarkiverseService;
 
+    @Mock
+    private DocumentService documentService;
+
     private final DocParser docParser = new AsciidocParser(new TestSearchConfig());
 
     private CacheRefreshJob job;
 
     @BeforeEach
     void setUp() {
-        job = new CacheRefreshJob(cacheService, gitHubService, indexStore, docStore, keywordIndexer, codeSampleIndexer, searchService, docParser, quarkiverseService);
+        job = new CacheRefreshJob(cacheService, gitHubService, indexStore, docStore, keywordIndexer, codeSampleIndexer, searchService, docParser, quarkiverseService, documentService);
         job.quarkiverseEnabled = false;
     }
 
@@ -141,6 +145,19 @@ class CacheRefreshJobTest {
         verify(keywordIndexer).build(eq("3.27"), eq(List.of("security-overview.adoc", "config.adoc")));
         verify(codeSampleIndexer).build(eq("3.27"), eq(List.of("security-overview.adoc", "config.adoc")));
         verify(searchService).invalidateCache("3.27");
+        verify(documentService).invalidateDocumentCache("3.27");
+    }
+
+    @Test
+    void refreshInvalidatesDocumentCacheForVersion() {
+        when(cacheService.listCachedVersions()).thenReturn(List.of("3.27"));
+        when(indexStore.read("3.27")).thenReturn(Optional.of(oldIndex()));
+        when(gitHubService.fetchIndex("3.27")).thenReturn(oldIndex());
+        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
+
+        job.refresh();
+
+        verify(documentService).invalidateDocumentCache("3.27");
     }
 
     @Test
@@ -333,6 +350,7 @@ class CacheRefreshJobTest {
         verify(keywordIndexer).build(eq("main"), eq(expected));
         verify(codeSampleIndexer).build(eq("main"), eq(expected));
         verify(searchService, times(2)).invalidateCache("main");
+        verify(documentService, times(2)).invalidateDocumentCache("main");
     }
 
     @Test

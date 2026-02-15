@@ -57,6 +57,7 @@ public SomeResponse example(
 | `app.github.branch` | `main` | Branch to fetch from |
 | `app.versions` | `main` | Versions to cache on startup |
 | `app.refresh.interval` | `6h` | Cache refresh interval |
+| `app.document-cache.enabled` | `true` | Enable in-memory document parse cache |
 | `app.quarkiverse.enabled` | `true` | Enable quarkiverse ingestion |
 | `app.quarkiverse.playbook-repo` | `quarkiverse/quarkiverse-docs` | Antora playbook repo |
 | `app.quarkiverse.playbook-branch` | `main` | Playbook branch |

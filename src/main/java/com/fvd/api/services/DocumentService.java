@@ -19,11 +19,14 @@ import com.fvd.subject.services.SubjectDeriver;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -44,6 +47,25 @@ public class DocumentService {
     private final SearchService searchService;
     private final SubjectDeriver subjectDeriver;
 
+    private final Map<String, ParsedDocument> documentCache = new ConcurrentHashMap<>();
+
+    @ConfigProperty(name = "app.document-cache.enabled", defaultValue = "true")
+    boolean documentCacheEnabled;
+
+    /**
+     * Holds the parsed content of a document that is invariant across requests.
+     * Search-specific fields (matchedKeywords, score) are not included.
+     */
+    record ParsedDocument(
+            String title,
+            String description,
+            String path,
+            String subject,
+            String extension,
+            List<SectionInfo> sections,
+            List<CodeBlockInfo> codeBlocks
+    ) {}
+
     /**
      * Retrieves a document by path with full structured content.
      *
@@ -52,16 +74,15 @@ public class DocumentService {
      * @return the document response, or null if not found
      */
     public DocumentResponse getDocumentByPath(String version, String path) {
-        Optional<String> contentOpt = docStore.read(version, path);
-        if (contentOpt.isEmpty()) {
+        ParsedDocument parsed = getOrParseDocument(version, path);
+        if (parsed == null) {
             return null;
         }
-
-        String content = contentOpt.get();
-        String extension = findExtensionForPath(version, path);
-        String subject = subjectDeriver.deriveSubject(path);
-
-        return buildDocumentResponse(path, content, extension, subject, List.of(), null);
+        return new DocumentResponse(
+                parsed.title(), parsed.description(), parsed.path(),
+                parsed.subject(), parsed.extension(),
+                parsed.sections(), parsed.codeBlocks(),
+                List.of(), null);
     }
 
     /**
@@ -103,15 +124,15 @@ public class DocumentService {
                         title, description, fileResult.path, derivedSubject,
                         fileResult.extension, null, null, matchedKws, fileResult.score));
             } else {
-                DocumentResponse doc = buildDocumentResponse(
-                        fileResult.path,
-                        contentOpt.get(),
-                        fileResult.extension,
-                        derivedSubject,
-                        matchedKws,
-                        fileResult.score
-                );
-                results.add(doc);
+                ParsedDocument parsed = getOrParseDocument(version, fileResult.path);
+                if (parsed == null) {
+                    continue;
+                }
+                results.add(new DocumentResponse(
+                        parsed.title(), parsed.description(), parsed.path(),
+                        parsed.subject(), parsed.extension(),
+                        parsed.sections(), parsed.codeBlocks(),
+                        matchedKws, fileResult.score));
             }
         }
 
@@ -122,25 +143,47 @@ public class DocumentService {
                 .build();
     }
 
-    private DocumentResponse buildDocumentResponse(String path, String content,
-                                                   String extension, String subject,
-                                                   List<String> matchedKeywords, Double score) {
+    /**
+     * Invalidates the in-memory document parse cache for a specific version.
+     * Should be called after documents are updated (e.g., during cache refresh).
+     */
+    public void invalidateDocumentCache(String version) {
+        String prefix = version + "::";
+        documentCache.keySet().removeIf(key -> key.startsWith(prefix));
+        log.info("Document parse cache invalidated for version {}", version);
+    }
+
+    private ParsedDocument getOrParseDocument(String version, String path) {
+        String cacheKey = version + "::" + path;
+
+        if (documentCacheEnabled) {
+            ParsedDocument cached = documentCache.get(cacheKey);
+            if (cached != null) {
+                return cached;
+            }
+        }
+
+        Optional<String> contentOpt = docStore.read(version, path);
+        if (contentOpt.isEmpty()) {
+            return null;
+        }
+
+        String content = contentOpt.get();
+        String extension = findExtensionForPath(version, path);
+        String subject = subjectDeriver.deriveSubject(path);
         String title = DocumentTitleExtractor.extractTitle(content);
         String description = extractDescription(content);
         List<SectionInfo> sections = parseSections(content);
         List<CodeBlockInfo> codeBlocks = parseCodeBlocks(content);
 
-        return new DocumentResponse(
-                title,
-                description,
-                path,
-                subject,
-                extension,
-                sections,
-                codeBlocks,
-                matchedKeywords,
-                score
-        );
+        ParsedDocument parsed = new ParsedDocument(
+                title, description, path, subject, extension, sections, codeBlocks);
+
+        if (documentCacheEnabled) {
+            documentCache.put(cacheKey, parsed);
+        }
+
+        return parsed;
     }
 
     private String extractDescription(String content) {

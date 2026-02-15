@@ -1,5 +1,6 @@
 package com.fvd.cache.jobs;
 
+import com.fvd.api.services.DocumentService;
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
@@ -37,6 +38,7 @@ public class CacheRefreshJob {
     private final SearchService searchService;
     private final DocParser docParser;
     private final QuarkiverseService quarkiverseService;
+    private final DocumentService documentService;
 
     @ConfigProperty(name = "app.quarkiverse.enabled", defaultValue = "false")
     boolean quarkiverseEnabled;
@@ -111,6 +113,7 @@ public class CacheRefreshJob {
 
             // Invalidate in-memory cache so next search picks up fresh data
             searchService.invalidateCache(version);
+            documentService.invalidateDocumentCache(version);
 
         }
         log.info("Cache refresh completed for version {}", version);
@@ -134,6 +137,7 @@ public class CacheRefreshJob {
             codeSampleIndexer.build("main", filePathsByExtension);
 
             searchService.invalidateCache("main");
+            documentService.invalidateDocumentCache("main");
 
             log.info("Main indexes rebuilt with quarkiverse data ({} extensions)",
                     filePathsByExtension.size());
