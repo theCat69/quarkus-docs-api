@@ -17,7 +17,7 @@ import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.search.SearchConfig;
 import com.fvd.search.TestSearchConfig;
-import com.fvd.subject.services.SubjectDeriver;
+import com.fvd.subject.services.MetadataAwareSubjectResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -31,11 +31,14 @@ import org.sqlite.SQLiteDataSource;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -49,7 +52,7 @@ class SearchServiceTest {
     CodeSampleIndexStore codeSampleIndexStore;
     DocParser docParser;
     CacheService cacheService;
-    SubjectDeriver subjectDeriver;
+    MetadataAwareSubjectResolver metadataResolver;
 
     @BeforeEach
     void setUp() {
@@ -61,9 +64,10 @@ class SearchServiceTest {
         SearchConfig searchConfig = new TestSearchConfig();
         FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
         SearchScorer searchScorer = new SqliteSearchScorer(searchConfig);
-        subjectDeriver = mock(SubjectDeriver.class);
-        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
-        searchService = new SearchService(keywordIndexStore, codeSampleIndexStore, null, docParser, cacheService, searchConfig, fuzzyMatcher, searchScorer, subjectDeriver);
+        metadataResolver = mock(MetadataAwareSubjectResolver.class);
+        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("misc");
+        when(metadataResolver.loadMetadataMap(anyString())).thenReturn(Map.of());
+        searchService = new SearchService(keywordIndexStore, codeSampleIndexStore, null, docParser, cacheService, searchConfig, fuzzyMatcher, searchScorer, metadataResolver);
     }
 
     private void seedIndex(String version, KeywordIndex index) {
@@ -76,7 +80,7 @@ class SearchServiceTest {
         FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
         SearchScorer searchScorer = new SqliteSearchScorer(searchConfig);
         return new SearchService(
-                keywordIndexStore, codeSampleIndexStore, docStore, docParser, cs, searchConfig, fuzzyMatcher, searchScorer, subjectDeriver);
+                keywordIndexStore, codeSampleIndexStore, docStore, docParser, cs, searchConfig, fuzzyMatcher, searchScorer, metadataResolver);
     }
 
     // --- File search tests ---
@@ -1213,8 +1217,8 @@ class SearchServiceTest {
 
         @Test
         void searchFilesWithSubjectFilterReturnsOnlyMatchingSubject() {
-            when(subjectDeriver.deriveSubject("security.adoc")).thenReturn("security");
-            when(subjectDeriver.deriveSubject("config.adoc")).thenReturn("core-concepts");
+            when(metadataResolver.resolveSubject(eq("security.adoc"), any(Map.class))).thenReturn("security");
+            when(metadataResolver.resolveSubject(eq("config.adoc"), any(Map.class))).thenReturn("core-concepts");
 
             KeywordIndex index = new KeywordIndex(List.of(
                     new FileKeywordEntry("security.adoc",
@@ -1236,8 +1240,8 @@ class SearchServiceTest {
         @NullSource
         @ValueSource(strings = {"", "  "})
         void searchFilesWithNullOrBlankSubjectReturnsAllFiles(String subject) {
-            when(subjectDeriver.deriveSubject("security.adoc")).thenReturn("security");
-            when(subjectDeriver.deriveSubject("config.adoc")).thenReturn("core-concepts");
+            when(metadataResolver.resolveSubject(eq("security.adoc"), any(Map.class))).thenReturn("security");
+            when(metadataResolver.resolveSubject(eq("config.adoc"), any(Map.class))).thenReturn("core-concepts");
 
             KeywordIndex index = new KeywordIndex(List.of(
                     new FileKeywordEntry("security.adoc",
@@ -1256,9 +1260,9 @@ class SearchServiceTest {
 
         @Test
         void searchFilesSubjectFilterAppliesBeforePagination() {
-            when(subjectDeriver.deriveSubject("sec1.adoc")).thenReturn("security");
-            when(subjectDeriver.deriveSubject("sec2.adoc")).thenReturn("security");
-            when(subjectDeriver.deriveSubject("config.adoc")).thenReturn("core-concepts");
+            when(metadataResolver.resolveSubject(eq("sec1.adoc"), any(Map.class))).thenReturn("security");
+            when(metadataResolver.resolveSubject(eq("sec2.adoc"), any(Map.class))).thenReturn("security");
+            when(metadataResolver.resolveSubject(eq("config.adoc"), any(Map.class))).thenReturn("core-concepts");
 
             KeywordIndex index = new KeywordIndex(List.of(
                     new FileKeywordEntry("sec1.adoc",
@@ -1282,8 +1286,8 @@ class SearchServiceTest {
 
         @Test
         void searchCodeSamplesWithSubjectFilterReturnsOnlyMatchingSubject() {
-            when(subjectDeriver.deriveSubject("security.adoc")).thenReturn("security");
-            when(subjectDeriver.deriveSubject("config.adoc")).thenReturn("core-concepts");
+            when(metadataResolver.resolveSubject(eq("security.adoc"), any(Map.class))).thenReturn("security");
+            when(metadataResolver.resolveSubject(eq("config.adoc"), any(Map.class))).thenReturn("core-concepts");
 
             CodeSampleIndex index = new CodeSampleIndex(List.of(
                     new CodeSampleEntry("security.adoc", "Auth", "java", "code1", 1, 5,
@@ -1358,9 +1362,9 @@ class SearchServiceTest {
 
         @Test
         void searchCodeSamplesSubjectFilterAppliesBeforePaginationTotalCount() {
-            when(subjectDeriver.deriveSubject("sec1.adoc")).thenReturn("security");
-            when(subjectDeriver.deriveSubject("sec2.adoc")).thenReturn("security");
-            when(subjectDeriver.deriveSubject("config.adoc")).thenReturn("core-concepts");
+            when(metadataResolver.resolveSubject(eq("sec1.adoc"), any(Map.class))).thenReturn("security");
+            when(metadataResolver.resolveSubject(eq("sec2.adoc"), any(Map.class))).thenReturn("security");
+            when(metadataResolver.resolveSubject(eq("config.adoc"), any(Map.class))).thenReturn("core-concepts");
 
             CodeSampleIndex index = new CodeSampleIndex(List.of(
                     new CodeSampleEntry("sec1.adoc", "Auth", "java", "code1", 1, 5,

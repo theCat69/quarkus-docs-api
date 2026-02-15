@@ -3,12 +3,14 @@ package com.fvd.api.services;
 import com.fvd.api.dto.CatalogResponse;
 import com.fvd.api.dto.ExtensionInfo;
 import com.fvd.api.dto.SubjectInfo;
+import com.fvd.asciidocs.model.DocumentMetadata;
 import com.fvd.cache.services.CacheService;
 import com.fvd.indexs.indexers.FileKeywordEntry;
 import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.subject.Subject;
+import com.fvd.subject.services.MetadataAwareSubjectResolver;
 import com.fvd.subject.services.SubjectDeriver;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,7 @@ public class CatalogService {
     private static final int MAX_EXTENSION_KEYWORDS = 15;
 
     private final SubjectDeriver subjectDeriver;
+    private final MetadataAwareSubjectResolver metadataResolver;
     private final KeywordIndexStore keywordIndexStore;
     private final CacheService cacheService;
 
@@ -89,8 +92,9 @@ public class CatalogService {
         KeywordIndex index = indexOpt.get();
         
         // Derive subjects for all indexed files and update counts
+        Map<String, DocumentMetadata> metadataMap = metadataResolver.loadMetadataMap(version);
         for (FileKeywordEntry file : index.files) {
-            String subject = subjectDeriver.deriveSubject(file.path);
+            String subject = metadataResolver.resolveSubject(file.path, metadataMap);
             subjectDeriver.recordDocument(subject);
         }
 

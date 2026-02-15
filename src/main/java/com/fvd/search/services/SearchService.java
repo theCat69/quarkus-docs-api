@@ -12,10 +12,11 @@ import com.fvd.indexs.indexers.CodeSampleIndex;
 import com.fvd.indexs.indexers.FileKeywordEntry;
 import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.SectionKeywordEntry;
+import com.fvd.asciidocs.model.DocumentMetadata;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.search.SearchConfig;
-import com.fvd.subject.services.SubjectDeriver;
+import com.fvd.subject.services.MetadataAwareSubjectResolver;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +45,7 @@ public class SearchService {
     private final SearchConfig searchConfig;
     private final FuzzyMatcher fuzzyMatcher;
     private final SearchScorer searchScorer;
-    private final SubjectDeriver subjectDeriver;
+    private final MetadataAwareSubjectResolver metadataResolver;
 
     private final Map<String, KeywordIndex> indexCache = new ConcurrentHashMap<>();
     private final Map<String, CodeSampleIndex> codeSampleIndexCache = new ConcurrentHashMap<>();
@@ -61,14 +62,17 @@ public class SearchService {
         }
 
         Map<String, String> stemmedToOriginal = SearchKeywords.prepareWithOriginals(keywords);
-        List<FileSearchResult> all = getFileResults(index, stemmedToOriginal, extension, subject);
+        Map<String, DocumentMetadata> metadataMap = metadataResolver.loadMetadataMap(version);
+        List<FileSearchResult> all = getFileResults(index, stemmedToOriginal, extension, subject, metadataMap);
 
         all.sort(Comparator.comparingDouble((FileSearchResult r) -> r.score).reversed());
         return paginate(all, limit, offset);
     }
 
     @Nonnull
-    private List<FileSearchResult> getFileResults(KeywordIndex index, Map<String, String> stemmedToOriginal, String extension, String subject) {
+    private List<FileSearchResult> getFileResults(KeywordIndex index, Map<String, String> stemmedToOriginal,
+                                                  String extension, String subject,
+                                                  Map<String, DocumentMetadata> metadataMap) {
         double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
         List<FileSearchResult> results = new ArrayList<>();
 
@@ -76,7 +80,7 @@ public class SearchService {
             if (!FilterUtils.matchesFilter(extension, file.extension)) {
                 continue;
             }
-            String derivedSubject = subjectDeriver.deriveSubject(file.path);
+            String derivedSubject = metadataResolver.resolveSubject(file.path, metadataMap);
             if (!FilterUtils.matchesFilter(subject, derivedSubject)) {
                 continue;
             }
@@ -299,6 +303,7 @@ public class SearchService {
         String normalizedLanguage = (language != null && !language.isBlank()) ? language.trim().toLowerCase() : null;
 
         List<CodeSampleSearchResult> results = new ArrayList<>();
+        Map<String, DocumentMetadata> metadataMap = metadataResolver.loadMetadataMap(version);
         for (CodeSampleEntry sample : index.samples) {
             if (filePath != null && !filePath.isBlank() && !sample.filePath.equals(filePath)) {
                 continue;
@@ -309,7 +314,7 @@ public class SearchService {
             if (!FilterUtils.matchesFilter(extension, sample.extension)) {
                 continue;
             }
-            String derivedSubject = subjectDeriver.deriveSubject(sample.filePath);
+            String derivedSubject = metadataResolver.resolveSubject(sample.filePath, metadataMap);
             if (!FilterUtils.matchesFilter(subject, derivedSubject)) {
                 continue;
             }

@@ -6,7 +6,7 @@ import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.search.services.SearchService;
-import com.fvd.subject.services.SubjectDeriver;
+import com.fvd.subject.services.MetadataAwareSubjectResolver;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,7 +36,7 @@ class DocumentServiceBatchTest {
     private SearchService searchService;
 
     @Mock
-    private SubjectDeriver subjectDeriver;
+    private MetadataAwareSubjectResolver metadataResolver;
 
     @InjectMocks
     private DocumentService documentService;
@@ -62,8 +63,8 @@ class DocumentServiceBatchTest {
     void shouldReturnAllDocumentsWhenAllFound() {
         when(docStore.read(VERSION, "security.adoc")).thenReturn(Optional.of(SECURITY_CONTENT));
         when(docStore.read(VERSION, "config.adoc")).thenReturn(Optional.of(CONFIG_CONTENT));
-        when(subjectDeriver.deriveSubject("security.adoc")).thenReturn("security");
-        when(subjectDeriver.deriveSubject("config.adoc")).thenReturn("core-concepts");
+        when(metadataResolver.resolveSubject(eq(VERSION), eq("security.adoc"))).thenReturn("security");
+        when(metadataResolver.resolveSubject(eq(VERSION), eq("config.adoc"))).thenReturn("core-concepts");
         when(keywordIndexStore.read(VERSION)).thenReturn(Optional.empty());
         when(docParser.parseSections(SECURITY_CONTENT)).thenReturn(List.of());
         when(docParser.parseCodeBlocks(SECURITY_CONTENT)).thenReturn(List.of());
@@ -84,7 +85,7 @@ class DocumentServiceBatchTest {
     void shouldReturnPartialResultsWhenSomeMissing() {
         when(docStore.read(VERSION, "security.adoc")).thenReturn(Optional.of(SECURITY_CONTENT));
         when(docStore.read(VERSION, "nonexistent.adoc")).thenReturn(Optional.empty());
-        when(subjectDeriver.deriveSubject("security.adoc")).thenReturn("security");
+        when(metadataResolver.resolveSubject(eq(VERSION), eq("security.adoc"))).thenReturn("security");
         when(keywordIndexStore.read(VERSION)).thenReturn(Optional.empty());
         when(docParser.parseSections(SECURITY_CONTENT)).thenReturn(List.of());
         when(docParser.parseCodeBlocks(SECURITY_CONTENT)).thenReturn(List.of());
@@ -120,7 +121,7 @@ class DocumentServiceBatchTest {
     @Test
     void shouldReturnBriefDocumentsWithoutSectionsAndCodeBlocks() {
         when(docStore.read(VERSION, "security.adoc")).thenReturn(Optional.of(SECURITY_CONTENT));
-        when(subjectDeriver.deriveSubject("security.adoc")).thenReturn("security");
+        when(metadataResolver.resolveSubject(eq(VERSION), eq("security.adoc"))).thenReturn("security");
         when(keywordIndexStore.read(VERSION)).thenReturn(Optional.empty());
 
         BatchDocumentResponse response = documentService.getDocumentsBatch(VERSION,
@@ -137,7 +138,7 @@ class DocumentServiceBatchTest {
     @Test
     void shouldReturnFullDocumentsWithSectionsAndCodeBlocks() {
         when(docStore.read(VERSION, "security.adoc")).thenReturn(Optional.of(SECURITY_CONTENT));
-        when(subjectDeriver.deriveSubject("security.adoc")).thenReturn("security");
+        when(metadataResolver.resolveSubject(eq(VERSION), eq("security.adoc"))).thenReturn("security");
         when(keywordIndexStore.read(VERSION)).thenReturn(Optional.empty());
         when(docParser.parseSections(SECURITY_CONTENT)).thenReturn(List.of());
         when(docParser.parseCodeBlocks(SECURITY_CONTENT)).thenReturn(List.of());

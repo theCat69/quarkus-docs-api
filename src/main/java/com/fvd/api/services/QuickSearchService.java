@@ -2,6 +2,7 @@ package com.fvd.api.services;
 
 import com.fvd.api.dto.QuickSearchResponse;
 import com.fvd.api.dto.SearchResultRef;
+import com.fvd.asciidocs.model.DocumentMetadata;
 import com.fvd.common.SearchConstants;
 import com.fvd.common.utils.AsciiDocCleaner;
 import com.fvd.common.utils.DocumentTitleExtractor;
@@ -10,13 +11,14 @@ import com.fvd.search.services.MatchedKeyword;
 import com.fvd.search.services.FileSearchResult;
 import com.fvd.search.services.PaginatedResult;
 import com.fvd.search.services.SearchService;
-import com.fvd.subject.services.SubjectDeriver;
+import com.fvd.subject.services.MetadataAwareSubjectResolver;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -30,7 +32,7 @@ public class QuickSearchService {
 
     private final SearchService searchService;
     private final DocStore docStore;
-    private final SubjectDeriver subjectDeriver;
+    private final MetadataAwareSubjectResolver metadataResolver;
 
     /**
      * Performs a quick discovery search returning lightweight references.
@@ -52,9 +54,10 @@ public class QuickSearchService {
 
         List<SearchResultRef> results = new ArrayList<>();
         Set<String> keywordSet = Set.copyOf(keywords);
+        Map<String, DocumentMetadata> metadataMap = metadataResolver.loadMetadataMap(version);
 
         for (FileSearchResult fileResult : searchResult.items()) {
-            String derivedSubject = subjectDeriver.deriveSubject(fileResult.path);
+            String derivedSubject = metadataResolver.resolveSubject(fileResult.path, metadataMap);
 
             // Get document info
             String title = docStore.read(version, fileResult.path)

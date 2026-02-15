@@ -2,6 +2,7 @@ package com.fvd.api.services;
 
 import com.fvd.api.dto.RelatedDocumentRef;
 import com.fvd.api.dto.RelatedDocumentResponse;
+import com.fvd.asciidocs.model.DocumentMetadata;
 import com.fvd.common.utils.AsciiDocCleaner;
 import com.fvd.common.utils.DocumentTitleExtractor;
 import com.fvd.common.utils.FilterUtils;
@@ -12,7 +13,7 @@ import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.search.SearchConfig;
 import com.fvd.search.services.SearchService;
-import com.fvd.subject.services.SubjectDeriver;
+import com.fvd.subject.services.MetadataAwareSubjectResolver;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +40,7 @@ public class RelatedDocumentService {
 
     private final SearchService searchService;
     private final DocStore docStore;
-    private final SubjectDeriver subjectDeriver;
+    private final MetadataAwareSubjectResolver metadataResolver;
     private final SearchConfig searchConfig;
 
     /**
@@ -81,13 +82,14 @@ public class RelatedDocumentService {
 
         // Compute similarity against all other documents
         List<CandidateResult> candidates = new ArrayList<>();
+        Map<String, DocumentMetadata> metadataMap = metadataResolver.loadMetadataMap(version);
         for (FileKeywordEntry candidate : index.files) {
             if (candidate.path.equals(sourcePath)) {
                 continue;
             }
 
             // Apply filters
-            String derivedSubject = subjectDeriver.deriveSubject(candidate.path);
+            String derivedSubject = metadataResolver.resolveSubject(candidate.path, metadataMap);
             if (!FilterUtils.matchesFilter(subjectFilter, derivedSubject)) {
                 continue;
             }

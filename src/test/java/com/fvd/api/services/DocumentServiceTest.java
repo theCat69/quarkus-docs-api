@@ -11,7 +11,8 @@ import com.fvd.search.services.FileSearchResult;
 import com.fvd.search.services.MatchedKeyword;
 import com.fvd.search.services.PaginatedResult;
 import com.fvd.search.services.SearchService;
-import com.fvd.subject.services.SubjectDeriver;
+import com.fvd.asciidocs.model.DocumentMetadata;
+import com.fvd.subject.services.MetadataAwareSubjectResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +24,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -46,7 +48,7 @@ class DocumentServiceTest {
     private SearchService searchService;
 
     @Mock
-    private SubjectDeriver subjectDeriver;
+    private MetadataAwareSubjectResolver metadataResolver;
 
     private DocumentService documentService;
 
@@ -67,14 +69,14 @@ class DocumentServiceTest {
 
     @BeforeEach
     void setUp() {
-        documentService = new DocumentService(docStore, docParser, keywordIndexStore, searchService, subjectDeriver);
+        documentService = new DocumentService(docStore, docParser, keywordIndexStore, searchService, metadataResolver);
         documentService.documentCacheEnabled = true;
     }
 
     @Test
     void getDocumentByPathCachesOnFirstCallAndReturnsCachedOnSecond() {
         when(docStore.read("main", "security-overview.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
-        when(subjectDeriver.deriveSubject("security-overview.adoc")).thenReturn("security");
+        when(metadataResolver.resolveSubject(eq("main"), eq("security-overview.adoc"))).thenReturn("security");
         when(keywordIndexStore.read("main")).thenReturn(Optional.empty());
         when(docParser.parseSections(SAMPLE_CONTENT)).thenReturn(List.of(
                 new DocParser.Section("Authentication", 7, 9, Map.of("authent", 1)),
@@ -104,7 +106,7 @@ class DocumentServiceTest {
     void invalidateDocumentCacheClearsOnlySpecifiedVersion() {
         when(docStore.read(eq("main"), eq("doc1.adoc"))).thenReturn(Optional.of(SAMPLE_CONTENT));
         when(docStore.read(eq("3.27"), eq("doc1.adoc"))).thenReturn(Optional.of(SAMPLE_CONTENT));
-        when(subjectDeriver.deriveSubject("doc1.adoc")).thenReturn("general");
+        when(metadataResolver.resolveSubject(anyString(), eq("doc1.adoc"))).thenReturn("general");
         when(keywordIndexStore.read(anyString())).thenReturn(Optional.empty());
         when(docParser.parseSections(SAMPLE_CONTENT)).thenReturn(List.of());
         when(docParser.parseCodeBlocks(SAMPLE_CONTENT)).thenReturn(List.of());
@@ -131,7 +133,7 @@ class DocumentServiceTest {
         documentService.documentCacheEnabled = false;
 
         when(docStore.read("main", "doc.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
-        when(subjectDeriver.deriveSubject("doc.adoc")).thenReturn("general");
+        when(metadataResolver.resolveSubject(eq("main"), eq("doc.adoc"))).thenReturn("general");
         when(keywordIndexStore.read("main")).thenReturn(Optional.empty());
         when(docParser.parseSections(SAMPLE_CONTENT)).thenReturn(List.of());
         when(docParser.parseCodeBlocks(SAMPLE_CONTENT)).thenReturn(List.of());
@@ -169,7 +171,9 @@ class DocumentServiceTest {
         when(searchService.searchFiles("main", List.of("security"), null, null, 10, 0))
                 .thenReturn(searchResult);
         when(docStore.read("main", "security-overview.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
-        when(subjectDeriver.deriveSubject("security-overview.adoc")).thenReturn("security");
+        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(eq("security-overview.adoc"), any(Map.class))).thenReturn("security");
+        when(metadataResolver.resolveSubject(eq("main"), eq("security-overview.adoc"))).thenReturn("security");
         when(keywordIndexStore.read("main")).thenReturn(Optional.empty());
         when(docParser.parseSections(SAMPLE_CONTENT)).thenReturn(List.of());
         when(docParser.parseCodeBlocks(SAMPLE_CONTENT)).thenReturn(List.of());
@@ -210,7 +214,8 @@ class DocumentServiceTest {
         when(searchService.searchFiles("main", List.of("security"), null, null, 10, 0))
                 .thenReturn(searchResult);
         when(docStore.read("main", "security-overview.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
-        when(subjectDeriver.deriveSubject("security-overview.adoc")).thenReturn("security");
+        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(eq("security-overview.adoc"), any(Map.class))).thenReturn("security");
 
         // Brief mode search
         DocumentSearchResponse response = documentService.searchDocuments(

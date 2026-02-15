@@ -15,9 +15,10 @@ import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.search.services.MatchedKeyword;
 import com.fvd.search.services.FileSearchResult;
+import com.fvd.asciidocs.model.DocumentMetadata;
 import com.fvd.search.services.PaginatedResult;
 import com.fvd.search.services.SearchService;
-import com.fvd.subject.services.SubjectDeriver;
+import com.fvd.subject.services.MetadataAwareSubjectResolver;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +48,7 @@ public class DocumentService {
     private final DocParser docParser;
     private final KeywordIndexStore keywordIndexStore;
     private final SearchService searchService;
-    private final SubjectDeriver subjectDeriver;
+    private final MetadataAwareSubjectResolver metadataResolver;
 
     private final Map<String, ParsedDocument> documentCache = new ConcurrentHashMap<>();
 
@@ -132,7 +133,7 @@ public class DocumentService {
         String title = DocumentTitleExtractor.extractTitle(content);
         String description = extractDescription(content);
         String extension = findExtensionForPath(version, path);
-        String subject = subjectDeriver.deriveSubject(path);
+        String subject = metadataResolver.resolveSubject(version, path);
 
         return new DocumentResponse(title, description, path, subject, extension,
                 null, null, List.of(), null);
@@ -158,8 +159,9 @@ public class DocumentService {
                 version, keywords, extension, subject, limit, offset);
 
         List<DocumentResponse> results = new ArrayList<>();
+        Map<String, DocumentMetadata> metadataMap = metadataResolver.loadMetadataMap(version);
         for (FileSearchResult fileResult : searchResult.items()) {
-            String derivedSubject = subjectDeriver.deriveSubject(fileResult.path);
+            String derivedSubject = metadataResolver.resolveSubject(fileResult.path, metadataMap);
 
             List<String> matchedKws = fileResult.matchedKeywords.stream()
                     .map(MatchedKeyword::originalKeyword)
@@ -223,7 +225,7 @@ public class DocumentService {
 
         String content = contentOpt.get();
         String extension = findExtensionForPath(version, path);
-        String subject = subjectDeriver.deriveSubject(path);
+        String subject = metadataResolver.resolveSubject(version, path);
         String title = DocumentTitleExtractor.extractTitle(content);
         String description = extractDescription(content);
         List<SectionInfo> sections = parseSections(content);

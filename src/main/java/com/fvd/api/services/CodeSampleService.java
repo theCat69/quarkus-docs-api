@@ -2,6 +2,7 @@ package com.fvd.api.services;
 
 import com.fvd.api.dto.CodeSampleResult;
 import com.fvd.api.dto.CodeSampleSearchResponse;
+import com.fvd.asciidocs.model.DocumentMetadata;
 import com.fvd.common.utils.DocumentTitleExtractor;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.indexers.CodeSampleIndex;
@@ -10,13 +11,14 @@ import com.fvd.search.services.MatchedKeyword;
 import com.fvd.search.services.CodeSampleSearchResult;
 import com.fvd.search.services.PaginatedResult;
 import com.fvd.search.services.SearchService;
-import com.fvd.subject.services.SubjectDeriver;
+import com.fvd.subject.services.MetadataAwareSubjectResolver;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Service for code sample search operations.
@@ -29,7 +31,7 @@ public class CodeSampleService {
     private final SearchService searchService;
     private final CodeSampleIndexStore codeSampleIndexStore;
     private final DocStore docStore;
-    private final SubjectDeriver subjectDeriver;
+    private final MetadataAwareSubjectResolver metadataResolver;
 
     /**
      * Searches code samples by keywords with optional filters.
@@ -51,9 +53,10 @@ public class CodeSampleService {
                 version, keywords, null, null, extension, subject, language, limit, offset);
 
         List<CodeSampleResult> results = new ArrayList<>();
+        Map<String, DocumentMetadata> metadataMap = metadataResolver.loadMetadataMap(version);
 
         for (CodeSampleSearchResult csResult : searchResult.items()) {
-            String derivedSubject = subjectDeriver.deriveSubject(csResult.path);
+            String derivedSubject = metadataResolver.resolveSubject(csResult.path, metadataMap);
 
             // Get document title
             String docTitle = docStore.read(version, csResult.path)

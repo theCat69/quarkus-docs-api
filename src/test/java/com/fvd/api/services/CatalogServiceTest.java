@@ -1,10 +1,12 @@
 package com.fvd.api.services;
 
 import com.fvd.cache.services.CacheService;
+import com.fvd.asciidocs.model.DocumentMetadata;
 import com.fvd.indexs.indexers.FileKeywordEntry;
 import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.indexs.stores.KeywordIndexStore;
+import com.fvd.subject.services.MetadataAwareSubjectResolver;
 import com.fvd.subject.services.SubjectDeriver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,9 +16,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -27,6 +31,7 @@ class CatalogServiceTest {
     Path tempDir;
 
     private SubjectDeriver subjectDeriver;
+    private MetadataAwareSubjectResolver metadataResolver;
     private KeywordIndexStore keywordIndexStore;
     private CacheService cacheService;
     private CatalogService catalogService;
@@ -34,11 +39,14 @@ class CatalogServiceTest {
     @BeforeEach
     void setUp() {
         subjectDeriver = mock(SubjectDeriver.class);
+        metadataResolver = mock(MetadataAwareSubjectResolver.class);
         keywordIndexStore = mock(KeywordIndexStore.class);
         cacheService = mock(CacheService.class);
         when(cacheService.versionDir("main")).thenReturn(tempDir.resolve("main"));
         when(cacheService.listCachedVersions()).thenReturn(List.of("main"));
-        catalogService = new CatalogService(subjectDeriver, keywordIndexStore, cacheService);
+        when(metadataResolver.loadMetadataMap(anyString())).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("misc");
+        catalogService = new CatalogService(subjectDeriver, metadataResolver, keywordIndexStore, cacheService);
     }
 
     @Test
@@ -56,7 +64,6 @@ class CatalogServiceTest {
         );
         index.files = List.of(entry);
         when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
-        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
         when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
 
         var catalog = catalogService.getCatalog("main");
@@ -76,7 +83,6 @@ class CatalogServiceTest {
         );
         index.files = List.of(entry);
         when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
-        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
         when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
 
         var catalog = catalogService.getCatalog("main");
@@ -96,7 +102,6 @@ class CatalogServiceTest {
         );
         index.files = List.of(entry);
         when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
-        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
         when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
 
         var catalog = catalogService.getCatalog("main");
@@ -130,7 +135,6 @@ class CatalogServiceTest {
         );
         index.files = List.of(file1, file2);
         when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
-        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
         when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
 
         var catalog = catalogService.getCatalog("main");
@@ -152,7 +156,6 @@ class CatalogServiceTest {
         );
         index.files = List.of(entry);
         when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
-        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
         when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
 
         var catalog = catalogService.getCatalog("main");
@@ -178,7 +181,6 @@ class CatalogServiceTest {
         );
         index.files = List.of(file1, file2);
         when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
-        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
         when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
 
         var catalog = catalogService.getCatalog("main");
@@ -205,7 +207,6 @@ class CatalogServiceTest {
         );
         index.files = List.of(entry);
         when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
-        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
         when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
 
         var catalog = catalogService.getCatalog("main");

@@ -9,7 +9,8 @@ import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.search.SearchConfig;
 import com.fvd.search.TestSearchConfig;
 import com.fvd.search.services.SearchService;
-import com.fvd.subject.services.SubjectDeriver;
+import com.fvd.asciidocs.model.DocumentMetadata;
+import com.fvd.subject.services.MetadataAwareSubjectResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +25,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -38,7 +40,7 @@ class RelatedDocumentServiceTest {
     private DocStore docStore;
 
     @Mock
-    private SubjectDeriver subjectDeriver;
+    private MetadataAwareSubjectResolver metadataResolver;
 
     private final SearchConfig searchConfig = new TestSearchConfig();
 
@@ -60,7 +62,7 @@ class RelatedDocumentServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new RelatedDocumentService(searchService, docStore, subjectDeriver, searchConfig);
+        service = new RelatedDocumentService(searchService, docStore, metadataResolver, searchConfig);
     }
 
     @Test
@@ -80,7 +82,8 @@ class RelatedDocumentServiceTest {
         ));
 
         when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(subjectDeriver.deriveSubject(anyString())).thenReturn("security");
+        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("security");
         when(docStore.read(eq("main"), eq("security-oidc.adoc"))).thenReturn(Optional.of(DOC_CONTENT_OIDC));
         when(docStore.read(eq("main"), eq("config.adoc"))).thenReturn(Optional.of("= Config\nConfig doc."));
 
@@ -106,7 +109,8 @@ class RelatedDocumentServiceTest {
         ));
 
         when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
+        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("misc");
         when(docStore.read(eq("main"), eq("other.adoc"))).thenReturn(Optional.of("= Other\nOther doc."));
 
         RelatedDocumentResponse response = service.findRelatedDocuments(
@@ -131,8 +135,9 @@ class RelatedDocumentServiceTest {
         ));
 
         when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(subjectDeriver.deriveSubject("security-doc.adoc")).thenReturn("security");
-        when(subjectDeriver.deriveSubject("config-doc.adoc")).thenReturn("core-concepts");
+        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(eq("security-doc.adoc"), any(Map.class))).thenReturn("security");
+        when(metadataResolver.resolveSubject(eq("config-doc.adoc"), any(Map.class))).thenReturn("core-concepts");
         when(docStore.read(eq("main"), eq("security-doc.adoc"))).thenReturn(Optional.of("= Security\nSec doc."));
 
         RelatedDocumentResponse response = service.findRelatedDocuments(
@@ -157,7 +162,8 @@ class RelatedDocumentServiceTest {
         ));
 
         when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(subjectDeriver.deriveSubject(anyString())).thenReturn("rest-apis");
+        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("rest-apis");
         when(docStore.read(eq("main"), eq("core-doc.adoc"))).thenReturn(Optional.of("= Core\nCore doc."));
 
         RelatedDocumentResponse response = service.findRelatedDocuments(
@@ -185,7 +191,8 @@ class RelatedDocumentServiceTest {
         ));
 
         when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
+        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("misc");
         when(docStore.read(eq("main"), anyString())).thenReturn(Optional.of("= Doc\nContent."));
 
         RelatedDocumentResponse response = service.findRelatedDocuments(
@@ -207,7 +214,8 @@ class RelatedDocumentServiceTest {
         ));
 
         when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
+        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("misc");
 
         RelatedDocumentResponse response = service.findRelatedDocuments(
                 "main", "source.adoc", null, null, 10);
@@ -297,7 +305,8 @@ class RelatedDocumentServiceTest {
         ));
 
         when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
+        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("misc");
 
         // The similarity is very low because "barely-related" has a huge unrelated keyword
         // and only shares "secur" with low weight
@@ -326,7 +335,8 @@ class RelatedDocumentServiceTest {
         ));
 
         when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
+        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("misc");
         when(docStore.read(eq("main"), eq("candidate.adoc"))).thenReturn(Optional.of("= Candidate\nContent."));
 
         RelatedDocumentResponse response = service.findRelatedDocuments(
@@ -359,7 +369,8 @@ class RelatedDocumentServiceTest {
         ));
 
         when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(subjectDeriver.deriveSubject(anyString())).thenReturn("security");
+        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("security");
         when(docStore.read("main", "related.adoc")).thenReturn(Optional.of(DOC_CONTENT_SECURITY));
 
         RelatedDocumentResponse response = service.findRelatedDocuments(
