@@ -454,4 +454,59 @@ class AsciidocParserTest {
         DocParser docParser = parser;
         assertThat(docParser.docsPrefix()).isEqualTo(docParser.docsPrefix("main"));
     }
+
+    @Test
+    void extractKeywordsStripsAsciiDocMarkupNoise() {
+        String text = """
+                include::_includes/prerequisites.adoc[]
+                :description: Guide to security
+                
+                This guide covers security configuration.
+                
+                NOTE: Use OIDC for authentication.
+                
+                image::architecture.png[Architecture diagram]
+                
+                See xref:security-oidc.adoc[OIDC guide] for details.
+                
+                icon:lock[] Secured endpoint
+                
+                [.role-name]
+                Paragraph with role.
+                
+                // This is a comment
+                <1> First callout
+                
+                |===
+                | Feature | Status
+                |===
+                
+                {quarkus-version} placeholder text
+                <<overview>> reference
+                [[anchor-id]]
+                [#shorthand-id]
+                """;
+        Map<String, Integer> keywords = parser.extractKeywords(text);
+        // Noise tokens from markup directives should NOT be present
+        assertThat(keywords).doesNotContainKey("includ");
+        assertThat(keywords).doesNotContainKey("adoc");
+        assertThat(keywords).doesNotContainKey("prerequisit");
+        assertThat(keywords).doesNotContainKey("xref");
+        assertThat(keywords).doesNotContainKey("image");
+        assertThat(keywords).doesNotContainKey("icon");
+        assertThat(keywords).doesNotContainKey("lock");
+        assertThat(keywords).doesNotContainKey("note");
+        assertThat(keywords).doesNotContainKey("descript");
+        assertThat(keywords).doesNotContainKey("architectur");
+        assertThat(keywords).doesNotContainKey("quarkus-version");
+        assertThat(keywords).doesNotContainKey("overview");
+        assertThat(keywords).doesNotContainKey("anchor-id");
+        assertThat(keywords).doesNotContainKey("shorthand-id");
+        // Actual content should be preserved
+        assertThat(keywords).containsKey("secur");
+        assertThat(keywords).containsKey("configur");
+        assertThat(keywords).containsKey("oidc");
+        assertThat(keywords).containsKey("guide");
+        assertThat(keywords).containsKey("authentic");
+    }
 }

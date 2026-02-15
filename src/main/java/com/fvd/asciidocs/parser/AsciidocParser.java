@@ -1,13 +1,18 @@
 package com.fvd.asciidocs.parser;
 
 import com.fvd.common.Stemmer;
+import com.fvd.common.utils.AsciiDocCleaner;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.search.SearchConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,6 +45,7 @@ public class AsciidocParser implements DocParser {
     @Override
     public Map<String, Integer> extractKeywords(String text) {
         String cleaned = stripCodeBlocks(text);
+        cleaned = AsciiDocCleaner.clean(cleaned);
         List<String> tokens = tokenize(cleaned);
         Map<String, Integer> counts = new HashMap<>();
         for (String token : tokens) {
