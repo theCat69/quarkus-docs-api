@@ -34,11 +34,14 @@ public class DocumentResource {
 
     @GET
     @Operation(
-            summary = "Get document by path or search by keywords",
-            description = "If 'path' is provided, returns a single document with full structured content " +
-                    "including sections and code blocks. If 'keywords' is provided, searches documents " +
-                    "and returns matching results with scores. Path takes precedence if both are provided. " +
-                    "Returns 400 if neither path nor keywords is provided."
+            summary = "Get document by path or search by keywords (at least one required)",
+            description = "REQUIRED: At least one of 'path' or 'keywords' must be provided. " +
+                    "Returns 400 if neither is specified.\n\n" +
+                    "Mode 1 — Path lookup: If 'path' is provided, returns a single document with full " +
+                    "structured content including sections and code blocks.\n" +
+                    "Mode 2 — Keyword search: If 'keywords' is provided, searches documents and returns " +
+                    "matching results with scores. Supports optional 'subject' and 'extension' filters.\n\n" +
+                    "If both 'path' and 'keywords' are provided, path takes precedence (keyword search is ignored)."
     )
     @APIResponse(
             responseCode = "200",
@@ -66,14 +69,16 @@ public class DocumentResource {
             @QueryParam("version") String version,
 
             @Parameter(
-                    description = "Document path relative to docs directory. If provided, returns single document.",
+                    description = "Document path relative to docs directory. If provided, returns a single document " +
+                            "with full content. Either 'path' or 'keywords' must be provided.",
                     required = false,
                     example = "security-overview.adoc"
             )
             @QueryParam("path") String path,
 
             @Parameter(
-                    description = "Space-separated search keywords. Required if path not provided.",
+                    description = "Space-separated search keywords for document search. " +
+                            "Either 'keywords' or 'path' must be provided.",
                     required = false,
                     example = "security oidc"
             )
