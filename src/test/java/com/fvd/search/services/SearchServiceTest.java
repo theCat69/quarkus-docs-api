@@ -1282,26 +1282,21 @@ class SearchServiceTest {
         }
 
         @Test
-        void searchCodeSamplesWithSubjectAndLanguageFilterCombined() {
-            when(subjectDeriver.deriveSubject("security.adoc")).thenReturn("security");
-            when(subjectDeriver.deriveSubject("config.adoc")).thenReturn("core-concepts");
-
+        void searchCodeSamplesLanguageFilterInputIsNormalizedToLowercase() {
             CodeSampleIndex index = new CodeSampleIndex(List.of(
-                    new CodeSampleEntry("security.adoc", "Auth", "java", "code1", 1, 5,
+                    new CodeSampleEntry("test.adoc", "Section A", "java", "code1", 1, 5,
                             List.of(new KeywordScore("secur", 10))),
-                    new CodeSampleEntry("security.adoc", "Setup", "xml", "code2", 10, 15,
-                            List.of(new KeywordScore("secur", 8))),
-                    new CodeSampleEntry("config.adoc", "Setup", "java", "code3", 1, 5,
-                            List.of(new KeywordScore("secur", 15)))
+                    new CodeSampleEntry("test.adoc", "Section B", "xml", "code2", 10, 15,
+                            List.of(new KeywordScore("secur", 8)))
             ));
             codeSampleIndexStore.write("3.27", index);
 
+            // Filter with mixed-case input should still match lowercase stored value
             PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
-                    "3.27", List.of("security"), null, null, null, "security", "java", 10, 0);
+                    "3.27", List.of("security"), null, null, null, null, " Java ", 10, 0);
 
             assertThat(result.items()).hasSize(1);
             assertThat(result.total()).isEqualTo(1);
-            assertThat(result.items().get(0).path).isEqualTo("security.adoc");
             assertThat(result.items().get(0).language).isEqualTo("java");
         }
 

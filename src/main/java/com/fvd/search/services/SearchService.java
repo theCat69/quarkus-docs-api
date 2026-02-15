@@ -294,6 +294,9 @@ public class SearchService {
             }
         }
 
+        // Normalize language filter input for consistent comparison with lowercase-stored values
+        String normalizedLanguage = (language != null && !language.isBlank()) ? language.trim().toLowerCase() : null;
+
         List<CodeSampleSearchResult> results = new ArrayList<>();
         for (CodeSampleEntry sample : index.samples) {
             if (filePath != null && !filePath.isBlank() && !sample.filePath.equals(filePath)) {
@@ -309,7 +312,7 @@ public class SearchService {
             if (!FilterUtils.matchesFilter(subject, derivedSubject)) {
                 continue;
             }
-            if (language != null && !language.isBlank() && !language.equalsIgnoreCase(sample.language)) {
+            if (normalizedLanguage != null && !normalizedLanguage.equals(sample.language)) {
                 continue;
             }
 

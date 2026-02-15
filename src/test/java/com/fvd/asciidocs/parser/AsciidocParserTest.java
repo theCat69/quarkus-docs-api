@@ -376,6 +376,66 @@ class AsciidocParserTest {
     }
 
     @Test
+    void parseCodeBlocksNormalizesLanguageToLowercase() {
+        String text = """
+                = Title
+                
+                [source,Java]
+                ----
+                public class Foo {}
+                ----
+                """;
+        List<DocParser.CodeBlock> blocks = parser.parseCodeBlocks(text);
+        assertThat(blocks).hasSize(1);
+        assertThat(blocks.get(0).language()).isEqualTo("java");
+    }
+
+    @Test
+    void parseCodeBlocksNormalizesUppercaseLanguage() {
+        String text = """
+                = Title
+                
+                [source,XML]
+                ----
+                <root/>
+                ----
+                """;
+        List<DocParser.CodeBlock> blocks = parser.parseCodeBlocks(text);
+        assertThat(blocks).hasSize(1);
+        assertThat(blocks.get(0).language()).isEqualTo("xml");
+    }
+
+    @Test
+    void parseCodeBlocksLanguageWithSpaceIsTrimmedAndLowercased() {
+        String text = """
+                = Title
+                
+                [source, Java]
+                ----
+                code
+                ----
+                """;
+        List<DocParser.CodeBlock> blocks = parser.parseCodeBlocks(text);
+        assertThat(blocks).hasSize(1);
+        assertThat(blocks.get(0).language()).isEqualTo("java");
+    }
+
+    @Test
+    void parseCodeBlocksEmptySourceCommaStoresEmptyLanguage() {
+        String text = """
+                = Title
+                
+                [source,]
+                ----
+                code
+                ----
+                """;
+        List<DocParser.CodeBlock> blocks = parser.parseCodeBlocks(text);
+        assertThat(blocks).hasSize(1);
+        assertThat(blocks.get(0).language()).isEmpty();
+    }
+
+    @Test
     void docsPrefixWithVersionReturnsVersionedPath() {
         assertThat(parser.docsPrefix("3.27")).isEqualTo("_versions/3.27/guides/");
         assertThat(parser.docsPrefix("3.21")).isEqualTo("_versions/3.21/guides/");

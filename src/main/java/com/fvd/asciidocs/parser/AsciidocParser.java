@@ -161,7 +161,7 @@ public class AsciidocParser implements DocParser {
                 if (sourceMatcher.matches()) {
                     pendingLanguage = sourceMatcher.group(1);
                     if (pendingLanguage != null) {
-                        pendingLanguage = pendingLanguage.trim();
+                        pendingLanguage = pendingLanguage.trim().toLowerCase();
                     }
                     continue;
                 }
