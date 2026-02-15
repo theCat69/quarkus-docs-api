@@ -3,7 +3,6 @@ package com.fvd.api.services;
 import com.fvd.api.dto.CodeSampleResult;
 import com.fvd.api.dto.CodeSampleSearchResponse;
 import com.fvd.common.utils.DocumentTitleExtractor;
-import com.fvd.common.utils.FilterUtils;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.indexers.CodeSampleIndex;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
@@ -49,32 +48,12 @@ public class CodeSampleService {
                                                       String extension, int limit, int offset) {
         // Use existing search service for keyword-based code sample search
         PaginatedResult<CodeSampleSearchResult> searchResult = searchService.searchCodeSamples(
-                version, keywords, null, null, extension, limit + offset, 0);
+                version, keywords, null, null, extension, subject, language, limit, offset);
 
         List<CodeSampleResult> results = new ArrayList<>();
-        int skipped = 0;
 
         for (CodeSampleSearchResult csResult : searchResult.items()) {
-            // Apply language filter (case-insensitive)
-            if (language != null && !language.isBlank() && !language.equalsIgnoreCase(csResult.language)) {
-                continue;
-            }
-
-            // Apply subject filter
             String derivedSubject = subjectDeriver.deriveSubject(csResult.path);
-            if (!FilterUtils.matchesFilter(subject, derivedSubject)) {
-                continue;
-            }
-
-            // Handle pagination
-            if (skipped < offset) {
-                skipped++;
-                continue;
-            }
-
-            if (results.size() >= limit) {
-                break;
-            }
 
             // Get document title
             String docTitle = docStore.read(version, csResult.path)
@@ -88,7 +67,7 @@ public class CodeSampleService {
             results.add(new CodeSampleResult(
                     csResult.language,
                     csResult.content,
-                    csResult.sectionTitle, // context is the section title
+                    csResult.sectionTitle,
                     csResult.path,
                     docTitle,
                     derivedSubject,

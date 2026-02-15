@@ -14,6 +14,7 @@ import com.fvd.indexs.indexers.SectionKeywordEntry;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.search.SearchConfig;
+import com.fvd.subject.services.SubjectDeriver;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,7 @@ public class SearchService {
     private final SearchConfig searchConfig;
     private final FuzzyMatcher fuzzyMatcher;
     private final SearchScorer searchScorer;
+    private final SubjectDeriver subjectDeriver;
 
     private final Map<String, KeywordIndex> indexCache = new ConcurrentHashMap<>();
     private final Map<String, CodeSampleIndex> codeSampleIndexCache = new ConcurrentHashMap<>();
@@ -51,26 +53,30 @@ public class SearchService {
     }
 
     public PaginatedResult<FileSearchResult> searchFiles(String version, List<String> keywords,
-                                                         String extension, int limit, int offset) {
+                                                         String extension, String subject, int limit, int offset) {
         KeywordIndex index = getOrBuildIndex(version);
         if (index == null) {
             return new PaginatedResult<>(List.of(), 0);
         }
 
         Set<String> keywordSet = SearchKeywords.prepare(keywords);
-        List<FileSearchResult> all = getFileResults(index, keywordSet, extension);
+        List<FileSearchResult> all = getFileResults(index, keywordSet, extension, subject);
 
         all.sort(Comparator.comparingDouble((FileSearchResult r) -> r.score).reversed());
         return paginate(all, limit, offset);
     }
 
     @Nonnull
-    private List<FileSearchResult> getFileResults(KeywordIndex index, Set<String> keywordSet, String extension) {
+    private List<FileSearchResult> getFileResults(KeywordIndex index, Set<String> keywordSet, String extension, String subject) {
         double multiKeywordBoost = searchConfig.boost().multiKeywordBoost();
         List<FileSearchResult> results = new ArrayList<>();
 
         for (FileKeywordEntry file : index.files) {
             if (!FilterUtils.matchesFilter(extension, file.extension)) {
+                continue;
+            }
+            String derivedSubject = subjectDeriver.deriveSubject(file.path);
+            if (!FilterUtils.matchesFilter(subject, derivedSubject)) {
                 continue;
             }
             SearchScorer.MatchResult matchResult = searchScorer.computeScore(file.keywords, keywordSet);
@@ -258,7 +264,8 @@ public class SearchService {
 
     public PaginatedResult<CodeSampleSearchResult> searchCodeSamples(String version, List<String> keywords,
                                                           String filePath, String sectionTitle,
-                                                          String extension, int limit, int offset) {
+                                                          String extension, String subject, String language,
+                                                          int limit, int offset) {
         CodeSampleIndex index = getOrLoadCodeSampleIndex(version);
         if (index == null) {
             return new PaginatedResult<>(List.of(), 0);
@@ -296,6 +303,13 @@ public class SearchService {
                 continue;
             }
             if (!FilterUtils.matchesFilter(extension, sample.extension)) {
+                continue;
+            }
+            String derivedSubject = subjectDeriver.deriveSubject(sample.filePath);
+            if (!FilterUtils.matchesFilter(subject, derivedSubject)) {
+                continue;
+            }
+            if (language != null && !language.isBlank() && !language.equalsIgnoreCase(sample.language)) {
                 continue;
             }
 

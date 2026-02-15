@@ -17,6 +17,7 @@ import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.search.SearchConfig;
 import com.fvd.search.TestSearchConfig;
+import com.fvd.subject.services.SubjectDeriver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,9 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class SearchServiceTest {
 
@@ -45,6 +49,7 @@ class SearchServiceTest {
     CodeSampleIndexStore codeSampleIndexStore;
     DocParser docParser;
     CacheService cacheService;
+    SubjectDeriver subjectDeriver;
 
     @BeforeEach
     void setUp() {
@@ -56,7 +61,9 @@ class SearchServiceTest {
         SearchConfig searchConfig = new TestSearchConfig();
         FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
         SearchScorer searchScorer = new SqliteSearchScorer(searchConfig);
-        searchService = new SearchService(keywordIndexStore, codeSampleIndexStore, null, docParser, cacheService, searchConfig, fuzzyMatcher, searchScorer);
+        subjectDeriver = mock(SubjectDeriver.class);
+        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
+        searchService = new SearchService(keywordIndexStore, codeSampleIndexStore, null, docParser, cacheService, searchConfig, fuzzyMatcher, searchScorer, subjectDeriver);
     }
 
     private void seedIndex(String version, KeywordIndex index) {
@@ -69,7 +76,7 @@ class SearchServiceTest {
         FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
         SearchScorer searchScorer = new SqliteSearchScorer(searchConfig);
         return new SearchService(
-                keywordIndexStore, codeSampleIndexStore, docStore, docParser, cs, searchConfig, fuzzyMatcher, searchScorer);
+                keywordIndexStore, codeSampleIndexStore, docStore, docParser, cs, searchConfig, fuzzyMatcher, searchScorer, subjectDeriver);
     }
 
     // --- File search tests ---
@@ -86,7 +93,7 @@ class SearchServiceTest {
         ));
         seedIndex("3.27", index);
 
-        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("security"), null, 10, 0);
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("security"), null, null, 10, 0);
 
         assertThat(result.items()).hasSize(3);
         assertThat(result.total()).isEqualTo(3);
@@ -107,7 +114,7 @@ class SearchServiceTest {
         ));
         seedIndex("3.27", index);
 
-        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("security", "oidc"), null, 10, 0);
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("security", "oidc"), null, null, 10, 0);
 
         assertThat(result.items()).hasSize(2);
         assertThat(result.items().get(0).path).isEqualTo("both.adoc");
@@ -129,7 +136,7 @@ class SearchServiceTest {
         seedIndex("3.27", index);
 
         PaginatedResult<FileSearchResult> result = searchService.searchFiles(
-                "3.27", List.of("security", "oidc"), null, 10, 0);
+                "3.27", List.of("security", "oidc"), null, null, 10, 0);
 
         assertThat(result.items()).hasSize(1);
         List<MatchedKeyword> matched = result.items().get(0).matchedKeywords;
@@ -157,7 +164,7 @@ class SearchServiceTest {
         ));
         seedIndex("3.27", index);
 
-        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("security", "oidc"), null, 10, 0);
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("security", "oidc"), null, null, 10, 0);
 
         FileSearchResult multiResult = result.items().stream()
                 .filter(r -> r.path.equals("multi.adoc")).findFirst().orElseThrow();
@@ -175,7 +182,7 @@ class SearchServiceTest {
         }
         seedIndex("3.27", new KeywordIndex(files));
 
-        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("test"), null, 5, 0);
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("test"), null, null, 5, 0);
 
         assertThat(result.items()).hasSize(5);
         assertThat(result.total()).isEqualTo(15);
@@ -192,7 +199,7 @@ class SearchServiceTest {
         }
         seedIndex("3.27", new KeywordIndex(files));
 
-        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("test"), null, 5, 5);
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("test"), null, null, 5, 5);
 
         assertThat(result.items()).hasSize(5);
         assertThat(result.total()).isEqualTo(15);
@@ -208,7 +215,7 @@ class SearchServiceTest {
         ));
         seedIndex("3.27", index);
 
-        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("security"), null, 10, 100);
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("security"), null, null, 10, 100);
 
         assertThat(result.items()).isEmpty();
         assertThat(result.total()).isEqualTo(1);
@@ -222,7 +229,7 @@ class SearchServiceTest {
         ));
         seedIndex("3.27", index);
 
-        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("nonexistent"), null, 10, 0);
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("nonexistent"), null, null, 10, 0);
 
         assertThat(result.items()).isEmpty();
         assertThat(result.total()).isEqualTo(0);
@@ -230,7 +237,7 @@ class SearchServiceTest {
 
     @Test
     void searchFilesReturnsEmptyWhenNoIndexAndNoDeps() {
-        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("security"), null, 10, 0);
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("security"), null, null, 10, 0);
 
         assertThat(result.items()).isEmpty();
         assertThat(result.total()).isEqualTo(0);
@@ -246,7 +253,7 @@ class SearchServiceTest {
         ));
         seedIndex("3.27", index);
 
-        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("secur"), null, 10, 0);
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("secur"), null, null, 10, 0);
 
         assertThat(result.items()).hasSize(1);
         assertThat(result.items().get(0).path).isEqualTo("security.adoc");
@@ -261,7 +268,7 @@ class SearchServiceTest {
         seedIndex("3.27", index);
 
         // "secur" should NOT match "obscure"
-        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("secur"), null, 10, 0);
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("secur"), null, null, 10, 0);
 
         assertThat(result.items()).isEmpty();
     }
@@ -275,8 +282,8 @@ class SearchServiceTest {
         ));
         seedIndex("3.27", index);
 
-        PaginatedResult<FileSearchResult> exactResult = searchService.searchFiles("3.27", List.of("configuration"), null, 10, 0);
-        PaginatedResult<FileSearchResult> prefixResult = searchService.searchFiles("3.27", List.of("config"), null, 10, 0);
+        PaginatedResult<FileSearchResult> exactResult = searchService.searchFiles("3.27", List.of("configuration"), null, null, 10, 0);
+        PaginatedResult<FileSearchResult> prefixResult = searchService.searchFiles("3.27", List.of("config"), null, null, 10, 0);
 
         // "configuration" stems to "configur" → exact match: score = 10.0
         assertThat(exactResult.items().get(0).score).isEqualTo(10.0);
@@ -293,7 +300,7 @@ class SearchServiceTest {
         ));
         seedIndex("3.27", index);
 
-        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("configuration"), null, 10, 0);
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("configuration"), null, null, 10, 0);
 
         assertThat(result.items().get(0).score).isEqualTo(10.0); // full score, not discounted
     }
@@ -308,7 +315,7 @@ class SearchServiceTest {
 
         // "security" stems to "secur", which is longer than "sec"
         // "sec".startsWith("secur") is false → no match
-        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("security"), null, 10, 0);
+        PaginatedResult<FileSearchResult> result = searchService.searchFiles("3.27", List.of("security"), null, null, 10, 0);
 
         assertThat(result.items()).isEmpty();
     }
@@ -340,7 +347,7 @@ class SearchServiceTest {
         codeSampleIndexStore.write("3.27", index);
 
         PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
-                "3.27", List.of("config"), null, null, null, 10, 0);
+                "3.27", List.of("config"), null, null, null, null, null, 10, 0);
 
         assertThat(result.items()).hasSize(1);
         // "config" stems to "config", prefix of "configur": 10 * 0.8 = 8.0
@@ -506,7 +513,7 @@ class SearchServiceTest {
         seedIndex("3.27", index);
 
         PaginatedResult<FileSearchResult> fileResult = searchService.searchFiles(
-                "3.27", List.of("security", "oidc"), null, 10, 0);
+                "3.27", List.of("security", "oidc"), null, null, 10, 0);
         PaginatedResult<SectionSearchResult> sectionResult = searchService.searchSections(
                 "3.27", List.of("security", "oidc"), null, null, null, 10, 0);
 
@@ -856,7 +863,7 @@ class SearchServiceTest {
             codeSampleIndexStore.write("3.27", index);
 
             PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
-                    "3.27", List.of("security"), null, null, null, 10, 0);
+                    "3.27", List.of("security"), null, null, null, null, null, 10, 0);
 
             assertThat(result.items()).hasSize(3);
             assertThat(result.items().get(0).path).isEqualTo("high.adoc");
@@ -876,7 +883,7 @@ class SearchServiceTest {
             codeSampleIndexStore.write("3.27", index);
 
             PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
-                    "3.27", List.of("security", "oidc"), null, null, null, 10, 0);
+                    "3.27", List.of("security", "oidc"), null, null, null, null, null, 10, 0);
 
             CodeSampleSearchResult multiResult = result.items().stream()
                     .filter(r -> r.path.equals("multi.adoc")).findFirst().orElseThrow();
@@ -896,7 +903,7 @@ class SearchServiceTest {
             codeSampleIndexStore.write("3.27", index);
 
             PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
-                    "3.27", List.of("security"), "included.adoc", null, null, 10, 0);
+                    "3.27", List.of("security"), "included.adoc", null, null, null, null, 10, 0);
 
             assertThat(result.items()).hasSize(1);
             assertThat(result.items().get(0).path).isEqualTo("included.adoc");
@@ -913,7 +920,7 @@ class SearchServiceTest {
             codeSampleIndexStore.write("3.27", index);
 
             PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
-                    "3.27", List.of("security"), null, "authentication", null, 10, 0);
+                    "3.27", List.of("security"), null, "authentication", null, null, null, 10, 0);
 
             assertThat(result.items()).hasSize(1);
             assertThat(result.items().get(0).sectionTitle).isEqualTo("Authentication");
@@ -930,7 +937,7 @@ class SearchServiceTest {
             codeSampleIndexStore.write("3.27", index);
 
             PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
-                    "3.27", List.of("security"), null, "Authentication", null, 10, 0);
+                    "3.27", List.of("security"), null, "Authentication", null, null, null, 10, 0);
 
             assertThat(result.items()).hasSize(1);
             assertThat(result.items().get(0).sectionTitle).isEqualTo("Authentication");
@@ -951,7 +958,7 @@ class SearchServiceTest {
             // "Authenticat" is a close partial match for "Authentication"
             // FuzzyMatcher should pick it above threshold
             PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
-                    "3.27", List.of("security"), null, "Authenticat", null, 10, 0);
+                    "3.27", List.of("security"), null, "Authenticat", null, null, null, 10, 0);
 
             assertThat(result.items()).isNotEmpty();
             assertThat(result.items().get(0).matchedSectionTitle).isEqualTo("Authentication");
@@ -967,7 +974,7 @@ class SearchServiceTest {
             codeSampleIndexStore.write("3.27", index);
 
             PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
-                    "3.27", List.of("security"), null, "ZzzzCompletelyDifferent", null, 10, 0);
+                    "3.27", List.of("security"), null, "ZzzzCompletelyDifferent", null, null, null, 10, 0);
 
             assertThat(result.items()).isEmpty();
         }
@@ -981,7 +988,7 @@ class SearchServiceTest {
             codeSampleIndexStore.write("3.27", index);
 
             PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
-                    "3.27", List.of("security"), null, "authentication", null, 10, 0);
+                    "3.27", List.of("security"), null, "authentication", null, null, null, 10, 0);
 
             assertThat(result.items()).hasSize(1);
             CodeSampleSearchResult r = result.items().get(0);
@@ -998,7 +1005,7 @@ class SearchServiceTest {
             codeSampleIndexStore.write("3.27", index);
 
             PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
-                    "3.27", List.of("security"), null, null, null, 10, 0);
+                    "3.27", List.of("security"), null, null, null, null, null, 10, 0);
 
             assertThat(result.items()).hasSize(1);
             CodeSampleSearchResult r = result.items().get(0);
@@ -1019,9 +1026,9 @@ class SearchServiceTest {
         ));
         seedIndex("3.27", index);
 
-        PaginatedResult<FileSearchResult> resultConfiguration = searchService.searchFiles("3.27", List.of("configuration"), null, 10, 0);
-        PaginatedResult<FileSearchResult> resultConfigurable = searchService.searchFiles("3.27", List.of("configurable"), null, 10, 0);
-        PaginatedResult<FileSearchResult> resultConfigured = searchService.searchFiles("3.27", List.of("configured"), null, 10, 0);
+        PaginatedResult<FileSearchResult> resultConfiguration = searchService.searchFiles("3.27", List.of("configuration"), null, null, 10, 0);
+        PaginatedResult<FileSearchResult> resultConfigurable = searchService.searchFiles("3.27", List.of("configurable"), null, null, 10, 0);
+        PaginatedResult<FileSearchResult> resultConfigured = searchService.searchFiles("3.27", List.of("configured"), null, null, 10, 0);
 
         assertThat(resultConfiguration.items()).hasSize(1);
         assertThat(resultConfigurable.items()).hasSize(1);
@@ -1076,7 +1083,7 @@ class SearchServiceTest {
             seedIndex("3.27", index);
 
             PaginatedResult<FileSearchResult> result = searchService.searchFiles(
-                    "3.27", List.of("security"), "quarkus-core", 10, 0);
+                    "3.27", List.of("security"), "quarkus-core", null, 10, 0);
 
             assertThat(result.items()).hasSize(1);
             assertThat(result.total()).isEqualTo(1);
@@ -1096,7 +1103,7 @@ class SearchServiceTest {
             seedIndex("3.27", index);
 
             PaginatedResult<FileSearchResult> result = searchService.searchFiles(
-                    "3.27", List.of("security"), extension, 10, 0);
+                    "3.27", List.of("security"), extension, null, 10, 0);
 
             assertThat(result.items()).hasSize(2);
             assertThat(result.total()).isEqualTo(2);
@@ -1111,7 +1118,7 @@ class SearchServiceTest {
             seedIndex("3.27", index);
 
             PaginatedResult<FileSearchResult> result = searchService.searchFiles(
-                    "3.27", List.of("security"), "nonexistent-extension", 10, 0);
+                    "3.27", List.of("security"), "nonexistent-extension", null, 10, 0);
 
             assertThat(result.items()).isEmpty();
             assertThat(result.total()).isEqualTo(0);
@@ -1130,12 +1137,196 @@ class SearchServiceTest {
             seedIndex("3.27", index);
 
             PaginatedResult<FileSearchResult> result = searchService.searchFiles(
-                    "3.27", List.of("security"), "quarkus-core", 10, 0);
+                    "3.27", List.of("security"), "quarkus-core", null, 10, 0);
 
             assertThat(result.items()).hasSize(2);
             assertThat(result.total()).isEqualTo(2);
         }
 
+    }
+
+    // --- Subject filtering tests ---
+
+    /**
+     * Subject filtering is pushed into SearchService so totalCount reflects
+     * filtered results. These tests verify that subject filtering works
+     * correctly and interacts properly with pagination.
+     */
+    @Nested
+    class SubjectFilteringTests {
+
+        @Test
+        void searchFilesWithSubjectFilterReturnsOnlyMatchingSubject() {
+            when(subjectDeriver.deriveSubject("security.adoc")).thenReturn("security");
+            when(subjectDeriver.deriveSubject("config.adoc")).thenReturn("core-concepts");
+
+            KeywordIndex index = new KeywordIndex(List.of(
+                    new FileKeywordEntry("security.adoc",
+                            List.of(new KeywordScore("secur", 10)), List.of()),
+                    new FileKeywordEntry("config.adoc",
+                            List.of(new KeywordScore("secur", 15)), List.of())
+            ));
+            seedIndex("3.27", index);
+
+            PaginatedResult<FileSearchResult> result = searchService.searchFiles(
+                    "3.27", List.of("security"), null, "security", 10, 0);
+
+            assertThat(result.items()).hasSize(1);
+            assertThat(result.total()).isEqualTo(1);
+            assertThat(result.items().get(0).path).isEqualTo("security.adoc");
+        }
+
+        @ParameterizedTest(name = "subject={0} returns all files")
+        @NullSource
+        @ValueSource(strings = {"", "  "})
+        void searchFilesWithNullOrBlankSubjectReturnsAllFiles(String subject) {
+            when(subjectDeriver.deriveSubject("security.adoc")).thenReturn("security");
+            when(subjectDeriver.deriveSubject("config.adoc")).thenReturn("core-concepts");
+
+            KeywordIndex index = new KeywordIndex(List.of(
+                    new FileKeywordEntry("security.adoc",
+                            List.of(new KeywordScore("secur", 10)), List.of()),
+                    new FileKeywordEntry("config.adoc",
+                            List.of(new KeywordScore("secur", 15)), List.of())
+            ));
+            seedIndex("3.27", index);
+
+            PaginatedResult<FileSearchResult> result = searchService.searchFiles(
+                    "3.27", List.of("security"), null, subject, 10, 0);
+
+            assertThat(result.items()).hasSize(2);
+            assertThat(result.total()).isEqualTo(2);
+        }
+
+        @Test
+        void searchFilesSubjectFilterAppliesBeforePagination() {
+            when(subjectDeriver.deriveSubject("sec1.adoc")).thenReturn("security");
+            when(subjectDeriver.deriveSubject("sec2.adoc")).thenReturn("security");
+            when(subjectDeriver.deriveSubject("config.adoc")).thenReturn("core-concepts");
+
+            KeywordIndex index = new KeywordIndex(List.of(
+                    new FileKeywordEntry("sec1.adoc",
+                            List.of(new KeywordScore("secur", 10)), List.of()),
+                    new FileKeywordEntry("config.adoc",
+                            List.of(new KeywordScore("secur", 20)), List.of()),
+                    new FileKeywordEntry("sec2.adoc",
+                            List.of(new KeywordScore("secur", 5)), List.of())
+            ));
+            seedIndex("3.27", index);
+
+            PaginatedResult<FileSearchResult> result = searchService.searchFiles(
+                    "3.27", List.of("security"), null, "security", 10, 0);
+
+            assertThat(result.items()).hasSize(2);
+            assertThat(result.total()).isEqualTo(2);
+            // Verify config.adoc is excluded even though it has the highest score
+            assertThat(result.items()).allMatch(r ->
+                    r.path.equals("sec1.adoc") || r.path.equals("sec2.adoc"));
+        }
+
+        @Test
+        void searchCodeSamplesWithSubjectFilterReturnsOnlyMatchingSubject() {
+            when(subjectDeriver.deriveSubject("security.adoc")).thenReturn("security");
+            when(subjectDeriver.deriveSubject("config.adoc")).thenReturn("core-concepts");
+
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("security.adoc", "Auth", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("secur", 10))),
+                    new CodeSampleEntry("config.adoc", "Setup", "java", "code2", 1, 5,
+                            List.of(new KeywordScore("secur", 15)))
+            ));
+            codeSampleIndexStore.write("3.27", index);
+
+            PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
+                    "3.27", List.of("security"), null, null, null, "security", null, 10, 0);
+
+            assertThat(result.items()).hasSize(1);
+            assertThat(result.total()).isEqualTo(1);
+            assertThat(result.items().get(0).path).isEqualTo("security.adoc");
+        }
+
+        @Test
+        void searchCodeSamplesWithLanguageFilterReturnsOnlyMatchingLanguage() {
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("test.adoc", "Section A", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("secur", 10))),
+                    new CodeSampleEntry("test.adoc", "Section B", "xml", "code2", 10, 15,
+                            List.of(new KeywordScore("secur", 15)))
+            ));
+            codeSampleIndexStore.write("3.27", index);
+
+            PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
+                    "3.27", List.of("security"), null, null, null, null, "java", 10, 0);
+
+            assertThat(result.items()).hasSize(1);
+            assertThat(result.total()).isEqualTo(1);
+            assertThat(result.items().get(0).language).isEqualTo("java");
+        }
+
+        @Test
+        void searchCodeSamplesLanguageFilterIsCaseInsensitive() {
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("test.adoc", "Section A", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("secur", 10))),
+                    new CodeSampleEntry("test.adoc", "Section B", "xml", "code2", 10, 15,
+                            List.of(new KeywordScore("secur", 15)))
+            ));
+            codeSampleIndexStore.write("3.27", index);
+
+            PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
+                    "3.27", List.of("security"), null, null, null, null, "JAVA", 10, 0);
+
+            assertThat(result.items()).hasSize(1);
+            assertThat(result.total()).isEqualTo(1);
+            assertThat(result.items().get(0).language).isEqualTo("java");
+        }
+
+        @Test
+        void searchCodeSamplesWithSubjectAndLanguageFilterCombined() {
+            when(subjectDeriver.deriveSubject("security.adoc")).thenReturn("security");
+            when(subjectDeriver.deriveSubject("config.adoc")).thenReturn("core-concepts");
+
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("security.adoc", "Auth", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("secur", 10))),
+                    new CodeSampleEntry("security.adoc", "Setup", "xml", "code2", 10, 15,
+                            List.of(new KeywordScore("secur", 8))),
+                    new CodeSampleEntry("config.adoc", "Setup", "java", "code3", 1, 5,
+                            List.of(new KeywordScore("secur", 15)))
+            ));
+            codeSampleIndexStore.write("3.27", index);
+
+            PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
+                    "3.27", List.of("security"), null, null, null, "security", "java", 10, 0);
+
+            assertThat(result.items()).hasSize(1);
+            assertThat(result.total()).isEqualTo(1);
+            assertThat(result.items().get(0).path).isEqualTo("security.adoc");
+            assertThat(result.items().get(0).language).isEqualTo("java");
+        }
+
+        @Test
+        void searchCodeSamplesSubjectFilterAppliesBeforePaginationTotalCount() {
+            when(subjectDeriver.deriveSubject("sec1.adoc")).thenReturn("security");
+            when(subjectDeriver.deriveSubject("sec2.adoc")).thenReturn("security");
+            when(subjectDeriver.deriveSubject("config.adoc")).thenReturn("core-concepts");
+
+            CodeSampleIndex index = new CodeSampleIndex(List.of(
+                    new CodeSampleEntry("sec1.adoc", "Auth", "java", "code1", 1, 5,
+                            List.of(new KeywordScore("secur", 10))),
+                    new CodeSampleEntry("config.adoc", "Setup", "java", "code2", 1, 5,
+                            List.of(new KeywordScore("secur", 20))),
+                    new CodeSampleEntry("sec2.adoc", "Roles", "java", "code3", 1, 5,
+                            List.of(new KeywordScore("secur", 5)))
+            ));
+            codeSampleIndexStore.write("3.27", index);
+
+            PaginatedResult<CodeSampleSearchResult> result = searchService.searchCodeSamples(
+                    "3.27", List.of("security"), null, null, null, "security", null, 10, 0);
+
+            assertThat(result.items()).hasSize(2);
+            assertThat(result.total()).isEqualTo(2);
+        }
     }
 
     /**

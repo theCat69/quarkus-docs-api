@@ -72,7 +72,7 @@ class CacheRefreshJobIntegrationTest extends AbstractCacheJobIntegrationTest {
 
         // Verify search works before refresh
         var resultsBeforeRefresh = searchService.searchCodeSamples(
-                "3.27", List.of("security", "inject"), null, null, null, 10, 0);
+                "3.27", List.of("security", "inject"), null, null, null, null, null, 10, 0);
         assertThat(resultsBeforeRefresh.items()).isNotEmpty();
 
         // Step 2: Simulate refresh
@@ -80,7 +80,7 @@ class CacheRefreshJobIntegrationTest extends AbstractCacheJobIntegrationTest {
 
         // Step 3: Verify search still works after refresh
         var resultsAfterRefresh = searchService.searchCodeSamples(
-                "3.27", List.of("security", "inject"), null, null, null, 10, 0);
+                "3.27", List.of("security", "inject"), null, null, null, null, null, 10, 0);
         assertThat(resultsAfterRefresh.items())
                 .as("Code sample search should return results after refresh")
                 .isNotEmpty();

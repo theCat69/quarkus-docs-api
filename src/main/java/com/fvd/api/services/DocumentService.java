@@ -5,7 +5,6 @@ import com.fvd.api.dto.DocumentResponse;
 import com.fvd.api.dto.DocumentSearchResponse;
 import com.fvd.api.dto.SectionInfo;
 import com.fvd.common.utils.DocumentTitleExtractor;
-import com.fvd.common.utils.FilterUtils;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.indexers.FileKeywordEntry;
@@ -80,15 +79,11 @@ public class DocumentService {
                                                   int limit, int offset) {
         // Use existing search service for keyword matching
         PaginatedResult<FileSearchResult> searchResult = searchService.searchFiles(
-                version, keywords, extension, limit, offset);
+                version, keywords, extension, subject, limit, offset);
 
         List<DocumentResponse> results = new ArrayList<>();
         for (FileSearchResult fileResult : searchResult.items()) {
-            // Apply subject filter if specified
             String derivedSubject = subjectDeriver.deriveSubject(fileResult.path);
-            if (!FilterUtils.matchesFilter(subject, derivedSubject)) {
-                continue;
-            }
 
             // Get full document content
             Optional<String> contentOpt = docStore.read(version, fileResult.path);

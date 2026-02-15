@@ -4,7 +4,6 @@ import com.fvd.api.dto.QuickSearchResponse;
 import com.fvd.api.dto.SearchResultRef;
 import com.fvd.common.SearchConstants;
 import com.fvd.common.utils.DocumentTitleExtractor;
-import com.fvd.common.utils.FilterUtils;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.search.services.MatchedKeyword;
 import com.fvd.search.services.FileSearchResult;
@@ -48,28 +47,13 @@ public class QuickSearchService {
                                       int limit, int offset) {
         // Use existing search service for keyword matching
         PaginatedResult<FileSearchResult> searchResult = searchService.searchFiles(
-                version, keywords, extension, limit + offset, 0);
+                version, keywords, extension, subject, limit, offset);
 
         List<SearchResultRef> results = new ArrayList<>();
-        int skipped = 0;
         Set<String> keywordSet = Set.copyOf(keywords);
 
         for (FileSearchResult fileResult : searchResult.items()) {
-            // Apply subject filter if specified
             String derivedSubject = subjectDeriver.deriveSubject(fileResult.path);
-            if (!FilterUtils.matchesFilter(subject, derivedSubject)) {
-                continue;
-            }
-
-            // Handle pagination
-            if (skipped < offset) {
-                skipped++;
-                continue;
-            }
-
-            if (results.size() >= limit) {
-                break;
-            }
 
             // Get document info
             String title = docStore.read(version, fileResult.path)
