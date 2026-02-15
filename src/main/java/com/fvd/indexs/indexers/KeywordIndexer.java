@@ -126,13 +126,15 @@ public class KeywordIndexer {
     Map<String, KeywordWithSource> extractKeywordsWithSource(String filePath, String content) {
         Map<String, KeywordWithSource> keywords = new HashMap<>();
         
-        // 1. Extract body keywords (base score)
-        Map<String, Integer> bodyKeywords = parser.extractKeywords(content);
-        for (Map.Entry<String, Integer> entry : bodyKeywords.entrySet()) {
+        // 1. Extract body keywords with originals (base score)
+        Map<String, DocParser.ExtractedKeyword> bodyKeywords = parser.extractKeywordsWithOriginals(content);
+        for (Map.Entry<String, DocParser.ExtractedKeyword> entry : bodyKeywords.entrySet()) {
             String stemmed = entry.getKey();
-            int frequency = entry.getValue();
+            DocParser.ExtractedKeyword extracted = entry.getValue();
+            int frequency = extracted.frequency();
             double score = keywordScorer.calculateScore(KeywordScorer.SOURCE_BODY, frequency);
-            keywords.put(stemmed, new KeywordWithSource(stemmed, (int) Math.round(score), KeywordScorer.SOURCE_BODY, frequency));
+            keywords.put(stemmed, new KeywordWithSource(stemmed, extracted.original(),
+                    (int) Math.round(score), KeywordScorer.SOURCE_BODY, frequency));
         }
 
         // 2. Apply filename boost (highest priority)
@@ -155,7 +157,8 @@ public class KeywordIndexer {
             String stemmed = entry.getKey();
             int frequency = entry.getValue();
             double score = keywordScorer.calculateScore(KeywordScorer.SOURCE_BODY, frequency);
-            keywords.put(stemmed, new KeywordWithSource(stemmed, (int) Math.round(score), KeywordScorer.SOURCE_BODY, frequency));
+            keywords.put(stemmed, new KeywordWithSource(stemmed, stemmed,
+                    (int) Math.round(score), KeywordScorer.SOURCE_BODY, frequency));
         }
         
         // Apply section title boost
@@ -172,7 +175,11 @@ public class KeywordIndexer {
                 
                 // Use higher score if keyword exists with lower score
                 if (existing == null || newScore > existing.score) {
-                    keywords.put(stemmed, new KeywordWithSource(stemmed, (int) Math.round(newScore), source, frequency));
+                    // Keep longest original word
+                    String bestOriginal = existing == null ? token
+                            : (token.length() > existing.originalWord.length() ? token : existing.originalWord);
+                    keywords.put(stemmed, new KeywordWithSource(stemmed, bestOriginal,
+                            (int) Math.round(newScore), source, frequency));
                 }
             }
         }
@@ -184,16 +191,21 @@ public class KeywordIndexer {
      * Apply filename keyword boost with source tracking.
      */
     private void applyFilenameBoostWithSource(String filePath, Map<String, KeywordWithSource> keywords) {
-        List<String> filenameKeywords = keywordScorer.extractStemmedFilenameKeywords(filePath);
+        List<String> filenameTokens = keywordScorer.extractFilenameKeywords(filePath);
         
-        for (String stemmed : filenameKeywords) {
+        for (String token : filenameTokens) {
+            String stemmed = Stemmer.stem(token);
             KeywordWithSource existing = keywords.get(stemmed);
             int frequency = existing != null ? existing.frequency + 1 : 1;
             double newScore = keywordScorer.calculateScore(KeywordScorer.SOURCE_FILENAME, frequency);
             
             // Filename has highest priority, always use it
             if (existing == null || newScore > existing.score) {
-                keywords.put(stemmed, new KeywordWithSource(stemmed, (int) Math.round(newScore), KeywordScorer.SOURCE_FILENAME, frequency));
+                // Keep longest original word
+                String bestOriginal = existing == null ? token
+                        : (token.length() > existing.originalWord.length() ? token : existing.originalWord);
+                keywords.put(stemmed, new KeywordWithSource(stemmed, bestOriginal,
+                        (int) Math.round(newScore), KeywordScorer.SOURCE_FILENAME, frequency));
             }
         }
     }
@@ -235,10 +247,17 @@ public class KeywordIndexer {
                     // Use higher-priority source if keyword already exists
                     if (existing == null || 
                         keywordScorer.getMultiplier(source) > keywordScorer.getMultiplier(existing.source)) {
-                        keywords.put(stemmed, new KeywordWithSource(stemmed, (int) Math.round(newScore), source, frequency));
+                        // Keep longest original word
+                        String bestOriginal = existing == null ? token
+                                : (token.length() > existing.originalWord.length() ? token : existing.originalWord);
+                        keywords.put(stemmed, new KeywordWithSource(stemmed, bestOriginal,
+                                (int) Math.round(newScore), source, frequency));
                     } else if (existing != null && source.equals(existing.source)) {
                         // Same source, update score with new frequency
-                        keywords.put(stemmed, new KeywordWithSource(stemmed, (int) Math.round(newScore), source, frequency));
+                        String bestOriginal = token.length() > existing.originalWord.length()
+                                ? token : existing.originalWord;
+                        keywords.put(stemmed, new KeywordWithSource(stemmed, bestOriginal,
+                                (int) Math.round(newScore), source, frequency));
                     }
                 }
             }
@@ -259,7 +278,7 @@ public class KeywordIndexer {
     private List<KeywordScore> toSortedScoresWithSource(Map<String, KeywordWithSource> keywords) {
         return keywords.values().stream()
                 .sorted((a, b) -> Integer.compare(b.score, a.score))
-                .map(kws -> new KeywordScore(kws.word, kws.score, kws.source, kws.frequency))
+                .map(kws -> new KeywordScore(kws.word, kws.originalWord, kws.score, kws.source, kws.frequency))
                 .toList();
     }
 
@@ -270,6 +289,6 @@ public class KeywordIndexer {
     /**
      * Internal record for tracking keyword source during extraction.
      */
-    record KeywordWithSource(String word, int score, String source, int frequency) {
+    record KeywordWithSource(String word, String originalWord, int score, String source, int frequency) {
     }
 }

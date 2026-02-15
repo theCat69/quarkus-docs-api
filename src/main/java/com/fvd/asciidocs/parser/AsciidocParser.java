@@ -60,6 +60,30 @@ public class AsciidocParser implements DocParser {
     }
 
     @Override
+    public Map<String, ExtractedKeyword> extractKeywordsWithOriginals(String text) {
+        String cleaned = stripCodeBlocks(text);
+        cleaned = AsciiDocCleaner.clean(cleaned);
+        List<String> tokens = tokenize(cleaned);
+        Map<String, ExtractedKeyword> result = new HashMap<>();
+        for (String token : tokens) {
+            if (!KeywordIndexer.WORD_INDEX_BLACK_LIST.contains(token)) {
+                String stemmed = Stemmer.stem(token);
+                ExtractedKeyword existing = result.get(stemmed);
+                if (existing == null) {
+                    result.put(stemmed, new ExtractedKeyword(stemmed, token, 1));
+                } else {
+                    // Keep the longest original token as most descriptive
+                    String bestOriginal = token.length() > existing.original().length()
+                            ? token : existing.original();
+                    result.put(stemmed, new ExtractedKeyword(stemmed, bestOriginal,
+                            existing.frequency() + 1));
+                }
+            }
+        }
+        return result;
+    }
+
+    @Override
     public List<Section> parseSections(String text) {
         if (text == null || text.isBlank()) {
             return List.of();

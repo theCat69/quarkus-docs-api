@@ -351,10 +351,62 @@ class RelatedDocumentServiceTest {
     void shouldExtractSharedKeywordsSortedByCombinedScore() {
         Map<String, Double> vectorA = Map.of("high", 10.0, "low", 1.0, "mid", 5.0);
         Map<String, Double> vectorB = Map.of("high", 8.0, "low", 2.0, "mid", 6.0);
+        Map<String, String> originals = Map.of("high", "high", "low", "low", "mid", "mid");
 
-        List<String> shared = service.extractSharedKeywords(vectorA, vectorB, 10);
+        List<String> shared = service.extractSharedKeywords(vectorA, vectorB, 10, originals);
 
         assertThat(shared).containsExactly("high", "mid", "low");
+    }
+
+    @Test
+    void shouldReturnOriginalFormsInSharedKeywords() {
+        Map<String, Double> vectorA = Map.of("secur", 10.0, "configur", 5.0);
+        Map<String, Double> vectorB = Map.of("secur", 8.0, "configur", 6.0);
+        Map<String, String> originals = Map.of("secur", "security", "configur", "configuration");
+
+        List<String> shared = service.extractSharedKeywords(vectorA, vectorB, 10, originals);
+
+        assertThat(shared).containsExactly("security", "configuration");
+    }
+
+    @Test
+    void shouldFallBackToStemmedFormWhenNoOriginal() {
+        Map<String, Double> vectorA = Map.of("secur", 10.0, "oidc", 5.0);
+        Map<String, Double> vectorB = Map.of("secur", 8.0, "oidc", 6.0);
+        // No originals map entry for "oidc" — should fall back to stemmed form
+        Map<String, String> originals = Map.of("secur", "security");
+
+        List<String> shared = service.extractSharedKeywords(vectorA, vectorB, 10, originals);
+
+        assertThat(shared).contains("security", "oidc");
+    }
+
+    @Test
+    void shouldReturnOriginalFormsInSharedKeywordsViaFindRelated() {
+        // Use KeywordScore with originalWord to verify end-to-end flow
+        KeywordIndex index = new KeywordIndex(List.of(
+                new FileKeywordEntry("source.adoc",
+                        List.of(new KeywordScore("secur", "security", 10, "body", 1),
+                                new KeywordScore("configur", "configuration", 8, "body", 1)),
+                        List.of(), "quarkus-core"),
+                new FileKeywordEntry("related.adoc",
+                        List.of(new KeywordScore("secur", "security", 10, "body", 1),
+                                new KeywordScore("configur", "configuration", 7, "body", 1)),
+                        List.of(), "quarkus-core")
+        ));
+
+        when(searchService.getKeywordIndex("main")).thenReturn(index);
+        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
+        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("security");
+        when(docStore.read("main", "related.adoc")).thenReturn(Optional.of(DOC_CONTENT_SECURITY));
+
+        RelatedDocumentResponse response = service.findRelatedDocuments(
+                "main", "source.adoc", null, null, 10);
+
+        assertThat(response.getResults()).hasSize(1);
+        assertThat(response.getResults().get(0).sharedKeywords)
+                .contains("security", "configuration")
+                .doesNotContain("secur", "configur");
     }
 
     @Test

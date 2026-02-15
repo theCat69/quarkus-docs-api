@@ -2,6 +2,7 @@ package com.fvd.docs.parser;
 
 import com.fvd.asciidocs.model.DocumentMetadata;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +25,13 @@ public interface DocParser {
     }
 
     /**
+     * An extracted keyword carrying both its stemmed and original (un-stemmed) forms,
+     * along with the frequency count.
+     */
+    record ExtractedKeyword(String stemmed, String original, int frequency) {
+    }
+
+    /**
      * Splits raw text into lowercase tokens suitable for indexing.
      */
     List<String> tokenize(String text);
@@ -32,6 +40,24 @@ public interface DocParser {
      * Extracts keyword frequencies from document content, excluding stop words.
      */
     Map<String, Integer> extractKeywords(String text);
+
+    /**
+     * Extracts keywords with their original (un-stemmed) forms from document content.
+     * When multiple tokens stem to the same form, the longest original token is kept
+     * as it is typically the most descriptive form.
+     *
+     * @param text the document content
+     * @return map of stemmed keyword to ExtractedKeyword containing original form and frequency
+     */
+    default Map<String, ExtractedKeyword> extractKeywordsWithOriginals(String text) {
+        Map<String, Integer> stemmed = extractKeywords(text);
+        Map<String, ExtractedKeyword> result = new HashMap<>();
+        for (Map.Entry<String, Integer> entry : stemmed.entrySet()) {
+            result.put(entry.getKey(),
+                    new ExtractedKeyword(entry.getKey(), entry.getKey(), entry.getValue()));
+        }
+        return result;
+    }
 
     /**
      * Parses the document into sections based on heading markers.

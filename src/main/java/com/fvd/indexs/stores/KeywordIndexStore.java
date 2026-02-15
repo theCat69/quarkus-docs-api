@@ -78,12 +78,12 @@ public class KeywordIndexStore extends AbstractVersionedStore<KeywordIndex> {
                      "INSERT INTO files (version, path, extension) VALUES (?, ?, ?)",
                      Statement.RETURN_GENERATED_KEYS);
              PreparedStatement fileKwStmt = conn.prepareStatement(
-                     "INSERT INTO file_keywords (file_id, word, score, source, frequency) VALUES (?, ?, ?, ?, ?)");
+                     "INSERT INTO file_keywords (file_id, word, original_word, score, source, frequency) VALUES (?, ?, ?, ?, ?, ?)");
              PreparedStatement sectionStmt = conn.prepareStatement(
                      "INSERT INTO sections (file_id, title, start_line, end_line) VALUES (?, ?, ?, ?)",
                      Statement.RETURN_GENERATED_KEYS);
              PreparedStatement sectionKwStmt = conn.prepareStatement(
-                     "INSERT INTO section_keywords (section_id, word, score, source, frequency) VALUES (?, ?, ?, ?, ?)")) {
+                     "INSERT INTO section_keywords (section_id, word, original_word, score, source, frequency) VALUES (?, ?, ?, ?, ?, ?)")) {
 
             for (FileKeywordEntry file : index.files) {
                 fileStmt.setString(1, version);
@@ -107,9 +107,10 @@ public class KeywordIndexStore extends AbstractVersionedStore<KeywordIndex> {
                     for (KeywordScore ks : file.keywords) {
                         fileKwStmt.setLong(1, fileId);
                         fileKwStmt.setString(2, ks.word);
-                        fileKwStmt.setInt(3, ks.score);
-                        fileKwStmt.setString(4, ks.source != null ? ks.source : "body");
-                        fileKwStmt.setInt(5, ks.frequency > 0 ? ks.frequency : 1);
+                        fileKwStmt.setString(3, ks.originalWord);
+                        fileKwStmt.setInt(4, ks.score);
+                        fileKwStmt.setString(5, ks.source != null ? ks.source : "body");
+                        fileKwStmt.setInt(6, ks.frequency > 0 ? ks.frequency : 1);
                         fileKwStmt.addBatch();
                     }
                     fileKwStmt.executeBatch();
@@ -134,9 +135,10 @@ public class KeywordIndexStore extends AbstractVersionedStore<KeywordIndex> {
                             for (KeywordScore ks : section.keywords) {
                                 sectionKwStmt.setLong(1, sectionId);
                                 sectionKwStmt.setString(2, ks.word);
-                                sectionKwStmt.setInt(3, ks.score);
-                                sectionKwStmt.setString(4, ks.source != null ? ks.source : "body");
-                                sectionKwStmt.setInt(5, ks.frequency > 0 ? ks.frequency : 1);
+                                sectionKwStmt.setString(3, ks.originalWord);
+                                sectionKwStmt.setInt(4, ks.score);
+                                sectionKwStmt.setString(5, ks.source != null ? ks.source : "body");
+                                sectionKwStmt.setInt(6, ks.frequency > 0 ? ks.frequency : 1);
                                 sectionKwStmt.addBatch();
                             }
                             sectionKwStmt.executeBatch();
@@ -153,7 +155,8 @@ public class KeywordIndexStore extends AbstractVersionedStore<KeywordIndex> {
 
         // Query 1: files + file keywords via JOIN
         try (PreparedStatement stmt = conn.prepareStatement("""
-                SELECT f.id AS file_id, f.path, f.extension, fk.word, fk.score, fk.source, fk.frequency
+                SELECT f.id AS file_id, f.path, f.extension,
+                       fk.word, fk.original_word, fk.score, fk.source, fk.frequency
                 FROM files f
                 LEFT JOIN file_keywords fk ON fk.file_id = f.id
                 WHERE f.version = ?
@@ -172,10 +175,14 @@ public class KeywordIndexStore extends AbstractVersionedStore<KeywordIndex> {
                     }
                     String word = rs.getString("word");
                     if (word != null) {
+                        String originalWord = rs.getString("original_word");
+                        if (originalWord == null) {
+                            originalWord = word;
+                        }
                         int score = rs.getInt("score");
                         String source = rs.getString("source");
                         int frequency = rs.getInt("frequency");
-                        entry.keywords.add(new KeywordScore(word, score,
+                        entry.keywords.add(new KeywordScore(word, originalWord, score,
                                 source != null ? source : "body",
                                 frequency > 0 ? frequency : 1));
                     }
@@ -192,7 +199,7 @@ public class KeywordIndexStore extends AbstractVersionedStore<KeywordIndex> {
 
         try (PreparedStatement stmt = conn.prepareStatement("""
                 SELECT s.file_id, s.id AS section_id, s.title, s.start_line, s.end_line,
-                       sk.word, sk.score, sk.source, sk.frequency
+                       sk.word, sk.original_word, sk.score, sk.source, sk.frequency
                 FROM sections s
                 LEFT JOIN section_keywords sk ON sk.section_id = s.id
                 JOIN files f ON s.file_id = f.id
@@ -215,10 +222,14 @@ public class KeywordIndexStore extends AbstractVersionedStore<KeywordIndex> {
                     }
                     String word = rs.getString("word");
                     if (word != null) {
+                        String originalWord = rs.getString("original_word");
+                        if (originalWord == null) {
+                            originalWord = word;
+                        }
                         int score = rs.getInt("score");
                         String source = rs.getString("source");
                         int frequency = rs.getInt("frequency");
-                        section.keywords.add(new KeywordScore(word, score,
+                        section.keywords.add(new KeywordScore(word, originalWord, score,
                                 source != null ? source : "body",
                                 frequency > 0 ? frequency : 1));
                     }

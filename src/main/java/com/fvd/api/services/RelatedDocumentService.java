@@ -70,8 +70,9 @@ public class RelatedDocumentService {
             throw new DocNotFoundException("Document not found in index: " + sourcePath);
         }
 
-        // Build source keyword vector
+        // Build source keyword vector and original word lookup
         Map<String, Double> sourceVector = buildKeywordVector(sourceEntry);
+        Map<String, String> sourceOriginals = buildOriginalWordLookup(sourceEntry);
 
         double minSimilarity = searchConfig.related().minSimilarity();
         int maxSharedKeywords = searchConfig.related().maxSharedKeywords();
@@ -100,7 +101,16 @@ public class RelatedDocumentService {
                 continue;
             }
 
-            List<String> shared = extractSharedKeywords(sourceVector, candidateVector, maxSharedKeywords);
+            // Merge original word lookups from source and candidate, preferring longest
+            Map<String, String> candidateOriginals = buildOriginalWordLookup(candidate);
+            Map<String, String> mergedOriginals = new HashMap<>(sourceOriginals);
+            for (Map.Entry<String, String> e : candidateOriginals.entrySet()) {
+                mergedOriginals.merge(e.getKey(), e.getValue(),
+                        (a, b) -> a.length() >= b.length() ? a : b);
+            }
+
+            List<String> shared = extractSharedKeywords(sourceVector, candidateVector,
+                    maxSharedKeywords, mergedOriginals);
             candidates.add(new CandidateResult(candidate.path, candidate.extension,
                     derivedSubject, similarity, shared));
         }
@@ -147,6 +157,22 @@ public class RelatedDocumentService {
         return vector;
     }
 
+    /**
+     * Builds a lookup map from stemmed keyword to its best original (un-stemmed) form
+     * for a given file keyword entry. When multiple KeywordScores share the same stem,
+     * the longest originalWord is kept as it is typically the most descriptive.
+     */
+    Map<String, String> buildOriginalWordLookup(FileKeywordEntry entry) {
+        Map<String, String> lookup = new HashMap<>();
+        for (KeywordScore ks : entry.keywords) {
+            String existing = lookup.get(ks.word);
+            if (existing == null || (ks.originalWord != null && ks.originalWord.length() > existing.length())) {
+                lookup.put(ks.word, ks.originalWord != null ? ks.originalWord : ks.word);
+            }
+        }
+        return lookup;
+    }
+
     double computeCosineSimilarity(Map<String, Double> vectorA, Map<String, Double> vectorB) {
         double dotProduct = 0.0;
         double normA = 0.0;
@@ -173,7 +199,8 @@ public class RelatedDocumentService {
     }
 
     List<String> extractSharedKeywords(Map<String, Double> vectorA, Map<String, Double> vectorB,
-                                       int maxKeywords) {
+                                       int maxKeywords,
+                                       Map<String, String> originalWordLookup) {
         List<Map.Entry<String, Double>> shared = new ArrayList<>();
         for (Map.Entry<String, Double> entry : vectorA.entrySet()) {
             Double bValue = vectorB.get(entry.getKey());
@@ -187,7 +214,7 @@ public class RelatedDocumentService {
 
         return shared.stream()
                 .limit(maxKeywords)
-                .map(Map.Entry::getKey)
+                .map(e -> originalWordLookup.getOrDefault(e.getKey(), e.getKey()))
                 .toList();
     }
 
