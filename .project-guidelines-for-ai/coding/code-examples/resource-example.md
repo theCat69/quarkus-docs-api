@@ -43,7 +43,7 @@ public class SearchResource {
     @Path("/files")
     public SearchResponse<FileSearchResult> searchFiles(
             @Parameter(description = "Quarkus version branch or tag. Defaults to 'main' if omitted.",
-                    required = false, example = "3.27", schema = @Schema(defaultValue = "main"))
+                    required = false, example = "main", schema = @Schema(defaultValue = "main"))
             @QueryParam("version") String version,
             @Parameter(description = "Comma-separated list of search keywords", required = true, example = "security,oidc")
             @QueryParam("keywords") String keywords,

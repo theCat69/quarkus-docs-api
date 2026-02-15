@@ -135,7 +135,7 @@ All `search.*` keys are configurable via `application.properties` or environment
 ### Search files by keywords
 
 ```bash
-curl "http://localhost:8080/api/search/files?keywords=security+oidc&version=3.27"
+curl "http://localhost:8080/api/search/files?keywords=security+oidc&version=main"
 ```
 
 ```json
@@ -186,7 +186,7 @@ curl "http://localhost:8080/api/search/files?keywords=openapi&extension=quarkus-
 ### Get document content
 
 ```bash
-curl "http://localhost:8080/api/doc?path=security-overview.adoc&version=3.27"
+curl "http://localhost:8080/api/doc?path=security-overview.adoc&version=main"
 ```
 
 ```json

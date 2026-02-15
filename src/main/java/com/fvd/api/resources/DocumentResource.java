@@ -60,7 +60,7 @@ public class DocumentResource {
             @Parameter(
                     description = "Quarkus version branch or tag. Defaults to 'main' if omitted.",
                     required = false,
-                    example = "3.27",
+                    example = "main",
                     schema = @Schema(defaultValue = "main")
             )
             @QueryParam("version") String version,

@@ -18,7 +18,7 @@ Quarkus REST API (Java 21, Gradle wrapper) that caches and indexes Quarkus docum
 @Path("/example")
 public SomeResponse example(
         @Parameter(description = "Quarkus version branch or tag. Defaults to 'main' if omitted.",
-                required = false, example = "3.27", schema = @Schema(defaultValue = "main"))
+                required = false, example = "main", schema = @Schema(defaultValue = "main"))
         @QueryParam("version") String version,
         @Parameter(description = "Description of the parameter", required = true, example = "example-value")
         @QueryParam("param") String param) {

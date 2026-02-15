@@ -49,7 +49,7 @@ public class CodeSampleResource {
             @Parameter(
                     description = "Quarkus version branch or tag. Defaults to 'main' if omitted.",
                     required = false,
-                    example = "3.27",
+                    example = "main",
                     schema = @Schema(defaultValue = "main")
             )
             @QueryParam("version") String version,
@@ -78,7 +78,7 @@ public class CodeSampleResource {
             @Parameter(
                     description = "Extension filter (e.g., 'quarkus-core', 'quarkus-resteasy-reactive')",
                     required = false,
-                    example = "quarkus-resteasy-reactive"
+                    example = "quarkus-core"
             )
             @QueryParam("extension") String extension,
 
