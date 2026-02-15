@@ -4,6 +4,7 @@ import com.fvd.api.dto.CodeBlockInfo;
 import com.fvd.api.dto.DocumentResponse;
 import com.fvd.api.dto.DocumentSearchResponse;
 import com.fvd.api.dto.SectionInfo;
+import com.fvd.common.utils.AsciiDocCleaner;
 import com.fvd.common.utils.DocumentTitleExtractor;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
@@ -137,7 +138,7 @@ public class DocumentService {
     private String extractDescription(String content) {
         Matcher matcher = DESCRIPTION_PATTERN.matcher(content);
         if (matcher.find()) {
-            return matcher.group(1).trim();
+            return AsciiDocCleaner.clean(matcher.group(1));
         }
         // Fall back to first paragraph after title
         String[] lines = content.split("\n");
@@ -149,7 +150,7 @@ public class DocumentService {
                 continue;
             }
             if (foundTitle && !line.isBlank() && !line.startsWith(":") && !line.startsWith("=")) {
-                if (desc.length() > 0) {
+                if (!desc.isEmpty()) {
                     desc.append(" ");
                 }
                 desc.append(line.trim());
@@ -161,7 +162,7 @@ public class DocumentService {
                 break;
             }
         }
-        return desc.toString();
+        return AsciiDocCleaner.clean(desc.toString());
     }
 
     private List<SectionInfo> parseSections(String content) {

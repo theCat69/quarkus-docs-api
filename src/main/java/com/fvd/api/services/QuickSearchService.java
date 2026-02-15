@@ -3,6 +3,7 @@ package com.fvd.api.services;
 import com.fvd.api.dto.QuickSearchResponse;
 import com.fvd.api.dto.SearchResultRef;
 import com.fvd.common.SearchConstants;
+import com.fvd.common.utils.AsciiDocCleaner;
 import com.fvd.common.utils.DocumentTitleExtractor;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.search.services.MatchedKeyword;
@@ -104,7 +105,7 @@ public class QuickSearchService {
         if (bestOffset >= 0) {
             int start = Math.max(0, bestOffset - SearchConstants.SNIPPET_CONTEXT_SIZE);
             int end = Math.min(content.length(), bestOffset + SearchConstants.SNIPPET_CONTEXT_SIZE);
-            String snippet = content.substring(start, end).replaceAll("\\s+", " ").trim();
+            String snippet = AsciiDocCleaner.clean(content.substring(start, end)).replaceAll("\\s+", " ").trim();
             if (start > 0) {
                 snippet = "..." + snippet;
             }
@@ -116,7 +117,7 @@ public class QuickSearchService {
 
         // Fall back to first 150 chars
         int len = Math.min(150, content.length());
-        String snippet = content.substring(0, len).replaceAll("\\s+", " ").trim();
+        String snippet = AsciiDocCleaner.clean(content.substring(0, len)).replaceAll("\\s+", " ").trim();
         if (content.length() > 150) {
             snippet = snippet + "...";
         }

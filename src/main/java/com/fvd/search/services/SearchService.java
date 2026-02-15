@@ -2,6 +2,7 @@ package com.fvd.search.services;
 
 import com.fvd.cache.services.CacheService;
 import com.fvd.common.matchers.FuzzyMatcher;
+import com.fvd.common.utils.AsciiDocCleaner;
 import com.fvd.common.utils.FilterUtils;
 import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.docs.parser.DocParser;
@@ -194,7 +195,7 @@ public class SearchService {
             result.snippet = generateSnippet(sectionContent, bestOffset);
         } else {
             int len = Math.min(100, sectionContent.length());
-            result.snippet = sectionContent.substring(0, len).replaceAll("\\s+", " ").trim();
+            result.snippet = AsciiDocCleaner.clean(sectionContent.substring(0, len)).replaceAll("\\s+", " ").trim();
             if (sectionContent.length() > 100) {
                 result.snippet = result.snippet + "...";
             }
@@ -365,7 +366,7 @@ public class SearchService {
         int contextSize = searchConfig.snippet().contextSize();
         int start = Math.max(0, matchOffset - contextSize);
         int end = Math.min(text.length(), matchOffset + contextSize);
-        String snippet = text.substring(start, end).replaceAll("\\s+", " ").trim();
+        String snippet = AsciiDocCleaner.clean(text.substring(start, end)).replaceAll("\\s+", " ").trim();
         if (start > 0) {
             snippet = "..." + snippet;
         }
