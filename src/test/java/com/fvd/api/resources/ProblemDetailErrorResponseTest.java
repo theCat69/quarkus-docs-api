@@ -99,4 +99,83 @@ class ProblemDetailErrorResponseTest extends AbstractApiResourceTest {
                 .body("detail", containsString("path"))
                 .body("timestamp", notNullValue());
     }
+
+    @Test
+    void testNonNumericLimitReturnsBadRequest() {
+        given()
+                .queryParam("keywords", "rest")
+                .queryParam("limit", "abc")
+                .when().get("/api/search")
+                .then()
+                .statusCode(400)
+                .body("type", equalTo("about:blank"))
+                .body("title", equalTo("Bad Request"))
+                .body("status", equalTo(400))
+                .body("detail", notNullValue())
+                .body("instance", containsString("search"))
+                .body("timestamp", notNullValue());
+    }
+
+    @Test
+    void testNonNumericOffsetReturnsBadRequest() {
+        given()
+                .queryParam("keywords", "rest")
+                .queryParam("offset", "xyz")
+                .when().get("/api/search")
+                .then()
+                .statusCode(400)
+                .body("title", equalTo("Bad Request"))
+                .body("status", equalTo(400));
+    }
+
+    @Test
+    void testUnsupportedMediaTypeReturnsNotAcceptable() {
+        given()
+                .accept("application/xml")
+                .queryParam("keywords", "rest")
+                .when().get("/api/search")
+                .then()
+                .statusCode(406)
+                .body("type", equalTo("about:blank"))
+                .body("title", equalTo("Not Acceptable"))
+                .body("status", equalTo(406))
+                .body("detail", containsString("application/json"))
+                .body("instance", containsString("search"))
+                .body("timestamp", notNullValue());
+    }
+
+    @Test
+    void testAcceptApplicationXmlOnCatalogReturnsNotAcceptable() {
+        given()
+                .accept("application/xml")
+                .when().get("/api/catalog")
+                .then()
+                .statusCode(406)
+                .body("title", equalTo("Not Acceptable"))
+                .body("status", equalTo(406));
+    }
+
+    @Test
+    void testPostOnGetOnlyEndpointReturnsMethodNotAllowed() {
+        given()
+                .queryParam("keywords", "security")
+                .when().post("/api/search")
+                .then()
+                .statusCode(405)
+                .body("type", equalTo("about:blank"))
+                .body("title", equalTo("Method Not Allowed"))
+                .body("status", equalTo(405))
+                .body("instance", containsString("search"))
+                .body("timestamp", notNullValue());
+    }
+
+    @Test
+    void testDeleteOnGetOnlyEndpointReturnsMethodNotAllowed() {
+        given()
+                .when().delete("/api/documents")
+                .then()
+                .statusCode(405)
+                .body("title", equalTo("Method Not Allowed"))
+                .body("status", equalTo(405));
+    }
 }

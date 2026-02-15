@@ -22,16 +22,36 @@ public abstract class AbstractProblemDetailMapper<T extends Throwable>
     @Override
     public final Response toResponse(T exception) {
         String instance = uriInfo != null ? uriInfo.getPath() : "/api";
+        Response.Status status = resolveStatus(exception);
+        String title = resolveTitle(exception);
         ProblemDetail problem = ProblemDetail.of(
-                getStatus().getStatusCode(),
-                getTitle(),
+                status.getStatusCode(),
+                title,
                 getDetail(exception),
                 instance
         );
-        return Response.status(getStatus())
+        return Response.status(status)
                 .entity(problem)
                 .type(MediaType.APPLICATION_JSON)
                 .build();
+    }
+
+    /**
+     * Resolves the HTTP status for the given exception.
+     * By default delegates to {@link #getStatus()}.
+     * Subclasses may override to vary the status based on the exception.
+     */
+    protected Response.Status resolveStatus(T exception) {
+        return getStatus();
+    }
+
+    /**
+     * Resolves the title for the given exception.
+     * By default delegates to {@link #getTitle()}.
+     * Subclasses may override to vary the title based on the exception.
+     */
+    protected String resolveTitle(T exception) {
+        return getTitle();
     }
 
     protected abstract Response.Status getStatus();
