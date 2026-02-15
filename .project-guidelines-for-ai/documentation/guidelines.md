@@ -36,15 +36,16 @@ public SomeResponse example(
 - All API responses are JSON (`MediaType.APPLICATION_JSON`).
 - All item-level DTOs are annotated with `@JsonFilter("fieldSelector")` to support dynamic field selection via the `fields` query parameter. A default `serializeAll()` filter is registered at startup so responses are unaffected when `fields` is omitted. Envelope fields (`results`, `totalCount`, `returnedCount`) are never filtered.
 - Error responses use `ProblemDetail` with RFC 9457 fields: `type`, `title`, `status`, `detail`, `instance`.
-- Search/listing responses extend `PaginatedResponse<T>` with `results`, `totalCount`, `limit`, `offset`, `queriedKeywords`, and `searchTimeMs`.
-- Document responses use `DocumentResponse` with `path`, `title`, `description`, `subject`, `extension`, `matchedKeywords`, `score`, `sections`, and `codeBlocks`.
+- Search/listing responses extend `PaginatedResponse<T>` with `results`, `totalCount`, `returnedCount`, `offset`, `limit`, `hasMore`, `queriedKeywords`, and `searchTimeMs`.
+- Document search responses use `DocumentSearchResponse` (extends `PaginatedResponse<DocumentResponse>`) which adds an optional `warning` field (included when full-content results are capped for performance).
+- Document responses use `DocumentResponse` with `path`, `title`, `description`, `subject`, `extension`, `matchedKeywords`, `score`, `sections`, and `codeBlocks`. Annotated with `@JsonInclude(NON_NULL)` so null fields (e.g., `sections`, `codeBlocks` in brief mode) are omitted from JSON output.
 - Catalog responses use `CatalogResponse` with `subjects`, `extensions`, and `versions`.
 - Quick search responses use `QuickSearchResponse` with lightweight `SearchResultRef` items.
 - Code sample responses use `CodeSampleSearchResponse` with `CodeSampleResult` items.
 - Search syntax responses use `SearchSyntaxResponse` with static documentation of supported search operators, examples, and tips.
 - Meta responses use `MetaResponse` with `apiInfo`, `endpoints`, `searchSyntax`, `filters`, `pagination`.
 - Batch document responses use `BatchDocumentResponse` with `documents`, `errors`, `requestedCount`, `retrievedCount`, `errorCount`.
-- Related document responses use `RelatedDocumentResponse` with `RelatedDocumentRef` items containing `path`, `title`, `description`, `subject`, `extension`, `similarityScore`, and `sharedKeywords`.
+- Related document responses use `RelatedDocumentResponse` with `RelatedDocumentRef` items containing `path`, `title`, `description`, `subject`, `extension`, `similarityScore`, and `sharedKeywords` (returned as original un-stemmed word forms).
 - Status responses use `StatusResponse` with `ready` (boolean), `cachedVersions` (list of strings), and `warmupProgress` (object with `completed` (int), `total` (int), `versionsCompleted` (list of strings), `currentVersion` (string, null when idle)).
 
 ## Code Documentation

@@ -45,7 +45,7 @@ All endpoints return JSON. The `version` parameter is **optional** on every endp
 | `POST` | `/api/documents/batch` | Retrieve multiple documents by path in a single request | JSON body: `version`, `paths` (required, max `app.batch.max-size`), `brief`, `fields` |
 
 - **Path mode:** provide `path` to retrieve a single document with full structured content (sections, code blocks).
-- **Search mode:** provide `keywords` to search documents by relevance. Add `brief=true` for lightweight metadata only (title, description, subject, score — no sections or code blocks).
+- **Search mode:** provide `keywords` to search documents by relevance. Keyword searches default to `brief=true` (lightweight metadata only — title, description, subject, score — no sections or code blocks). Set `brief=false` for full content, which is capped at 5 results; a `warning` field is included in the response when results are limited by this cap.
 
 ### Quick Search
 
@@ -102,11 +102,11 @@ Browse the interactive API docs at: [http://localhost:8080/q/swagger-ui](http://
 ### Try it
 
 ```bash
-# Search for documents about security
+# Search for documents about security (brief by default)
 curl "http://localhost:8080/api/documents?keywords=security+oidc"
 
-# Brief search (metadata only, no full content)
-curl "http://localhost:8080/api/documents?keywords=security+oidc&brief=true"
+# Full-content search (capped at 5 results)
+curl "http://localhost:8080/api/documents?keywords=security+oidc&brief=false"
 
 # Get a specific document by path
 curl "http://localhost:8080/api/documents?path=security-overview.adoc"
@@ -188,22 +188,58 @@ curl "http://localhost:8080/api/documents?keywords=security+oidc&version=main"
       "subject": "security",
       "extension": "quarkus-core",
       "matchedKeywords": ["security", "oidc"],
-      "score": 42.5,
-      "sections": [ ... ],
-      "codeBlocks": [ ... ]
+      "score": 42.5
     }
   ],
   "totalCount": 15,
+  "returnedCount": 15,
   "limit": 20,
   "offset": 0,
+  "hasMore": false,
   "queriedKeywords": ["security", "oidc"],
   "searchTimeMs": 12
+}
+```
+
+Keyword searches default to `brief=true` — null fields like `sections` and `codeBlocks` are omitted from the JSON output.
+
+### Full-content search (brief=false)
+
+```bash
+# Full content is capped at 5 results for performance
+curl "http://localhost:8080/api/documents?keywords=security+oidc&brief=false"
+```
+
+```json
+{
+  "results": [
+    {
+      "path": "security-oidc-bearer-token-authentication.adoc",
+      "title": "OIDC Bearer Token Authentication",
+      "description": "How to protect service applications using OIDC Bearer Token Authentication...",
+      "subject": "security",
+      "extension": "quarkus-core",
+      "matchedKeywords": ["security", "oidc"],
+      "score": 42.5,
+      "sections": [ "..." ],
+      "codeBlocks": [ "..." ]
+    }
+  ],
+  "totalCount": 15,
+  "returnedCount": 5,
+  "limit": 5,
+  "offset": 0,
+  "hasMore": true,
+  "warning": "Full-content results limited to 5 for performance. Use brief=true (default) for more results.",
+  "queriedKeywords": ["security", "oidc"],
+  "searchTimeMs": 45
 }
 ```
 
 ### Brief search (lightweight discovery)
 
 ```bash
+# brief=true is now the default for keyword searches; this is equivalent to omitting the parameter
 curl "http://localhost:8080/api/documents?keywords=security+oidc&brief=true"
 ```
 
@@ -221,8 +257,10 @@ curl "http://localhost:8080/api/documents?keywords=security+oidc&brief=true"
     }
   ],
   "totalCount": 15,
+  "returnedCount": 15,
   "limit": 20,
   "offset": 0,
+  "hasMore": false,
   "queriedKeywords": ["security", "oidc"],
   "searchTimeMs": 8
 }
@@ -288,7 +326,7 @@ curl "http://localhost:8080/api/search?keywords=security&fields=title,path"
 curl "http://localhost:8080/api/code-samples?keywords=rest+endpoint&fields=content,language"
 ```
 
-Envelope fields (`results`, `totalCount`, `returnedCount`) are always present in paginated responses — `fields` filters only the item-level properties inside each result.
+Envelope fields (`results`, `totalCount`, `returnedCount`, `offset`, `limit`, `hasMore`) are always present in paginated responses — `fields` filters only the item-level properties inside each result.
 
 ### Get API capabilities and self-discovery information
 
