@@ -45,6 +45,7 @@ public SomeResponse example(
 - Meta responses use `MetaResponse` with `apiInfo`, `endpoints`, `searchSyntax`, `filters`, `pagination`.
 - Batch document responses use `BatchDocumentResponse` with `documents`, `errors`, `requestedCount`, `retrievedCount`, `errorCount`.
 - Related document responses use `RelatedDocumentResponse` with `RelatedDocumentRef` items containing `path`, `title`, `description`, `subject`, `extension`, `similarityScore`, and `sharedKeywords`.
+- Status responses use `StatusResponse` with `ready` (boolean), `cachedVersions` (list of strings), and `warmupProgress` (object with `completed` (int), `total` (int), `versionsCompleted` (list of strings), `currentVersion` (string, null when idle)).
 
 ## Code Documentation
 

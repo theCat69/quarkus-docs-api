@@ -1,6 +1,7 @@
 package com.fvd.cache.jobs;
 
 import com.fvd.cache.services.CacheService;
+import com.fvd.cache.services.WarmupStatusTracker;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.exceptions.UpstreamException;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -53,11 +55,14 @@ class CacheWarmupJobTest {
     @Mock
     private QuarkiverseService quarkiverseService;
 
+    private WarmupStatusTracker warmupStatusTracker;
+
     private CacheWarmupJob job;
 
     @BeforeEach
     void setUp() {
-        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, cacheService, quarkiverseService);
+        warmupStatusTracker = new WarmupStatusTracker();
+        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, cacheService, quarkiverseService, warmupStatusTracker);
         job.configuredVersions = Optional.of(List.of("3.17", "3.27"));
         job.fullReset = Optional.empty();
         job.quarkiverseEnabled = false;
@@ -113,6 +118,11 @@ class CacheWarmupJobTest {
         verify(zipDownloadService, never()).streamAndExtractAll(any());
         verify(keywordIndexer, never()).build(anyString(), anyList());
         verify(codeSampleIndexer, never()).build(anyString(), anyList());
+
+        // Tracker should show consistent state: total matches completed, ready is true
+        assertThat(warmupStatusTracker.isReady()).isTrue();
+        assertThat(warmupStatusTracker.getTotalVersions()).isZero();
+        assertThat(warmupStatusTracker.getCompletedCount()).isZero();
     }
 
     @Test
@@ -135,7 +145,7 @@ class CacheWarmupJobTest {
 
     @Test
     void warmupDoesNothingWhenNoVersionsConfigured() {
-        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, cacheService, quarkiverseService);
+        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, cacheService, quarkiverseService, warmupStatusTracker);
         job.configuredVersions = Optional.empty();
         job.fullReset = Optional.empty();
         job.quarkiverseEnabled = false;
@@ -150,7 +160,7 @@ class CacheWarmupJobTest {
 
     @Test
     void warmupDoesNothingWhenVersionsListIsEmpty() {
-        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, cacheService, quarkiverseService);
+        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, cacheService, quarkiverseService, warmupStatusTracker);
         job.configuredVersions = Optional.of(List.of());
         job.fullReset = Optional.empty();
         job.quarkiverseEnabled = false;
@@ -173,7 +183,7 @@ class CacheWarmupJobTest {
         when(keywordIndexer.build(eq("3.17"), anyList())).thenReturn(new KeywordIndex(List.of()));
         when(codeSampleIndexer.build(eq("3.17"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
 
-        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, cacheService, quarkiverseService);
+        job = new CacheWarmupJob(docStore, zipDownloadService, indexService, keywordIndexer, codeSampleIndexer, cacheService, quarkiverseService, warmupStatusTracker);
         job.configuredVersions = Optional.of(List.of("3.17"));
         job.fullReset = Optional.empty();
         job.quarkiverseEnabled = false;

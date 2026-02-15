@@ -72,6 +72,12 @@ All endpoints return JSON. The `version` parameter is **optional** on every endp
 |--------|------|---------|----------------|
 | `GET` | `/api/meta` | API capabilities and self-discovery for AI agents | _(none)_ |
 
+### Status
+
+| Method | Path | Summary | Key Parameters |
+|--------|------|---------|----------------|
+| `GET` | `/api/status` | Readiness and warmup status. Returns `200` when ready, `503` during warmup | _(none)_ |
+
 ## Quick Start
 
 ### Prerequisites
@@ -87,7 +93,7 @@ cd quarkus-docs-api
 ./gradlew quarkusDev
 ```
 
-The API starts at `http://localhost:8080`. On first startup, the cache warmup job downloads and indexes the configured versions.
+The API starts at `http://localhost:8080`. On first startup, the cache warmup job downloads and indexes the configured versions. The API returns `503` at `/api/status` until warmup completes.
 
 ### OpenAPI UI
 
@@ -291,6 +297,41 @@ curl "http://localhost:8080/api/meta"
 
 ```bash
 curl "http://localhost:8080/api/search/syntax"
+```
+
+### Check API readiness and warmup status
+
+```bash
+curl "http://localhost:8080/api/status"
+```
+
+When the API is ready:
+
+```json
+{
+  "ready": true,
+  "cachedVersions": ["main", "3.27"],
+  "warmupProgress": {
+    "completed": 2,
+    "total": 2,
+    "versionsCompleted": ["main", "3.27"]
+  }
+}
+```
+
+During warmup:
+
+```json
+{
+  "ready": false,
+  "cachedVersions": [],
+  "warmupProgress": {
+    "completed": 1,
+    "total": 3,
+    "versionsCompleted": ["3.20"],
+    "currentVersion": "3.27"
+  }
+}
 ```
 
 ## Building & Testing

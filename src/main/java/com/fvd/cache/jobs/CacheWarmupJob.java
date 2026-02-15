@@ -1,6 +1,7 @@
 package com.fvd.cache.jobs;
 
 import com.fvd.cache.services.CacheService;
+import com.fvd.cache.services.WarmupStatusTracker;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.CodeSampleIndexer;
@@ -32,6 +33,7 @@ public class CacheWarmupJob {
     private final CodeSampleIndexer codeSampleIndexer;
     private final CacheService cacheService;
     private final QuarkiverseService quarkiverseService;
+    private final WarmupStatusTracker warmupStatusTracker;
 
     @ConfigProperty(name = "app.versions")
     Optional<List<String>> configuredVersions;
@@ -43,60 +45,82 @@ public class CacheWarmupJob {
     void onStartup(@Observes @Priority(200) StartupEvent event) {
         if (configuredVersions.isEmpty() || configuredVersions.get().isEmpty()) {
             log.info("No versions configured for warmup (app.versions is empty)");
+            warmupStatusTracker.warmupCompleted();
             return;
         }
 
         List<String> versions = configuredVersions.get();
         log.info("Starting cache warmup for versions: {}", versions);
 
-        fullReset.ifPresent((bool) -> { if(bool) cacheService.deleteCache(); });
-
-        // Filter out versions that are already cached
-        List<String> versionsToWarm = versions.stream()
-                .filter(v -> !docStore.docsExist(v))
-                .toList();
-
-        if (versionsToWarm.isEmpty()) {
-            log.info("All versions already cached, skipping warmup");
-            return;
-        }
-
-        log.info("Downloading zip and extracting {} versions: {}", versionsToWarm.size(), versionsToWarm);
-
         try {
-            Map<String, List<String>> extractedByVersion = zipDownloadService.streamAndExtractAll(versionsToWarm);
+            fullReset.ifPresent((bool) -> { if(bool) cacheService.deleteCache(); });
 
-            for (Map.Entry<String, List<String>> entry : extractedByVersion.entrySet()) {
-                String version = entry.getKey();
-                List<String> extractedFiles = entry.getValue();
+            // Filter out versions that are already cached
+            List<String> versionsToWarm = versions.stream()
+                    .filter(v -> !docStore.docsExist(v))
+                    .toList();
 
-                try {
-                    log.info("Extracted {} files for version {}", extractedFiles.size(), version);
+            warmupStatusTracker.warmupStarted(versionsToWarm);
 
-                    indexService.getOrFetchIndex(version);
-                    log.info("Index fetched for version {}", version);
+            if (versionsToWarm.isEmpty()) {
+                log.info("All versions already cached, skipping warmup");
+                return;
+            }
+
+            log.info("Downloading zip and extracting {} versions: {}", versionsToWarm.size(), versionsToWarm);
+
+            try {
+                Map<String, List<String>> extractedByVersion = zipDownloadService.streamAndExtractAll(versionsToWarm);
+
+                for (Map.Entry<String, List<String>> entry : extractedByVersion.entrySet()) {
+                    String version = entry.getKey();
+                    List<String> extractedFiles = entry.getValue();
 
                     if ("main".equals(version) && quarkiverseEnabled) {
                         // Defer index build for "main" until after quarkiverse extraction
+                        try {
+                            log.info("Extracted {} files for version {}", extractedFiles.size(), version);
+                            indexService.getOrFetchIndex(version);
+                            log.info("Index fetched for version {}", version);
+                        } catch (Exception e) {
+                            log.error("Failed to fetch index for version {}, skipping", version, e);
+                        }
                         continue;
                     }
 
-                    buildIndexes(version, extractedFiles);
-                } catch (Exception e) {
-                    log.error("Failed to build indexes for version {}, skipping", version, e);
+                    warmupStatusTracker.versionStarted(version);
+                    try {
+                        log.info("Extracted {} files for version {}", extractedFiles.size(), version);
+
+                        indexService.getOrFetchIndex(version);
+                        log.info("Index fetched for version {}", version);
+
+                        buildIndexes(version, extractedFiles);
+                    } catch (Exception e) {
+                        log.error("Failed to build indexes for version {}, skipping", version, e);
+                    } finally {
+                        warmupStatusTracker.versionCompleted(version);
+                    }
                 }
+
+                // Handle quarkiverse for "main" version
+                if (quarkiverseEnabled && extractedByVersion.containsKey("main")) {
+                    warmupStatusTracker.versionStarted("main");
+                    try {
+                        List<String> mainCoreFiles = extractedByVersion.get("main");
+                        buildMainWithQuarkiverse(mainCoreFiles);
+                    } finally {
+                        warmupStatusTracker.versionCompleted("main");
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Failed to download and extract zip for warmup", e);
             }
 
-            // Handle quarkiverse for "main" version
-            if (quarkiverseEnabled && extractedByVersion.containsKey("main")) {
-                List<String> mainCoreFiles = extractedByVersion.get("main");
-                buildMainWithQuarkiverse(mainCoreFiles);
-            }
-        } catch (Exception e) {
-            log.error("Failed to download and extract zip for warmup", e);
+            log.info("Cache warmup completed");
+        } finally {
+            warmupStatusTracker.warmupCompleted();
         }
-
-        log.info("Cache warmup completed");
     }
 
     private void buildMainWithQuarkiverse(List<String> coreFiles) {
