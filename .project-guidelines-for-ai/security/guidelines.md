@@ -30,7 +30,7 @@ All user-supplied input must be validated before use. The project uses a central
 ## Error Handling and Information Disclosure
 
 - Use domain-specific exceptions mapped via `@Provider` `ExceptionMapper` classes.
-- Return structured `ErrorResponse` JSON -- never expose raw stack traces, internal file paths, or system details.
+- Return structured `ProblemDetail` JSON (RFC 9457) -- never expose raw stack traces, internal file paths, or system details.
 - Exception-to-status mapping:
 
 | Exception | HTTP Status |

@@ -58,14 +58,16 @@ Follow the established layout under `com.fvd`:
 
 | Subpackage | Purpose |
 |------------|---------|
+| `api` | Public REST resources, DTOs, and services for the API layer |
 | `asciidocs` | AsciiDoc parsing and section extraction |
 | `cache` | Cache management, warmup, and refresh jobs |
-| `common` | Shared exceptions, validators, error DTOs, matchers |
-| `docs` | Document API resources, services, stores |
+| `common` | Shared exceptions, validators, error DTOs, matchers, utilities |
+| `docs` | Document stores and file-level operations |
 | `github` | GitHub API clients, zip download, upstream errors |
 | `indexs` | Indexing services, stores, keyword/code-sample models |
 | `quarkiverse` | Quarkiverse extension ingestion (models, parser, services) |
-| `search` | Search services, response DTOs, config |
+| `search` | Search services, scoring, config |
+| `subject` | Subject classification and derivation |
 
 ### Subpackage Conventions
 
@@ -103,7 +105,7 @@ Follow the established layout under `com.fvd`:
 - Never swallow exceptions -- propagate or convert to meaningful HTTP responses.
 - Use domain-specific exceptions: `InvalidInputException`, `DocNotFoundException`, `UpstreamException`.
 - Map exceptions to HTTP responses via `@Provider` `ExceptionMapper` classes.
-- Return structured `ErrorResponse` JSON with `status` (int) and `message` (String).
+- Return structured `ProblemDetail` JSON (RFC 9457) with `type`, `title`, `status`, `detail`, and `instance` fields.
 - HTTP status codes: `400` for bad input, `404` for not found, `502` for upstream failures.
 
 ## Configuration

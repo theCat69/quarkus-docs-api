@@ -11,8 +11,8 @@
 | Task | Command |
 |------|---------|
 | All tests | `./gradlew test` |
-| Single class | `./gradlew test --tests "com.fvd.search.resources.SearchResourceTest"` |
-| Single method | `./gradlew test --tests "com.fvd.search.resources.SearchResourceTest.testMethod"` |
+| Single class | `./gradlew test --tests "com.fvd.api.resources.DocumentResourceTest"` |
+| Single method | `./gradlew test --tests "com.fvd.api.resources.DocumentResourceTest.testMethod"` |
 
 ## Test Profile
 

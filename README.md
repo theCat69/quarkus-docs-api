@@ -30,28 +30,38 @@ Quarkiverse playbook ──► Extension zips ──► Merge & index
 5. The REST API serves search queries and raw document content from these indexes and the cache.
 6. A scheduled job periodically checks SHA hashes and refreshes only changed versions.
 
-**Main packages:** `asciidocs`, `cache`, `common`, `docs`, `github`, `indexs`, `search`, `quarkiverse`.
+**Main packages:** `api`, `asciidocs`, `cache`, `common`, `docs`, `github`, `indexs`, `quarkiverse`, `search`, `subject`.
 
 ## API Endpoints
 
-All endpoints return JSON. The `version` parameter is **optional** on every endpoint and defaults to `main` if omitted. The `extension` parameter actively filters results to only include documents from the specified extension.
+All endpoints return JSON. The `version` parameter is **optional** on every endpoint and defaults to `main` if omitted. Invalid `version` or `subject` values return `400` with a list of valid options.
 
-### Document retrieval
-
-| Method | Path | Summary | Key Parameters |
-|--------|------|---------|----------------|
-| `GET` | `/api/doc` | Get raw document content | `version`, `path` (required), `extension` |
-| `GET` | `/api/index` | List all doc files with SHA hashes | `version` |
-
-### Search
+### Documents
 
 | Method | Path | Summary | Key Parameters |
 |--------|------|---------|----------------|
-| `GET` | `/api/search/files` | Search files by keywords | `version`, `keywords` (required), `limit`, `offset`, `extension` |
-| `GET` | `/api/search/sections` | Search sections by keywords | `version`, `keywords` (required), `sectionTitle` (optional filter), `filePaths`, `limit`, `offset`, `extension` |
-| `GET` | `/api/search/section-content` | Get section content (fuzzy title match) | `version`, `filePath` (required), `sectionTitle` (required), `keywords` (optional) |
-| `GET` | `/api/search/code-samples` | Search code samples by keywords | `version`, `keywords` (required), `filePath`, `sectionTitle`, `limit`, `offset`, `extension` |
-| `GET` | `/api/search/versions` | List all cached versions | _(none)_ |
+| `GET` | `/api/documents` | Get document by path or search by keywords | `version`, `path`, `keywords` (at least one of `path`/`keywords` required), `subject`, `extension`, `brief`, `limit`, `offset` |
+
+- **Path mode:** provide `path` to retrieve a single document with full structured content (sections, code blocks).
+- **Search mode:** provide `keywords` to search documents by relevance. Add `brief=true` for lightweight metadata only (title, description, subject, score — no sections or code blocks).
+
+### Quick Search
+
+| Method | Path | Summary | Key Parameters |
+|--------|------|---------|----------------|
+| `GET` | `/api/search` | Quick discovery search returning lightweight references | `version`, `keywords` (required), `subject`, `extension`, `limit`, `offset` |
+
+### Code Samples
+
+| Method | Path | Summary | Key Parameters |
+|--------|------|---------|----------------|
+| `GET` | `/api/code-samples` | Search code samples by keywords | `version`, `keywords` (required), `language`, `subject`, `extension`, `limit`, `offset` |
+
+### Catalog
+
+| Method | Path | Summary | Key Parameters |
+|--------|------|---------|----------------|
+| `GET` | `/api/catalog` | List available subjects, extensions, and versions | `version` |
 
 ## Quick Start
 
@@ -77,11 +87,17 @@ Browse the interactive API docs at: [http://localhost:8080/q/swagger-ui](http://
 ### Try it
 
 ```bash
-# Search for files about security
-curl "http://localhost:8080/api/search/files?keywords=security+oidc"
+# Search for documents about security
+curl "http://localhost:8080/api/documents?keywords=security+oidc"
 
-# Get a specific document
-curl "http://localhost:8080/api/doc?path=security-overview.adoc"
+# Brief search (metadata only, no full content)
+curl "http://localhost:8080/api/documents?keywords=security+oidc&brief=true"
+
+# Get a specific document by path
+curl "http://localhost:8080/api/documents?path=security-overview.adoc"
+
+# Browse available subjects, extensions, and versions
+curl "http://localhost:8080/api/catalog"
 ```
 
 ## Configuration
@@ -132,10 +148,10 @@ All `search.*` keys are configurable via `application.properties` or environment
 
 ## Examples
 
-### Search files by keywords
+### Search documents by keywords
 
 ```bash
-curl "http://localhost:8080/api/search/files?keywords=security+oidc&version=main"
+curl "http://localhost:8080/api/documents?keywords=security+oidc&version=main"
 ```
 
 ```json
@@ -143,70 +159,84 @@ curl "http://localhost:8080/api/search/files?keywords=security+oidc&version=main
   "results": [
     {
       "path": "security-oidc-bearer-token-authentication.adoc",
-      "score": 42.5,
-      "matchedKeywords": ["security", "oidc"],
+      "title": "OIDC Bearer Token Authentication",
+      "description": "How to protect service applications using OIDC Bearer Token Authentication...",
+      "subject": "security",
       "extension": "quarkus-core",
-      "snippet": "...relevant text around the match...",
-      "matchedSectionTitle": "OIDC Bearer Token Authentication",
-      "sectionMatchScore": 0.85
+      "matchedKeywords": ["security", "oidc"],
+      "score": 42.5,
+      "sections": [ ... ],
+      "codeBlocks": [ ... ]
     }
   ],
-  "total": 15,
-  "limit": 10,
+  "totalCount": 15,
+  "limit": 20,
   "offset": 0,
   "queriedKeywords": ["security", "oidc"],
   "searchTimeMs": 12
 }
 ```
 
-### Search with extension filter
+### Brief search (lightweight discovery)
 
 ```bash
-curl "http://localhost:8080/api/search/files?keywords=openapi&extension=quarkus-openapi-generator"
+curl "http://localhost:8080/api/documents?keywords=security+oidc&brief=true"
 ```
 
 ```json
 {
   "results": [
     {
-      "path": "quarkiverse/quarkus-openapi-generator/docs/modules/ROOT/pages/index.adoc",
-      "score": 18.0,
-      "matchedKeywords": ["openapi"],
-      "extension": "quarkus-openapi-generator"
+      "path": "security-oidc-bearer-token-authentication.adoc",
+      "title": "OIDC Bearer Token Authentication",
+      "description": "How to protect service applications using OIDC Bearer Token Authentication...",
+      "subject": "security",
+      "extension": "quarkus-core",
+      "matchedKeywords": ["security", "oidc"],
+      "score": 42.5
     }
   ],
-  "total": 3,
-  "limit": 10,
+  "totalCount": 15,
+  "limit": 20,
   "offset": 0,
-  "queriedKeywords": ["openapi"],
-  "searchTimeMs": 5
+  "queriedKeywords": ["security", "oidc"],
+  "searchTimeMs": 8
 }
 ```
 
-### Get document content
+### Quick discovery search
 
 ```bash
-curl "http://localhost:8080/api/doc?path=security-overview.adoc&version=main"
+curl "http://localhost:8080/api/search?keywords=security+oidc"
+```
+
+### Search code samples
+
+```bash
+curl "http://localhost:8080/api/code-samples?keywords=rest+endpoint&language=java"
+```
+
+### Get document content by path
+
+```bash
+curl "http://localhost:8080/api/documents?path=security-overview.adoc&version=main"
+```
+
+### List catalog (subjects, extensions, versions)
+
+```bash
+curl "http://localhost:8080/api/catalog?version=main"
 ```
 
 ```json
 {
-  "path": "security-overview.adoc",
-  "content": "= Quarkus Security overview\n...",
-  "format": "asciidoc",
-  "extension": "quarkus-core"
-}
-```
-
-### List cached versions
-
-```bash
-curl "http://localhost:8080/api/search/versions"
-```
-
-```json
-{
-  "results": ["main", "3.27", "3.21"]
+  "subjects": [
+    { "name": "security", "description": "Security-related guides" }
+  ],
+  "extensions": [
+    { "name": "quarkus-core", "description": "Core Quarkus documentation" }
+  ],
+  "versions": ["main", "3.27", "3.21"]
 }
 ```
 
@@ -223,7 +253,7 @@ curl "http://localhost:8080/api/search/versions"
 ./gradlew test
 
 # Run a single test class
-./gradlew test --tests "com.fvd.search.resources.SearchResourceTest"
+./gradlew test --tests "com.fvd.api.resources.DocumentResourceTest"
 
 # Run in dev mode (live reload)
 ./gradlew quarkusDev

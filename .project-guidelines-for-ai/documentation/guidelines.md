@@ -29,9 +29,12 @@ public SomeResponse example(
 ## Response Format Standards
 
 - All API responses are JSON (`MediaType.APPLICATION_JSON`).
-- Error responses use `ErrorResponse` with `status` (int) and `message` (String).
-- Search responses use `SearchResponse<T>` with `results`, `total`, `limit`, `offset`, `queriedKeywords`, and `searchTimeMs`.
-- Document responses use `DocResponse` with `path`, `content`, `format`, and `extension`.
+- Error responses use `ProblemDetail` with RFC 9457 fields: `type`, `title`, `status`, `detail`, `instance`.
+- Search/listing responses extend `PaginatedResponse<T>` with `results`, `totalCount`, `limit`, `offset`, `queriedKeywords`, and `searchTimeMs`.
+- Document responses use `DocumentResponse` with `path`, `title`, `description`, `subject`, `extension`, `matchedKeywords`, `score`, `sections`, and `codeBlocks`.
+- Catalog responses use `CatalogResponse` with `subjects`, `extensions`, and `versions`.
+- Quick search responses use `QuickSearchResponse` with lightweight `SearchResultRef` items.
+- Code sample responses use `CodeSampleSearchResponse` with `CodeSampleResult` items.
 
 ## Code Documentation
 
