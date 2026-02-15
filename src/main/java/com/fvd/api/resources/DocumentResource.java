@@ -183,11 +183,15 @@ public class DocumentResource {
     @Operation(
             summary = "Retrieve multiple documents by path in a single request",
             description = "Accepts a JSON body with a list of document paths and returns each document's " +
-                    "full structured content (or brief metadata if brief=true). Partial failures are " +
+                    "full structured content (or brief metadata if brief=true in the request body). " +
+                    "Setting brief=true reduces response size dramatically (e.g., from ~318KB to ~1KB for 2 docs) " +
+                    "by omitting sections and codeBlocks. Partial failures are " +
                     "reported per-path in the 'errors' array — the request succeeds (200) as long as " +
                     "at least one document is found. Returns 400 if the request body is invalid " +
                     "(empty paths, too many paths, or malformed input). Returns 404 only if ALL " +
-                    "requested documents are not found."
+                    "requested documents are not found.\n\n" +
+                    "Combine with the 'fields' query parameter to further reduce response size by " +
+                    "selecting only specific top-level fields (e.g., fields=documents,retrievedCount)."
     )
     @APIResponse(responseCode = "200", description = "Batch results returned (may include partial errors)",
             content = @Content(schema = @Schema(implementation = BatchDocumentResponse.class)))

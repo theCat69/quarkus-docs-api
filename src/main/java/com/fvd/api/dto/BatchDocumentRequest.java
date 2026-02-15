@@ -27,7 +27,9 @@ public class BatchDocumentRequest {
     public String version;
 
     @Schema(description = "When true, returns only metadata (title, description, path, subject, " +
-            "extension) without full sections and codeBlocks.",
+            "extension) without full sections and codeBlocks. Reduces response size from ~150KB " +
+            "per document to ~500 bytes per document. Recommended for discovery workflows " +
+            "before fetching full documents by path.",
             defaultValue = "false")
     public Boolean brief;
 }
