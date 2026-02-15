@@ -108,4 +108,59 @@ class QuarkiverseZipExtractorTest {
         assertThat(result).isEmpty();
     }
 
+    @Test
+    void extractsTitleFromAntoraYml() throws Exception {
+        String antoraYml = "name: quarkus-openapi-generator\ntitle: Quarkus OpenAPI Generator\nversion: ~\n";
+        InputStream zip = TestZipHelper.createZipAsStream(
+                "repo-main/docs/antora.yml", antoraYml,
+                "repo-main/docs/modules/ROOT/pages/index.adoc", "= Index"
+        );
+
+        extractor.extractDocs(zip, "quarkus-openapi-generator", "docs", cacheService);
+
+        Path titleFile = tempDir.resolve("main/docs/quarkiverse/quarkus-openapi-generator/.extension-title");
+        assertThat(titleFile).exists();
+        assertThat(Files.readString(titleFile)).isEqualTo("Quarkus OpenAPI Generator");
+    }
+
+    @Test
+    void noTitleFileWhenAntoraYmlMissing() throws Exception {
+        InputStream zip = TestZipHelper.createZipAsStream(
+                "repo-main/docs/modules/ROOT/pages/index.adoc", "= Index"
+        );
+
+        extractor.extractDocs(zip, "my-ext", "docs", cacheService);
+
+        Path titleFile = tempDir.resolve("main/docs/quarkiverse/my-ext/.extension-title");
+        assertThat(titleFile).doesNotExist();
+    }
+
+    @Test
+    void noTitleFileWhenAntoraYmlHasNoTitle() throws Exception {
+        String antoraYml = "name: my-ext\nversion: ~\n";
+        InputStream zip = TestZipHelper.createZipAsStream(
+                "repo-main/docs/antora.yml", antoraYml,
+                "repo-main/docs/modules/ROOT/pages/index.adoc", "= Index"
+        );
+
+        extractor.extractDocs(zip, "my-ext", "docs", cacheService);
+
+        Path titleFile = tempDir.resolve("main/docs/quarkiverse/my-ext/.extension-title");
+        assertThat(titleFile).doesNotExist();
+    }
+
+    @Test
+    void malformedAntoraYmlDoesNotBreakExtraction() throws Exception {
+        InputStream zip = TestZipHelper.createZipAsStream(
+                "repo-main/docs/antora.yml", "{{invalid yaml!@#",
+                "repo-main/docs/modules/ROOT/pages/index.adoc", "= Index"
+        );
+
+        List<String> result = extractor.extractDocs(zip, "my-ext", "docs", cacheService);
+
+        assertThat(result).containsExactly("quarkiverse/my-ext/index.adoc");
+        Path titleFile = tempDir.resolve("main/docs/quarkiverse/my-ext/.extension-title");
+        assertThat(titleFile).doesNotExist();
+    }
+
 }

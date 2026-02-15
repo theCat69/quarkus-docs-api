@@ -13,6 +13,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -112,7 +114,8 @@ public class CatalogService {
         for (Map.Entry<String, Integer> entry : extensionDocCounts.entrySet()) {
             String name = entry.getKey();
             String displayName = formatExtensionDisplayName(name);
-            extensions.add(new ExtensionInfo(name, displayName, "", entry.getValue()));
+            String description = readExtensionDescription(name, version);
+            extensions.add(new ExtensionInfo(name, displayName, description, entry.getValue()));
         }
 
         // Sort by doc count descending, then by name
@@ -122,6 +125,23 @@ public class CatalogService {
         });
 
         return extensions;
+    }
+
+    private String readExtensionDescription(String extensionName, String version) {
+        if ("quarkus-core".equals(extensionName)) {
+            return "Core Quarkus framework documentation";
+        }
+        try {
+            Path titleFile = cacheService.versionDir(version)
+                    .resolve("docs").resolve("quarkiverse")
+                    .resolve(extensionName).resolve(".extension-title");
+            if (Files.exists(titleFile)) {
+                return Files.readString(titleFile).trim();
+            }
+        } catch (Exception e) {
+            log.warn("Failed to read extension title for {}: {}", extensionName, e.getMessage());
+        }
+        return "";
     }
 
     private SubjectInfo toSubjectInfo(Subject subject) {
@@ -144,7 +164,7 @@ public class CatalogService {
         StringBuilder sb = new StringBuilder();
         for (String part : parts) {
             if (!part.isEmpty()) {
-                if (sb.length() > 0) {
+                if (!sb.isEmpty()) {
                     sb.append(" ");
                 }
                 sb.append(Character.toUpperCase(part.charAt(0)));

@@ -1,6 +1,9 @@
 package com.fvd.quarkiverse.services;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fvd.cache.services.CacheService;
+import com.fvd.quarkiverse.models.AntoraComponentDescriptor;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 
@@ -18,6 +21,7 @@ import java.util.zip.ZipInputStream;
 public class QuarkiverseZipExtractor {
 
     private static final String ROOT_PAGES_SEGMENT = "/modules/ROOT/pages/";
+    private static final ObjectMapper YAML_MAPPER = new ObjectMapper(new YAMLFactory());
 
     public List<String> extractDocs(InputStream zipStream, String extensionName, String startPath,
                                     CacheService cacheService) {
@@ -31,6 +35,7 @@ public class QuarkiverseZipExtractor {
         }
 
         String pagesPrefix = buildPagesPrefix(startPath);
+        String antoraYmlPath = buildAntoraYmlPath(startPath);
 
         try (ZipInputStream zis = new ZipInputStream(zipStream)) {
             ZipEntry entry;
@@ -41,6 +46,15 @@ public class QuarkiverseZipExtractor {
                 }
 
                 String entryName = entry.getName();
+
+                // Check for antora.yml at startPath root
+                String pathAfterPrefix = entryName.substring(entryName.indexOf('/') + 1);
+                if (pathAfterPrefix.equals(antoraYmlPath)) {
+                    extractTitle(zis, outputDir);
+                    zis.closeEntry();
+                    continue;
+                }
+
                 String relativePath = extractRelativePath(entryName, pagesPrefix, startPath);
 
                 if (relativePath != null) {
@@ -119,5 +133,25 @@ public class QuarkiverseZipExtractor {
 
         String afterModules = pathAfterRoot.substring(modulesPrefix.length());
         return !afterModules.startsWith("ROOT/");
+    }
+
+    private String buildAntoraYmlPath(String startPath) {
+        if (startPath == null || startPath.isEmpty()) {
+            return "antora.yml";
+        }
+        String normalizedPath = startPath.endsWith("/") ? startPath : startPath + "/";
+        return normalizedPath + "antora.yml";
+    }
+
+    private void extractTitle(ZipInputStream zis, Path outputDir) {
+        try {
+            byte[] content = zis.readAllBytes();
+            AntoraComponentDescriptor descriptor = YAML_MAPPER.readValue(content, AntoraComponentDescriptor.class);
+            if (descriptor.title != null && !descriptor.title.isBlank()) {
+                Files.writeString(outputDir.resolve(".extension-title"), descriptor.title);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to parse antora.yml for title extraction: {}", e.getMessage());
+        }
     }
 }
