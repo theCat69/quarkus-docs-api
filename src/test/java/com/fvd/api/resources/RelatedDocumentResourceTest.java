@@ -37,7 +37,9 @@ class RelatedDocumentResourceTest extends AbstractApiResourceTest {
                 .body("results", notNullValue())
                 .body("results.size()", greaterThan(0))
                 .body("totalCount", greaterThan(0))
-                .body("returnedCount", greaterThan(0));
+                .body("returnedCount", greaterThan(0))
+                .body("offset", is(0))
+                .body("hasMore", notNullValue());
     }
 
     @Test

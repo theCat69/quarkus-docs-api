@@ -115,7 +115,10 @@ class DocumentResourceTest extends AbstractApiResourceTest {
                 .then()
                 .statusCode(200)
                 .body("results.size()", is(1))
-                .body("totalCount", equalTo(2));
+                .body("totalCount", equalTo(2))
+                .body("offset", is(0))
+                .body("limit", is(1))
+                .body("hasMore", is(true));
     }
 
     @Test

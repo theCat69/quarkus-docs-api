@@ -203,7 +203,10 @@ public class DocumentService {
         DocumentSearchResponse.DocumentSearchResponseBuilder<?, ?> builder = DocumentSearchResponse.builder()
                 .results(results)
                 .totalCount(searchResult.total())
-                .returnedCount(results.size());
+                .returnedCount(results.size())
+                .offset(offset)
+                .limit(effectiveLimit)
+                .hasMore((offset + results.size()) < searchResult.total());
 
         if (!brief && searchResult.total() > FULL_CONTENT_MAX_LIMIT) {
             builder.warning("Full content mode (brief=false) is limited to " + FULL_CONTENT_MAX_LIMIT +

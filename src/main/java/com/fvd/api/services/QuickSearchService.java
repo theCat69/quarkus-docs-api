@@ -84,6 +84,9 @@ public class QuickSearchService {
                 .results(results)
                 .totalCount(searchResult.total())
                 .returnedCount(results.size())
+                .offset(offset)
+                .limit(limit)
+                .hasMore((offset + results.size()) < searchResult.total())
                 .build();
     }
 

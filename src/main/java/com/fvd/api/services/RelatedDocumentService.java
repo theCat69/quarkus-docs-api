@@ -133,6 +133,9 @@ public class RelatedDocumentService {
                 .results(results)
                 .totalCount(totalCount)
                 .returnedCount(results.size())
+                .offset(0)
+                .limit(limit)
+                .hasMore(results.size() < totalCount)
                 .build();
     }
 
