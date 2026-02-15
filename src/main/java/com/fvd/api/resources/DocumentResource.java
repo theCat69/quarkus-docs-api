@@ -1,5 +1,7 @@
 package com.fvd.api.resources;
 
+import com.fvd.api.dto.BatchDocumentRequest;
+import com.fvd.api.dto.BatchDocumentResponse;
 import com.fvd.api.dto.DocumentResponse;
 import com.fvd.api.dto.DocumentSearchResponse;
 import com.fvd.api.dto.SearchParams;
@@ -10,18 +12,23 @@ import com.fvd.common.resources.ProblemDetail;
 import com.fvd.common.validators.InputValidator;
 import com.fvd.docs.exceptions.DocNotFoundException;
 import com.fvd.subject.services.SubjectDeriver;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import lombok.RequiredArgsConstructor;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
+import java.util.List;
 
 /**
  * REST endpoint for document retrieval and search.
@@ -35,6 +42,9 @@ public class DocumentResource {
     private final DocumentService documentService;
     private final CacheService cacheService;
     private final SubjectDeriver subjectDeriver;
+
+    @ConfigProperty(name = "app.batch.max-size", defaultValue = "10")
+    int maxBatchSize;
 
     @GET
     @Operation(
@@ -152,5 +162,42 @@ public class DocumentResource {
 
         // Neither provided
         throw new InvalidInputException("Either 'path' or 'keywords' must be provided");
+    }
+
+    @POST
+    @Path("/batch")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Operation(
+            summary = "Retrieve multiple documents by path in a single request",
+            description = "Accepts a JSON body with a list of document paths and returns each document's " +
+                    "full structured content (or brief metadata if brief=true). Partial failures are " +
+                    "reported per-path in the 'errors' array — the request succeeds (200) as long as " +
+                    "at least one document is found. Returns 400 if the request body is invalid " +
+                    "(empty paths, too many paths, or malformed input). Returns 404 only if ALL " +
+                    "requested documents are not found."
+    )
+    @APIResponse(responseCode = "200", description = "Batch results returned (may include partial errors)",
+            content = @Content(schema = @Schema(implementation = BatchDocumentResponse.class)))
+    @APIResponse(responseCode = "400", description = "Invalid request (empty paths, exceeds max batch size, invalid path format)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    @APIResponse(responseCode = "404", description = "All requested documents not found",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    public BatchDocumentResponse getDocumentsBatch(BatchDocumentRequest request) {
+        if (request == null) {
+            throw new InvalidInputException("Request body is required");
+        }
+
+        String resolvedVersion = InputValidator.resolveVersion(request.version);
+        InputValidator.validateVersionExists(resolvedVersion, cacheService.listCachedVersions());
+        List<String> validatedPaths = InputValidator.validateBatchPaths(request.paths, maxBatchSize);
+
+        boolean brief = Boolean.TRUE.equals(request.brief);
+        BatchDocumentResponse response = documentService.getDocumentsBatch(resolvedVersion, validatedPaths, brief);
+
+        if (response.retrievedCount == 0 && response.errorCount > 0) {
+            throw new DocNotFoundException("None of the requested documents were found");
+        }
+
+        return response;
     }
 }

@@ -37,6 +37,7 @@ public SomeResponse example(
 - Code sample responses use `CodeSampleSearchResponse` with `CodeSampleResult` items.
 - Search syntax responses use `SearchSyntaxResponse` with static documentation of supported search operators, examples, and tips.
 - Meta responses use `MetaResponse` with `apiInfo`, `endpoints`, `searchSyntax`, `filters`, `pagination`.
+- Batch document responses use `BatchDocumentResponse` with `documents`, `errors`, `requestedCount`, `retrievedCount`, `errorCount`.
 
 ## Code Documentation
 
@@ -60,6 +61,7 @@ public SomeResponse example(
 | `app.versions` | `main` | Versions to cache on startup |
 | `app.refresh.interval` | `6h` | Cache refresh interval |
 | `app.document-cache.enabled` | `true` | Enable in-memory document parse cache |
+| `app.batch.max-size` | `10` | Maximum number of document paths per batch request |
 | `app.quarkiverse.enabled` | `true` | Enable quarkiverse ingestion |
 | `app.quarkiverse.playbook-repo` | `quarkiverse/quarkiverse-docs` | Antora playbook repo |
 | `app.quarkiverse.playbook-branch` | `main` | Playbook branch |

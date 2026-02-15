@@ -66,9 +66,28 @@ public class InputValidator {
 
     public static void validatePath(String path) {
         requireNonEmpty(path, "path");
+        if (path.startsWith("/")) {
+            throw new InvalidInputException("Path must not be absolute");
+        }
         if (path.contains("..")) {
             throw new InvalidInputException("path must not contain '..'");
         }
+    }
+
+    public static List<String> validateBatchPaths(List<String> paths, int maxBatchSize) {
+        if (paths == null || paths.isEmpty()) {
+            throw new InvalidInputException("paths must not be empty");
+        }
+        if (paths.size() > maxBatchSize) {
+            throw new InvalidInputException("paths must not exceed " + maxBatchSize + " entries");
+        }
+        List<String> deduplicated = paths.stream()
+                .distinct()
+                .toList();
+        for (String path : deduplicated) {
+            validatePath(path);
+        }
+        return deduplicated;
     }
 
     public static void validateFilePaths(String filePaths) {

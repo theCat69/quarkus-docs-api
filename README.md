@@ -41,6 +41,7 @@ All endpoints return JSON. The `version` parameter is **optional** on every endp
 | Method | Path | Summary | Key Parameters |
 |--------|------|---------|----------------|
 | `GET` | `/api/documents` | Get document by path or search by keywords | `version`, `path`, `keywords` (at least one of `path`/`keywords` required), `subject`, `extension`, `brief`, `limit`, `offset` |
+| `POST` | `/api/documents/batch` | Retrieve multiple documents by path in a single request | JSON body: `version`, `paths` (required, max `app.batch.max-size`), `brief` |
 
 - **Path mode:** provide `path` to retrieve a single document with full structured content (sections, code blocks).
 - **Search mode:** provide `keywords` to search documents by relevance. Add `brief=true` for lightweight metadata only (title, description, subject, score — no sections or code blocks).
@@ -120,6 +121,7 @@ curl "http://localhost:8080/api/catalog"
 | `app.versions` | `main` | Comma-separated list of versions to cache on startup |
 | `app.refresh.interval` | `6h` | How often to check for doc updates (SHA-based) |
 | `app.document-cache.enabled` | `true` | Enable in-memory caching of parsed document results |
+| `app.batch.max-size` | `10` | Maximum number of document paths per batch request |
 | `app.cache-warmup.full-reset` | _(unset)_ | Set to `true` to force full re-download on startup |
 | `app.quarkiverse.enabled` | `true` | Enable quarkiverse extension doc ingestion |
 | `app.quarkiverse.playbook-repo` | `quarkiverse/quarkiverse-docs` | Repository containing the Antora playbook |
@@ -228,6 +230,14 @@ curl "http://localhost:8080/api/code-samples?keywords=rest+endpoint&language=jav
 
 ```bash
 curl "http://localhost:8080/api/documents?path=security-overview.adoc&version=main"
+```
+
+### Batch retrieve multiple documents
+
+```bash
+curl -X POST "http://localhost:8080/api/documents/batch" \
+  -H "Content-Type: application/json" \
+  -d '{"paths": ["security-overview.adoc", "config-reference.adoc"], "version": "main", "brief": false}'
 ```
 
 ### List catalog (subjects, extensions, versions)

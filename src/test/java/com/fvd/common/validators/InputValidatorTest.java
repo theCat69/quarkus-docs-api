@@ -69,6 +69,13 @@ class InputValidatorTest {
     }
 
     @Test
+    void validatePathRejectsAbsolutePath() {
+        assertThatThrownBy(() -> InputValidator.validatePath("/etc/passwd"))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("must not be absolute");
+    }
+
+    @Test
     void validatePathAcceptsValid() {
         assertThatCode(() -> InputValidator.validatePath("docs/src/main/asciidoc/security-oidc.adoc"))
                 .doesNotThrowAnyException();

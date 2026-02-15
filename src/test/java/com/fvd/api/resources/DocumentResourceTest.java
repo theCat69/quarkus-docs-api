@@ -1,12 +1,15 @@
 package com.fvd.api.resources;
 
+import com.fvd.api.dto.BatchDocumentRequest;
 import com.fvd.indexs.indexers.FileKeywordEntry;
 import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.indexs.indexers.SectionKeywordEntry;
 import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
@@ -292,5 +295,168 @@ class DocumentResourceTest extends AbstractApiResourceTest {
                 .then()
                 .statusCode(400)
                 .body("detail", containsString("Unknown subject"));
+    }
+
+    // --- Batch endpoint tests ---
+
+    @Test
+    void testBatchRetrievalAllDocsFound() {
+        seedDocFile();
+        seedDocFileWithCode();
+        BatchDocumentRequest request = new BatchDocumentRequest(
+                List.of("security.adoc", "rest.adoc"), "3.27", false);
+        given()
+                .contentType(ContentType.JSON)
+                .body(request)
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(200)
+                .body("documents.size()", is(2))
+                .body("errors.size()", is(0))
+                .body("requestedCount", is(2))
+                .body("retrievedCount", is(2))
+                .body("errorCount", is(0));
+    }
+
+    @Test
+    void testBatchRetrievalPartialFailure() {
+        seedDocFile();
+        BatchDocumentRequest request = new BatchDocumentRequest(
+                List.of("security.adoc", "nonexistent.adoc"), "3.27", false);
+        given()
+                .contentType(ContentType.JSON)
+                .body(request)
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(200)
+                .body("documents.size()", is(1))
+                .body("errors.size()", is(1))
+                .body("errors[0].path", equalTo("nonexistent.adoc"))
+                .body("errors[0].reason", equalTo("Document not found"))
+                .body("retrievedCount", is(1))
+                .body("errorCount", is(1));
+    }
+
+    @Test
+    void testBatchRetrievalAllNotFound() {
+        seedDocFile(); // seed to make version 3.27 exist
+        BatchDocumentRequest request = new BatchDocumentRequest(
+                List.of("missing1.adoc", "missing2.adoc"), "3.27", false);
+        given()
+                .contentType(ContentType.JSON)
+                .body(request)
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(404)
+                .body("detail", equalTo("None of the requested documents were found"));
+    }
+
+    @Test
+    void testBatchRetrievalEmptyPaths() {
+        BatchDocumentRequest request = new BatchDocumentRequest(
+                List.of(), "main", false);
+        given()
+                .contentType(ContentType.JSON)
+                .body(request)
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(400)
+                .body("detail", equalTo("paths must not be empty"));
+    }
+
+    @Test
+    void testBatchRetrievalNullRequestBody() {
+        given()
+                .contentType(ContentType.JSON)
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(400)
+                .body("detail", equalTo("Request body is required"));
+    }
+
+    @Test
+    void testBatchRetrievalExceedsMaxSize() {
+        List<String> paths = new ArrayList<>();
+        for (int i = 0; i < 11; i++) {
+            paths.add("doc" + i + ".adoc");
+        }
+        BatchDocumentRequest request = new BatchDocumentRequest(paths, "main", false);
+        given()
+                .contentType(ContentType.JSON)
+                .body(request)
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(400)
+                .body("detail", containsString("paths must not exceed"));
+    }
+
+    @Test
+    void testBatchRetrievalPathTraversal() {
+        BatchDocumentRequest request = new BatchDocumentRequest(
+                List.of("../secret.adoc"), "main", false);
+        given()
+                .contentType(ContentType.JSON)
+                .body(request)
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(400)
+                .body("detail", containsString(".."));
+    }
+
+    @Test
+    void testBatchRetrievalUnknownVersion() {
+        BatchDocumentRequest request = new BatchDocumentRequest(
+                List.of("security.adoc"), "nonexistent", false);
+        given()
+                .contentType(ContentType.JSON)
+                .body(request)
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(400)
+                .body("detail", containsString("Unknown version"));
+    }
+
+    @Test
+    void testBatchRetrievalBriefMode() {
+        seedDocFile();
+        BatchDocumentRequest request = new BatchDocumentRequest(
+                List.of("security.adoc"), "3.27", true);
+        given()
+                .contentType(ContentType.JSON)
+                .body(request)
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(200)
+                .body("documents.size()", is(1))
+                .body("documents[0].title", equalTo("Security Guide"))
+                .body("documents[0].description", notNullValue())
+                .body("documents[0].sections", nullValue())
+                .body("documents[0].codeBlocks", nullValue());
+    }
+
+    @Test
+    void testBatchRetrievalDeduplicatesPaths() {
+        seedDocFile();
+        BatchDocumentRequest request = new BatchDocumentRequest(
+                List.of("security.adoc", "security.adoc"), "3.27", false);
+        given()
+                .contentType(ContentType.JSON)
+                .body(request)
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(200)
+                .body("documents.size()", is(1))
+                .body("requestedCount", is(1))
+                .body("retrievedCount", is(1));
     }
 }

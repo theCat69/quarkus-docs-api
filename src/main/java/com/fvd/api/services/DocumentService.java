@@ -1,5 +1,7 @@
 package com.fvd.api.services;
 
+import com.fvd.api.dto.BatchDocumentError;
+import com.fvd.api.dto.BatchDocumentResponse;
 import com.fvd.api.dto.CodeBlockInfo;
 import com.fvd.api.dto.DocumentResponse;
 import com.fvd.api.dto.DocumentSearchResponse;
@@ -83,6 +85,57 @@ public class DocumentService {
                 parsed.subject(), parsed.extension(),
                 parsed.sections(), parsed.codeBlocks(),
                 List.of(), null);
+    }
+
+    /**
+     * Retrieves multiple documents by path. Handles partial failures gracefully.
+     *
+     * @param version the documentation version
+     * @param paths list of document paths to retrieve
+     * @param brief when true, returns only title and description without sections/code blocks
+     * @return batch response with documents and errors
+     */
+    public BatchDocumentResponse getDocumentsBatch(String version, List<String> paths, boolean brief) {
+        List<DocumentResponse> documents = new ArrayList<>();
+        List<BatchDocumentError> errors = new ArrayList<>();
+
+        for (String path : paths) {
+            try {
+                DocumentResponse doc = brief
+                        ? getDocumentByPathBrief(version, path)
+                        : getDocumentByPath(version, path);
+                if (doc != null) {
+                    documents.add(doc);
+                } else {
+                    errors.add(new BatchDocumentError(path, "Document not found"));
+                }
+            } catch (Exception e) {
+                log.warn("Error retrieving document '{}': {}", path, e.getMessage());
+                errors.add(new BatchDocumentError(path, "Error reading document"));
+            }
+        }
+
+        return new BatchDocumentResponse(documents, errors, paths.size(), documents.size(), errors.size());
+    }
+
+    /**
+     * Retrieves a document by path with only title, description, subject, and extension.
+     * Skips section and code block parsing for performance.
+     */
+    private DocumentResponse getDocumentByPathBrief(String version, String path) {
+        Optional<String> contentOpt = docStore.read(version, path);
+        if (contentOpt.isEmpty()) {
+            return null;
+        }
+
+        String content = contentOpt.get();
+        String title = DocumentTitleExtractor.extractTitle(content);
+        String description = extractDescription(content);
+        String extension = findExtensionForPath(version, path);
+        String subject = subjectDeriver.deriveSubject(path);
+
+        return new DocumentResponse(title, description, path, subject, extension,
+                null, null, List.of(), null);
     }
 
     /**
