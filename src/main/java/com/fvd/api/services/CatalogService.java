@@ -6,6 +6,7 @@ import com.fvd.api.dto.SubjectInfo;
 import com.fvd.cache.services.CacheService;
 import com.fvd.indexs.indexers.FileKeywordEntry;
 import com.fvd.indexs.indexers.KeywordIndex;
+import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.subject.Subject;
 import com.fvd.subject.services.SubjectDeriver;
@@ -29,6 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @ApplicationScoped
 @RequiredArgsConstructor
 public class CatalogService {
+
+    private static final int MAX_EXTENSION_KEYWORDS = 15;
 
     private final SubjectDeriver subjectDeriver;
     private final KeywordIndexStore keywordIndexStore;
@@ -104,10 +107,19 @@ public class CatalogService {
 
         KeywordIndex index = indexOpt.get();
         Map<String, Integer> extensionDocCounts = new HashMap<>();
+        Map<String, Map<String, Integer>> extensionKeywordScores = new HashMap<>();
 
         for (FileKeywordEntry file : index.files) {
             String ext = file.extension != null ? file.extension : "quarkus-core";
             extensionDocCounts.merge(ext, 1, Integer::sum);
+
+            if (file.keywords != null) {
+                Map<String, Integer> keywordScores = extensionKeywordScores
+                        .computeIfAbsent(ext, k -> new HashMap<>());
+                for (KeywordScore ks : file.keywords) {
+                    keywordScores.merge(ks.word, ks.score, Integer::sum);
+                }
+            }
         }
 
         List<ExtensionInfo> extensions = new ArrayList<>();
@@ -115,7 +127,8 @@ public class CatalogService {
             String name = entry.getKey();
             String displayName = formatExtensionDisplayName(name);
             String description = readExtensionDescription(name, version);
-            extensions.add(new ExtensionInfo(name, displayName, description, entry.getValue()));
+            List<String> keywords = getTopKeywords(extensionKeywordScores.get(name));
+            extensions.add(new ExtensionInfo(name, displayName, description, entry.getValue(), keywords));
         }
 
         // Sort by doc count descending, then by name
@@ -125,6 +138,17 @@ public class CatalogService {
         });
 
         return extensions;
+    }
+
+    private List<String> getTopKeywords(Map<String, Integer> keywordScores) {
+        if (keywordScores == null || keywordScores.isEmpty()) {
+            return List.of();
+        }
+        return keywordScores.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .limit(MAX_EXTENSION_KEYWORDS)
+                .map(Map.Entry::getKey)
+                .toList();
     }
 
     private String readExtensionDescription(String extensionName, String version) {

@@ -12,6 +12,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -103,5 +104,116 @@ class CatalogServiceTest {
         assertThat(catalog.extensions).hasSize(1);
         assertThat(catalog.extensions.get(0).name).isEqualTo("quarkus-core");
         assertThat(catalog.extensions.get(0).description).isEqualTo("Core Quarkus framework documentation");
+    }
+
+    @Test
+    void extensionKeywordsAreAggregatedAndSortedByWeight() throws Exception {
+        KeywordIndex index = new KeywordIndex();
+        FileKeywordEntry file1 = new FileKeywordEntry(
+                "quarkiverse/my-ext/page1.adoc",
+                List.of(
+                        new KeywordScore("secur", 10),
+                        new KeywordScore("oidc", 8),
+                        new KeywordScore("auth", 5)
+                ),
+                List.of(),
+                "my-ext"
+        );
+        FileKeywordEntry file2 = new FileKeywordEntry(
+                "quarkiverse/my-ext/page2.adoc",
+                List.of(
+                        new KeywordScore("secur", 6),
+                        new KeywordScore("jwt", 4)
+                ),
+                List.of(),
+                "my-ext"
+        );
+        index.files = List.of(file1, file2);
+        when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
+        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
+        when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
+
+        var catalog = catalogService.getCatalog("main");
+
+        assertThat(catalog.extensions).hasSize(1);
+        // secur: 10+6=16, oidc: 8, auth: 5, jwt: 4
+        assertThat(catalog.extensions.get(0).keywords)
+                .containsExactly("secur", "oidc", "auth", "jwt");
+    }
+
+    @Test
+    void extensionWithNoKeywordsGetsEmptyList() throws Exception {
+        KeywordIndex index = new KeywordIndex();
+        FileKeywordEntry entry = new FileKeywordEntry(
+                "quarkiverse/my-ext/index.adoc",
+                List.of(),
+                List.of(),
+                "my-ext"
+        );
+        index.files = List.of(entry);
+        when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
+        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
+        when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
+
+        var catalog = catalogService.getCatalog("main");
+
+        assertThat(catalog.extensions).hasSize(1);
+        assertThat(catalog.extensions.get(0).keywords).isEmpty();
+    }
+
+    @Test
+    void multipleExtensionsGetIndependentKeywords() throws Exception {
+        KeywordIndex index = new KeywordIndex();
+        FileKeywordEntry file1 = new FileKeywordEntry(
+                "quarkiverse/ext-a/page.adoc",
+                List.of(new KeywordScore("rest", 10)),
+                List.of(),
+                "ext-a"
+        );
+        FileKeywordEntry file2 = new FileKeywordEntry(
+                "quarkiverse/ext-b/page.adoc",
+                List.of(new KeywordScore("data", 8)),
+                List.of(),
+                "ext-b"
+        );
+        index.files = List.of(file1, file2);
+        when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
+        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
+        when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
+
+        var catalog = catalogService.getCatalog("main");
+
+        assertThat(catalog.extensions).hasSize(2);
+        var extA = catalog.extensions.stream().filter(e -> e.name.equals("ext-a")).findFirst().orElseThrow();
+        var extB = catalog.extensions.stream().filter(e -> e.name.equals("ext-b")).findFirst().orElseThrow();
+        assertThat(extA.keywords).containsExactly("rest");
+        assertThat(extB.keywords).containsExactly("data");
+    }
+
+    @Test
+    void keywordsAreLimitedToTopFifteen() throws Exception {
+        KeywordIndex index = new KeywordIndex();
+        List<KeywordScore> manyKeywords = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            manyKeywords.add(new KeywordScore("kw" + i, 20 - i));
+        }
+        FileKeywordEntry entry = new FileKeywordEntry(
+                "quarkiverse/my-ext/index.adoc",
+                manyKeywords,
+                List.of(),
+                "my-ext"
+        );
+        index.files = List.of(entry);
+        when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
+        when(subjectDeriver.deriveSubject(anyString())).thenReturn("misc");
+        when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
+
+        var catalog = catalogService.getCatalog("main");
+
+        assertThat(catalog.extensions).hasSize(1);
+        assertThat(catalog.extensions.get(0).keywords).hasSize(15);
+        // Top 15 should be kw0 through kw14 (highest scores)
+        assertThat(catalog.extensions.get(0).keywords.get(0)).isEqualTo("kw0");
+        assertThat(catalog.extensions.get(0).keywords.get(14)).isEqualTo("kw14");
     }
 }
