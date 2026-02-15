@@ -3,6 +3,9 @@ package com.fvd.common.validators;
 import com.fvd.common.exceptions.InvalidInputException;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+import java.util.Set;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -252,5 +255,85 @@ class InputValidatorTest {
     void resolveVersionThrowsOnInvalidCharacters() {
         assertThatThrownBy(() -> InputValidator.resolveVersion("invalid!version"))
                 .isInstanceOf(InvalidInputException.class);
+    }
+
+    // --- validateVersionExists tests ---
+
+    @Test
+    void validateVersionExistsAcceptsMainEvenIfNotCached() {
+        assertThatCode(() -> InputValidator.validateVersionExists("main", List.of("3.27")))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void validateVersionExistsAcceptsMainWithEmptyList() {
+        assertThatCode(() -> InputValidator.validateVersionExists("main", List.of()))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void validateVersionExistsAcceptsCachedVersion() {
+        assertThatCode(() -> InputValidator.validateVersionExists("3.27", List.of("3.27", "3.21")))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void validateVersionExistsThrowsForUnknownVersion() {
+        assertThatThrownBy(() -> InputValidator.validateVersionExists("9.99", List.of("3.27", "3.21")))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("Unknown version '9.99'")
+                .hasMessageContaining("3.27")
+                .hasMessageContaining("3.21");
+    }
+
+    @Test
+    void validateVersionExistsThrowsForUnknownVersionWithEmptyList() {
+        assertThatThrownBy(() -> InputValidator.validateVersionExists("9.99", List.of()))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("Unknown version '9.99'")
+                .hasMessageContaining("main");
+    }
+
+    @Test
+    void validateVersionExistsIncludesMainInAvailableWhenNotCached() {
+        assertThatThrownBy(() -> InputValidator.validateVersionExists("9.99", List.of("3.27")))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("main");
+    }
+
+    // --- validateSubjectExists tests ---
+
+    @Test
+    void validateSubjectExistsAcceptsNull() {
+        assertThatCode(() -> InputValidator.validateSubjectExists(null, Set.of("security")))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void validateSubjectExistsAcceptsBlank() {
+        assertThatCode(() -> InputValidator.validateSubjectExists("  ", Set.of("security")))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void validateSubjectExistsAcceptsKnownSubject() {
+        assertThatCode(() -> InputValidator.validateSubjectExists("security", Set.of("security", "rest-apis")))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void validateSubjectExistsThrowsForUnknownSubject() {
+        assertThatThrownBy(() -> InputValidator.validateSubjectExists("nonexistent", Set.of("security", "rest-apis")))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("Unknown subject 'nonexistent'")
+                .hasMessageContaining("rest-apis")
+                .hasMessageContaining("security");
+    }
+
+    @Test
+    void validateSubjectExistsThrowsForUnknownSubjectWithEmptySet() {
+        assertThatThrownBy(() -> InputValidator.validateSubjectExists("nonexistent", Set.of()))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("Unknown subject 'nonexistent'");
     }
 }

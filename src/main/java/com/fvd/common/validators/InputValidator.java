@@ -4,8 +4,10 @@ import com.fvd.common.StopWords;
 import com.fvd.common.exceptions.InvalidInputException;
 import lombok.experimental.UtilityClass;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 @UtilityClass
 public class InputValidator {
@@ -33,6 +35,32 @@ public class InputValidator {
         }
         if (version.contains("..")) {
             throw new InvalidInputException("version must not contain '..'");
+        }
+    }
+
+    public static void validateVersionExists(String version, List<String> cachedVersions) {
+        if (DEFAULT_VERSION.equals(version)) {
+            return; // main is always accepted
+        }
+        if (!cachedVersions.contains(version)) {
+            List<String> allVersions = new ArrayList<>(cachedVersions);
+            if (!allVersions.contains(DEFAULT_VERSION)) {
+                allVersions.addFirst(DEFAULT_VERSION);
+            }
+            String available = String.join(", ", allVersions);
+            throw new InvalidInputException(
+                    "Unknown version '" + version + "'. Available versions: " + available);
+        }
+    }
+
+    public static void validateSubjectExists(String subject, Set<String> validSubjects) {
+        if (subject == null || subject.isBlank()) {
+            return; // null/blank means no filter, always valid
+        }
+        if (!validSubjects.contains(subject)) {
+            String available = String.join(", ", validSubjects.stream().sorted().toList());
+            throw new InvalidInputException(
+                    "Unknown subject '" + subject + "'. Available subjects: " + available);
         }
     }
 

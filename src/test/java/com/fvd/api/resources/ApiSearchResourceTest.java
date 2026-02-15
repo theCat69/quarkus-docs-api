@@ -22,7 +22,7 @@ class ApiSearchResourceTest extends AbstractApiResourceTest {
     @Test
     void testSearchNoResults() {
         given()
-                .queryParam("version", "3.27")
+                .queryParam("version", "main")
                 .queryParam("keywords", "nonexistent")
                 .when().get("/api/search")
                 .then()
@@ -210,5 +210,53 @@ class ApiSearchResourceTest extends AbstractApiResourceTest {
                         List.of())
         ));
         keywordIndexStore.write("main", index);
+    }
+
+    @Test
+    void testSearchReturns400ForUnknownVersion() {
+        given()
+                .queryParam("version", "nonexistent")
+                .queryParam("keywords", "security")
+                .when().get("/api/search")
+                .then()
+                .statusCode(400)
+                .body("detail", containsString("Unknown version"));
+    }
+
+    @Test
+    void testSearchReturns400ForUnknownSubject() {
+        seedDocFile();
+        seedKeywordIndex();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("subject", "nonexistent-subject")
+                .when().get("/api/search")
+                .then()
+                .statusCode(400)
+                .body("detail", containsString("Unknown subject"));
+    }
+
+    @Test
+    void testSearchAcceptsMainVersionEvenIfNotCached() {
+        given()
+                .queryParam("version", "main")
+                .queryParam("keywords", "security")
+                .when().get("/api/search")
+                .then()
+                .statusCode(200);
+    }
+
+    @Test
+    void testSearchAcceptsValidSubject() {
+        seedDocFile();
+        seedKeywordIndex();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("subject", "security")
+                .when().get("/api/search")
+                .then()
+                .statusCode(200);
     }
 }

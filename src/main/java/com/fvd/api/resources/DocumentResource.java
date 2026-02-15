@@ -4,10 +4,12 @@ import com.fvd.api.dto.DocumentResponse;
 import com.fvd.api.dto.DocumentSearchResponse;
 import com.fvd.api.dto.SearchParams;
 import com.fvd.api.services.DocumentService;
+import com.fvd.cache.services.CacheService;
 import com.fvd.common.exceptions.InvalidInputException;
 import com.fvd.common.resources.ProblemDetail;
 import com.fvd.common.validators.InputValidator;
 import com.fvd.docs.exceptions.DocNotFoundException;
+import com.fvd.subject.services.SubjectDeriver;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -31,6 +33,8 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 public class DocumentResource {
 
     private final DocumentService documentService;
+    private final CacheService cacheService;
+    private final SubjectDeriver subjectDeriver;
 
     @GET
     @Operation(
@@ -115,6 +119,7 @@ public class DocumentResource {
         // Path mode takes precedence
         if (path != null && !path.isBlank()) {
             String resolvedVersion = InputValidator.resolveVersion(version);
+            InputValidator.validateVersionExists(resolvedVersion, cacheService.listCachedVersions());
             InputValidator.validatePath(path);
             DocumentResponse doc = documentService.getDocumentByPath(resolvedVersion, path);
             if (doc == null) {
@@ -126,6 +131,8 @@ public class DocumentResource {
         // Search mode
         if (keywords != null && !keywords.isBlank()) {
             SearchParams params = SearchParams.fromRaw(version, keywords, subject, extension, limit, offset);
+            InputValidator.validateVersionExists(params.version(), cacheService.listCachedVersions());
+            InputValidator.validateSubjectExists(params.subject(), subjectDeriver.getValidSubjectNames());
 
             return documentService.searchDocuments(params.version(), params.keywords(), params.subject(),
                     params.extension(), params.limit(), params.offset());

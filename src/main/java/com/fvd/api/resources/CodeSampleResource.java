@@ -3,7 +3,10 @@ package com.fvd.api.resources;
 import com.fvd.api.dto.CodeSampleSearchResponse;
 import com.fvd.api.dto.SearchParams;
 import com.fvd.api.services.CodeSampleService;
+import com.fvd.cache.services.CacheService;
 import com.fvd.common.resources.ProblemDetail;
+import com.fvd.common.validators.InputValidator;
+import com.fvd.subject.services.SubjectDeriver;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -27,6 +30,8 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 public class CodeSampleResource {
 
     private final CodeSampleService codeSampleService;
+    private final CacheService cacheService;
+    private final SubjectDeriver subjectDeriver;
 
     @GET
     @Operation(
@@ -97,6 +102,8 @@ public class CodeSampleResource {
             @QueryParam("offset") Integer offset) {
 
         SearchParams params = SearchParams.fromRaw(version, keywords, subject, extension, limit, offset);
+        InputValidator.validateVersionExists(params.version(), cacheService.listCachedVersions());
+        InputValidator.validateSubjectExists(params.subject(), subjectDeriver.getValidSubjectNames());
 
         return codeSampleService.searchCodeSamples(params.version(), params.keywords(), language,
                 params.subject(), params.extension(), params.limit(), params.offset());

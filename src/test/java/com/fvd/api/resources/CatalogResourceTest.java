@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.notNullValue;
@@ -30,6 +31,7 @@ class CatalogResourceTest extends AbstractApiResourceTest {
 
     @Test
     void testCatalogEndpointWithVersion() {
+        docStore.write("3.27", "test.adoc", "= Test\nContent");
         seedKeywordIndex();
         given()
                 .queryParam("version", "3.27")
@@ -43,6 +45,7 @@ class CatalogResourceTest extends AbstractApiResourceTest {
 
     @Test
     void testCatalogEndpointReturnsSubjects() {
+        docStore.write("3.27", "test.adoc", "= Test\nContent");
         seedKeywordIndex();
         given()
                 .queryParam("version", "3.27")
@@ -56,6 +59,7 @@ class CatalogResourceTest extends AbstractApiResourceTest {
 
     @Test
     void testCatalogEndpointReturnsExtensions() {
+        docStore.write("3.27", "test.adoc", "= Test\nContent");
         seedKeywordIndexWithExtensionsAndSections();
         given()
                 .queryParam("version", "3.27")
@@ -105,5 +109,15 @@ class CatalogResourceTest extends AbstractApiResourceTest {
                         "quarkus-openapi-generator")
         ));
         keywordIndexStore.write("3.27", index);
+    }
+
+    @Test
+    void testCatalogReturns400ForUnknownVersion() {
+        given()
+                .queryParam("version", "nonexistent")
+                .when().get("/api/catalog")
+                .then()
+                .statusCode(400)
+                .body("detail", containsString("Unknown version"));
     }
 }

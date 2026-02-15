@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
@@ -20,7 +21,7 @@ class CodeSampleResourceTest extends AbstractApiResourceTest {
     @Test
     void testSearchCodeSamplesNoResults() {
         given()
-                .queryParam("version", "3.27")
+                .queryParam("version", "main")
                 .queryParam("keywords", "nonexistent")
                 .when().get("/api/code-samples")
                 .then()
@@ -31,6 +32,7 @@ class CodeSampleResourceTest extends AbstractApiResourceTest {
 
     @Test
     void testSearchCodeSamplesReturnsResults() {
+        ensureVersionCached();
         seedCodeSampleIndex();
         given()
                 .queryParam("version", "3.27")
@@ -65,6 +67,7 @@ class CodeSampleResourceTest extends AbstractApiResourceTest {
 
     @Test
     void testSearchCodeSamplesWithLanguageFilter() {
+        ensureVersionCached();
         seedCodeSampleIndexWithMultipleLanguages();
         given()
                 .queryParam("version", "3.27")
@@ -79,6 +82,7 @@ class CodeSampleResourceTest extends AbstractApiResourceTest {
 
     @Test
     void testSearchCodeSamplesWithExtensionFilter() {
+        ensureVersionCached();
         seedCodeSampleIndexWithExtensions();
         given()
                 .queryParam("version", "3.27")
@@ -93,6 +97,7 @@ class CodeSampleResourceTest extends AbstractApiResourceTest {
 
     @Test
     void testSearchCodeSamplesWithPagination() {
+        ensureVersionCached();
         seedCodeSampleIndex();
         given()
                 .queryParam("version", "3.27")
@@ -108,6 +113,7 @@ class CodeSampleResourceTest extends AbstractApiResourceTest {
 
     @Test
     void testSearchCodeSamplesSortedByScore() {
+        ensureVersionCached();
         seedCodeSampleIndexWithScores();
         given()
                 .queryParam("version", "3.27")
@@ -121,6 +127,13 @@ class CodeSampleResourceTest extends AbstractApiResourceTest {
 
     private void seedDocFile() {
         docStore.write("3.27", "security.adoc", "= Security Guide\nContent about security.");
+    }
+
+    /**
+     * Creates the cache directory for version 3.27 so that version validation passes.
+     */
+    private void ensureVersionCached() {
+        docStore.write("3.27", "_placeholder.adoc", "= Placeholder");
     }
 
     private void seedCodeSampleIndexWithMultipleLanguages() {
@@ -163,5 +176,30 @@ class CodeSampleResourceTest extends AbstractApiResourceTest {
                         List.of(new KeywordScore("security", 1)))
         ));
         codeSampleIndexStore.write("3.27", index);
+    }
+
+    @Test
+    void testSearchCodeSamplesReturns400ForUnknownVersion() {
+        given()
+                .queryParam("version", "nonexistent")
+                .queryParam("keywords", "security")
+                .when().get("/api/code-samples")
+                .then()
+                .statusCode(400)
+                .body("detail", containsString("Unknown version"));
+    }
+
+    @Test
+    void testSearchCodeSamplesReturns400ForUnknownSubject() {
+        ensureVersionCached();
+        seedCodeSampleIndex();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("subject", "nonexistent-subject")
+                .when().get("/api/code-samples")
+                .then()
+                .statusCode(400)
+                .body("detail", containsString("Unknown subject"));
     }
 }

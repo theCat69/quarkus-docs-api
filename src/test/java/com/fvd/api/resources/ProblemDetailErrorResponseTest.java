@@ -31,6 +31,7 @@ class ProblemDetailErrorResponseTest extends AbstractApiResourceTest {
 
     @Test
     void testNotFoundReturnsProblemDetail() {
+        docStore.write("3.27", "existing.adoc", "= Existing\nContent");
         given()
                 .queryParam("version", "3.27")
                 .queryParam("path", "nonexistent.adoc")
@@ -60,6 +61,7 @@ class ProblemDetailErrorResponseTest extends AbstractApiResourceTest {
 
     @Test
     void testBadRequestForInvalidPath() {
+        docStore.write("3.27", "existing.adoc", "= Existing\nContent");
         given()
                 .queryParam("version", "3.27")
                 .queryParam("path", "../../etc/passwd")

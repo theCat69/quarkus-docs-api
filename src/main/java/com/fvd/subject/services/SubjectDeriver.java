@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
@@ -270,6 +271,15 @@ public class SubjectDeriver {
                 docCount,
                 meta.keywords
         ));
+    }
+
+    /**
+     * Returns the set of valid subject names from the cached metadata map.
+     *
+     * @return immutable set of all defined subject names
+     */
+    public Set<String> getValidSubjectNames() {
+        return Set.copyOf(cachedMetadataMap.keySet());
     }
 
     private Map<String, SubjectMetadata> buildMetadataMap() {

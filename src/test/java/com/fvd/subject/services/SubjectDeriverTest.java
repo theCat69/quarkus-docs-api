@@ -12,6 +12,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -291,6 +292,18 @@ class SubjectDeriverTest {
         Optional<Subject> subject = subjectDeriver.getSubject("  ");
 
         assertThat(subject).isEmpty();
+    }
+
+    // --- getValidSubjectNames tests ---
+
+    @Test
+    void getValidSubjectNamesReturnsAllDefinedSubjects() {
+        Set<String> validNames = subjectDeriver.getValidSubjectNames();
+
+        assertThat(validNames).containsExactlyInAnyOrder(
+                "getting-started", "core-concepts", "rest-apis", "data-persistence",
+                "security", "messaging", "cloud", "observability", "testing",
+                "tooling", "extensions", "misc");
     }
 
     // --- Document count tracking ---

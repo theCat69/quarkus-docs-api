@@ -126,6 +126,9 @@ class QuarkiverseIntegrationTest {
     void quarkiverseDocsNotInVersionedSearch() {
         buildQuarkiverseIndexes();
 
+        // Seed version 3.27 cache directory so version validation passes
+        docStore.write("3.27", "_placeholder.adoc", "= Placeholder");
+
         // Search for 3.27 should not return quarkiverse results
         given()
                 .queryParam("version", "3.27")

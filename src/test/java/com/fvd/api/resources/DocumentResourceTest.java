@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
@@ -188,5 +189,41 @@ class DocumentResourceTest extends AbstractApiResourceTest {
                                 List.of(new KeywordScore("security", 12)))))
         ));
         keywordIndexStore.write("3.27", index);
+    }
+
+    @Test
+    void testGetDocumentByPathReturns400ForUnknownVersion() {
+        given()
+                .queryParam("version", "nonexistent")
+                .queryParam("path", "security.adoc")
+                .when().get("/api/documents")
+                .then()
+                .statusCode(400)
+                .body("detail", containsString("Unknown version"));
+    }
+
+    @Test
+    void testSearchDocumentsReturns400ForUnknownVersion() {
+        given()
+                .queryParam("version", "nonexistent")
+                .queryParam("keywords", "security")
+                .when().get("/api/documents")
+                .then()
+                .statusCode(400)
+                .body("detail", containsString("Unknown version"));
+    }
+
+    @Test
+    void testSearchDocumentsReturns400ForUnknownSubject() {
+        seedDocFile();
+        seedKeywordIndex();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .queryParam("subject", "nonexistent-subject")
+                .when().get("/api/documents")
+                .then()
+                .statusCode(400)
+                .body("detail", containsString("Unknown subject"));
     }
 }

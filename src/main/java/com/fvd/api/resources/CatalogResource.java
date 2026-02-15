@@ -2,6 +2,7 @@ package com.fvd.api.resources;
 
 import com.fvd.api.dto.CatalogResponse;
 import com.fvd.api.services.CatalogService;
+import com.fvd.cache.services.CacheService;
 import com.fvd.common.resources.ProblemDetail;
 import com.fvd.common.validators.InputValidator;
 import jakarta.ws.rs.GET;
@@ -27,6 +28,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 public class CatalogResource {
 
     private final CatalogService catalogService;
+    private final CacheService cacheService;
 
     @GET
     @Operation(
@@ -55,6 +57,7 @@ public class CatalogResource {
             )
             @QueryParam("version") String version) {
         version = InputValidator.resolveVersion(version);
+        InputValidator.validateVersionExists(version, cacheService.listCachedVersions());
         return catalogService.getCatalog(version);
     }
 }
