@@ -77,6 +77,39 @@ class SubjectDeriverTest {
                 .isEqualTo(expectedSubject);
     }
 
+    @ParameterizedTest(name = "[{index}] bare filename {0} → {1}")
+    @CsvSource({
+            "security-overview.adoc,        security",
+            "getting-started.adoc,          getting-started",
+            "rest-json-guide.adoc,          rest-apis",
+            "hibernate-orm.adoc,            data-persistence",
+            "config-reference.adoc,         core-concepts",
+            "kafka-guide.adoc,              messaging",
+            "kubernetes-deploy.adoc,        cloud",
+            "health-check.adoc,             observability",
+            "test-coverage.adoc,            testing",
+            "testing-components.adoc,       testing",
+            "cli-tooling.adoc,              tooling",
+            "extension-development.adoc,    extensions",
+            "miscellaneous-topic.adoc,      misc"
+    })
+    void deriveSubjectReturnsExpectedSubjectForBareFilename(String filename, String expectedSubject) {
+        assertThat(subjectDeriver.deriveSubject(filename))
+                .isEqualTo(expectedSubject);
+    }
+
+    @ParameterizedTest(name = "[{index}] bare filename {0} should NOT false-positive → expects {1}")
+    @CsvSource({
+            "restricted-access.adoc,        misc",
+            "client-reference.adoc,         misc",
+            "identity-provider.adoc,        misc",
+            "auto-deploy.adoc,              misc"
+    })
+    void deriveSubjectDoesNotFalsePositiveForBareFilename(String filename, String expectedSubject) {
+        assertThat(subjectDeriver.deriveSubject(filename))
+                .isEqualTo(expectedSubject);
+    }
+
     // --- Edge cases ---
 
     static Stream<Arguments> nullEmptyBlankInputs() {

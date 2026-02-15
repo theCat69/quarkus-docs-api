@@ -79,17 +79,17 @@ public class SubjectDeriver {
         
         // Default patterns in priority order
         Map<String, String> defaults = new LinkedHashMap<>();
-        defaults.put(".*/(getting-started|quickstart|tutorial).*", "getting-started");
-        defaults.put(".*/cdi.*|.*/lifecycle.*|.*/config(uration)?.*", "core-concepts");
-        defaults.put(".*/rest.*|.*/resteasy.*|.*/json.*|.*/jaxrs.*", "rest-apis");
-        defaults.put(".*/hibernate.*|.*/panache.*|.*/datasource.*|.*/database.*|.*/jpa.*|.*/jdbc.*", "data-persistence");
-        defaults.put(".*/security.*|.*/auth.*|.*/oidc.*|.*/jwt.*|.*/oauth.*|.*/keycloak.*", "security");
-        defaults.put(".*/kafka.*|.*/amqp.*|.*/messaging.*|.*/reactive-messaging.*", "messaging");
-        defaults.put(".*/kubernetes.*|.*/openshift.*|.*/docker.*|.*/container.*|.*/cloud.*", "cloud");
-        defaults.put(".*/metrics.*|.*/health.*|.*/tracing.*|.*/logging.*|.*/opentelemetry.*|.*/micrometer.*", "observability");
-        defaults.put(".*/test.*|.*/mock.*|.*/junit.*", "testing");
-        defaults.put(".*/cli.*|.*/dev-services.*|.*/ide.*|.*/maven.*|.*/gradle.*", "tooling");
-        defaults.put(".*/extension.*|.*/quarkiverse.*", "extensions");
+        defaults.put("(^|.*/)(getting-started|quickstart|tutorial).*", "getting-started");
+        defaults.put("(^|.*/)cdi[-.].*|(^|.*/)lifecycle.*|(^|.*/)config(uration)?[-.].*", "core-concepts");
+        defaults.put("(^|.*/)rest[-.].*|(^|.*/)resteasy.*|(^|.*/)json[-.].*|(^|.*/)jaxrs.*", "rest-apis");
+        defaults.put("(^|.*/)hibernate.*|(^|.*/)panache.*|(^|.*/)datasource.*|(^|.*/)database.*|(^|.*/)jpa[-.].*|(^|.*/)jdbc[-.].*", "data-persistence");
+        defaults.put("(^|.*/)security.*|(^|.*/)auth[-.].*|(^|.*/)oidc.*|(^|.*/)jwt[-.].*|(^|.*/)oauth.*|(^|.*/)keycloak.*", "security");
+        defaults.put("(^|.*/)kafka.*|(^|.*/)amqp.*|(^|.*/)messaging.*|(^|.*/)reactive-messaging.*", "messaging");
+        defaults.put("(^|.*/)kubernetes.*|(^|.*/)openshift.*|(^|.*/)docker.*|(^|.*/)container[-.].*|(^|.*/)cloud[-.].*", "cloud");
+        defaults.put("(^|.*/)metrics.*|(^|.*/)health[-.].*|(^|.*/)tracing.*|(^|.*/)logging.*|(^|.*/)opentelemetry.*|(^|.*/)micrometer.*", "observability");
+        defaults.put("(^|.*/)test(ing)?[-.].*|(^|.*/)mock[-.].*|(^|.*/)junit.*", "testing");
+        defaults.put("(^|.*/)cli[-.].*|(^|.*/)dev-services.*|(^|.*/)ide[-.].*|(^|.*/)maven.*|(^|.*/)gradle.*", "tooling");
+        defaults.put("(^|.*/)extension.*|(^|.*/)quarkiverse.*", "extensions");
 
         for (Map.Entry<String, String> entry : defaults.entrySet()) {
             try {
