@@ -1,5 +1,6 @@
 package com.fvd.subject.services;
 
+import com.fvd.asciidocs.model.DocumentMetadata;
 import com.fvd.subject.Subject;
 import com.fvd.subject.SubjectConfig;
 import jakarta.annotation.PostConstruct;
@@ -37,6 +38,92 @@ import java.util.regex.Pattern;
 public class SubjectDeriver {
 
     public static final String DEFAULT_SUBJECT = "misc";
+
+    private static final Map<String, String> CATEGORY_TO_SUBJECT = Map.ofEntries(
+            Map.entry("getting-started", "getting-started"),
+            Map.entry("core", "core-concepts"),
+            Map.entry("web", "rest-apis"),
+            Map.entry("data", "data-persistence"),
+            Map.entry("security", "security"),
+            Map.entry("messaging", "messaging"),
+            Map.entry("cloud", "cloud"),
+            Map.entry("observability", "observability"),
+            Map.entry("tooling", "tooling"),
+            Map.entry("compatibility", "core-concepts"),
+            Map.entry("writing-extensions", "extensions"),
+            Map.entry("miscellaneous", "misc"),
+            Map.entry("integration", "messaging"),
+            Map.entry("serialization", "rest-apis"),
+            Map.entry("alternative-languages", "core-concepts"),
+            Map.entry("business-automation", "extensions")
+    );
+
+    private static final Map<String, String> TOPIC_KEYWORDS_TO_SUBJECT = Map.ofEntries(
+            Map.entry("rest", "rest-apis"),
+            Map.entry("resteasy", "rest-apis"),
+            Map.entry("http", "rest-apis"),
+            Map.entry("servlet", "rest-apis"),
+            Map.entry("websocket", "rest-apis"),
+            Map.entry("graphql", "rest-apis"),
+            Map.entry("security", "security"),
+            Map.entry("oidc", "security"),
+            Map.entry("jwt", "security"),
+            Map.entry("oauth", "security"),
+            Map.entry("keycloak", "security"),
+            Map.entry("auth", "security"),
+            Map.entry("hibernate", "data-persistence"),
+            Map.entry("panache", "data-persistence"),
+            Map.entry("jpa", "data-persistence"),
+            Map.entry("jdbc", "data-persistence"),
+            Map.entry("datasource", "data-persistence"),
+            Map.entry("database", "data-persistence"),
+            Map.entry("sql", "data-persistence"),
+            Map.entry("nosql", "data-persistence"),
+            Map.entry("mongodb", "data-persistence"),
+            Map.entry("redis", "data-persistence"),
+            Map.entry("kafka", "messaging"),
+            Map.entry("amqp", "messaging"),
+            Map.entry("messaging", "messaging"),
+            Map.entry("reactive-messaging", "messaging"),
+            Map.entry("rabbitmq", "messaging"),
+            Map.entry("pulsar", "messaging"),
+            Map.entry("kubernetes", "cloud"),
+            Map.entry("openshift", "cloud"),
+            Map.entry("docker", "cloud"),
+            Map.entry("container", "cloud"),
+            Map.entry("aws", "cloud"),
+            Map.entry("azure", "cloud"),
+            Map.entry("gcp", "cloud"),
+            Map.entry("metrics", "observability"),
+            Map.entry("health", "observability"),
+            Map.entry("tracing", "observability"),
+            Map.entry("opentelemetry", "observability"),
+            Map.entry("micrometer", "observability"),
+            Map.entry("logging", "observability"),
+            Map.entry("test", "testing"),
+            Map.entry("junit", "testing"),
+            Map.entry("mock", "testing"),
+            Map.entry("testing", "testing"),
+            Map.entry("cdi", "core-concepts"),
+            Map.entry("config", "core-concepts"),
+            Map.entry("lifecycle", "core-concepts"),
+            Map.entry("injection", "core-concepts"),
+            Map.entry("bean", "core-concepts"),
+            Map.entry("native", "core-concepts"),
+            Map.entry("graalvm", "core-concepts"),
+            Map.entry("getting-started", "getting-started"),
+            Map.entry("quickstart", "getting-started"),
+            Map.entry("tutorial", "getting-started"),
+            Map.entry("extension", "extensions"),
+            Map.entry("quarkiverse", "extensions"),
+            Map.entry("cli", "tooling"),
+            Map.entry("dev-services", "tooling"),
+            Map.entry("devmode", "tooling"),
+            Map.entry("ide", "tooling"),
+            Map.entry("maven", "tooling"),
+            Map.entry("gradle", "tooling"),
+            Map.entry("quarkus-cli", "tooling")
+    );
 
     private final SubjectConfig config;
 
@@ -134,6 +221,42 @@ public class SubjectDeriver {
      * @return the derived subject name
      */
     public String deriveSubject(String filePath) {
+        return deriveSubject(filePath, (DocumentMetadata) null);
+    }
+
+    /**
+     * Derive subjects for multiple file paths and track counts.
+     * 
+     * @param filePaths the list of file paths
+     * @return a map from file path to subject name
+     */
+    public Map<String, String> deriveSubjects(List<String> filePaths) {
+        Map<String, String> result = new HashMap<>();
+        for (String filePath : filePaths) {
+            String subject = deriveSubject(filePath);
+            result.put(filePath, subject);
+        }
+        return result;
+    }
+
+    /**
+     * Derive subject using document metadata (primary) with path-regex fallback.
+     *
+     * <p>Uses the following precedence:
+     * <ol>
+     *   <li>Exact path overrides (configuration)</li>
+     *   <li>Glob pattern overrides (configuration)</li>
+     *   <li>{@code :categories:} metadata mapping</li>
+     *   <li>{@code :topics:} metadata analysis (majority vote)</li>
+     *   <li>Regex patterns (first match wins)</li>
+     *   <li>Default to "misc"</li>
+     * </ol>
+     *
+     * @param filePath the file path to categorize (relative path)
+     * @param metadata the document metadata (may be null or empty)
+     * @return the derived subject name
+     */
+    public String deriveSubject(String filePath, DocumentMetadata metadata) {
         if (!config.enabled()) {
             return DEFAULT_SUBJECT;
         }
@@ -164,7 +287,27 @@ public class SubjectDeriver {
             }
         }
 
-        // 3. Check regex patterns (in order)
+        // 3. Check :categories: metadata
+        if (metadata != null && metadata.hasCategories()) {
+            String subject = mapCategoryToSubject(metadata.getCategories());
+            if (subject != null) {
+                log.trace("Path '{}' classified by categories {} -> '{}'",
+                        filePath, metadata.getCategories(), subject);
+                return subject;
+            }
+        }
+
+        // 4. Check :topics: metadata
+        if (metadata != null && metadata.hasTopics()) {
+            String subject = mapTopicsToSubject(metadata.getTopics());
+            if (subject != null) {
+                log.trace("Path '{}' classified by topics {} -> '{}'",
+                        filePath, metadata.getTopics(), subject);
+                return subject;
+            }
+        }
+
+        // 5. Check regex patterns (in order)
         for (Map.Entry<String, Pattern> entry : compiledPatterns.entrySet()) {
             if (entry.getValue().matcher(normalizedPath).matches()) {
                 String subject = patternToSubject.get(entry.getKey());
@@ -173,21 +316,28 @@ public class SubjectDeriver {
             }
         }
 
-        // 4. Default
+        // 6. Default
         log.trace("Path '{}' did not match any pattern -> '{}'", filePath, DEFAULT_SUBJECT);
         return DEFAULT_SUBJECT;
     }
 
     /**
-     * Derive subjects for multiple file paths and track counts.
-     * 
+     * Derive subjects for multiple file paths using metadata when available.
+     *
      * @param filePaths the list of file paths
+     * @param metadataByPath map of file path to DocumentMetadata
      * @return a map from file path to subject name
      */
-    public Map<String, String> deriveSubjects(List<String> filePaths) {
+    public Map<String, String> deriveSubjects(List<String> filePaths,
+                                               Map<String, DocumentMetadata> metadataByPath) {
+        if (filePaths == null || filePaths.isEmpty()) {
+            return Map.of();
+        }
+
         Map<String, String> result = new HashMap<>();
         for (String filePath : filePaths) {
-            String subject = deriveSubject(filePath);
+            DocumentMetadata metadata = metadataByPath.get(filePath);
+            String subject = deriveSubject(filePath, metadata);
             result.put(filePath, subject);
         }
         return result;
@@ -379,6 +529,37 @@ public class SubjectDeriver {
         ));
         
         return defaults;
+    }
+
+    private String mapCategoryToSubject(List<String> categories) {
+        for (String category : categories) {
+            String subject = CATEGORY_TO_SUBJECT.get(category.toLowerCase().trim());
+            if (subject != null) {
+                return subject;
+            }
+        }
+        return null;
+    }
+
+    private String mapTopicsToSubject(List<String> topics) {
+        // Count votes per subject using LinkedHashMap to preserve insertion order
+        // for deterministic tie-breaking
+        Map<String, Integer> votes = new LinkedHashMap<>();
+        for (String topic : topics) {
+            String subject = TOPIC_KEYWORDS_TO_SUBJECT.get(topic.toLowerCase().trim());
+            if (subject != null) {
+                votes.merge(subject, 1, Integer::sum);
+            }
+        }
+        if (votes.isEmpty()) {
+            return null;
+        }
+        // Return subject with most votes; on tie, the subject that was first encountered
+        // in topic iteration order wins (deterministic via LinkedHashMap insertion order)
+        return votes.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(null);
     }
 
     private String normalizePath(String filePath) {
