@@ -83,6 +83,35 @@ public class AsciiDocCleaner {
     // Multiple blank lines → single blank line
     private static final Pattern MULTI_BLANK = Pattern.compile("\\n{3,}");
 
+    // --- Description-specific patterns ---
+
+    // Admonition block delimiters: ====...==== on its own line
+    private static final Pattern DESC_ADMONITION_BLOCK_DELIM = Pattern.compile(
+            "^={4,}\\s*$", Pattern.MULTILINE);
+
+    // Inline admonition prefixes: WARNING: text, TIP: text, etc. at line start
+    private static final Pattern DESC_INLINE_ADMONITION = Pattern.compile(
+            "^(WARNING|TIP|NOTE|IMPORTANT|CAUTION):\\s*", Pattern.MULTILINE);
+
+    // Passthrough macros: pass:[content], stem:[content]
+    private static final Pattern DESC_PASSTHROUGH_MACRO = Pattern.compile(
+            "(?:pass|stem):\\[[^\\]]*\\]");
+
+    // Bold: *text* or **text**
+    private static final Pattern DESC_BOLD = Pattern.compile(
+            "\\*{1,2}([^*]+)\\*{1,2}");
+
+    // Italic: _text_ or __text__
+    private static final Pattern DESC_ITALIC = Pattern.compile(
+            "_{1,2}([^_]+)_{1,2}");
+
+    // Monospace: `text`
+    private static final Pattern DESC_MONOSPACE = Pattern.compile(
+            "`([^`]+)`");
+
+    // Whitespace normalization: multiple spaces/newlines → single space
+    private static final Pattern DESC_WHITESPACE = Pattern.compile("\\s+");
+
     public static String clean(String text) {
         if (text == null) {
             return "";
@@ -141,6 +170,30 @@ public class AsciiDocCleaner {
 
         // 14. Collapse multiple blank lines (cleanup — always last)
         result = MULTI_BLANK.matcher(result).replaceAll("\n\n");
+        return result.trim();
+    }
+
+    /**
+     * Cleans AsciiDoc markup from description text.
+     * Applies all standard cleanup via {@link #clean(String)} plus additional
+     * description-specific patterns: admonition block delimiters, passthrough macros,
+     * inline formatting, and whitespace normalization.
+     *
+     * @param text the raw description text
+     * @return cleaned plain text suitable for API responses
+     */
+    public static String cleanDescription(String text) {
+        if (text == null) {
+            return "";
+        }
+        String result = clean(text);
+        result = DESC_ADMONITION_BLOCK_DELIM.matcher(result).replaceAll("");
+        result = DESC_INLINE_ADMONITION.matcher(result).replaceAll("");
+        result = DESC_PASSTHROUGH_MACRO.matcher(result).replaceAll("");
+        result = DESC_BOLD.matcher(result).replaceAll("$1");
+        result = DESC_ITALIC.matcher(result).replaceAll("$1");
+        result = DESC_MONOSPACE.matcher(result).replaceAll("$1");
+        result = DESC_WHITESPACE.matcher(result).replaceAll(" ");
         return result.trim();
     }
 }

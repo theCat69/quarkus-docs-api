@@ -3,7 +3,7 @@ package com.fvd.api.services;
 import com.fvd.api.dto.RelatedDocumentRef;
 import com.fvd.api.dto.RelatedDocumentResponse;
 import com.fvd.asciidocs.model.DocumentMetadata;
-import com.fvd.common.utils.AsciiDocCleaner;
+import com.fvd.common.utils.DescriptionExtractor;
 import com.fvd.common.utils.DocumentTitleExtractor;
 import com.fvd.common.utils.FilterUtils;
 import com.fvd.docs.exceptions.DocNotFoundException;
@@ -24,8 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Service for finding documents related to a given source document
@@ -35,8 +33,6 @@ import java.util.regex.Pattern;
 @ApplicationScoped
 @RequiredArgsConstructor
 public class RelatedDocumentService {
-
-    private static final Pattern DESCRIPTION_PATTERN = Pattern.compile("^:description:\\s*(.+)$", Pattern.MULTILINE);
 
     private final SearchService searchService;
     private final DocStore docStore;
@@ -125,7 +121,7 @@ public class RelatedDocumentService {
             if (contentOpt.isPresent()) {
                 String content = contentOpt.get();
                 title = DocumentTitleExtractor.extractTitle(content);
-                description = extractDescription(content);
+                description = DescriptionExtractor.extract(content);
             }
 
             results.add(new RelatedDocumentRef(
@@ -190,36 +186,6 @@ public class RelatedDocumentService {
                 .limit(maxKeywords)
                 .map(Map.Entry::getKey)
                 .toList();
-    }
-
-    private String extractDescription(String content) {
-        Matcher matcher = DESCRIPTION_PATTERN.matcher(content);
-        if (matcher.find()) {
-            return AsciiDocCleaner.clean(matcher.group(1));
-        }
-        // Fall back to first paragraph after title
-        String[] lines = content.split("\n");
-        StringBuilder desc = new StringBuilder();
-        boolean foundTitle = false;
-        for (String line : lines) {
-            if (line.startsWith("= ")) {
-                foundTitle = true;
-                continue;
-            }
-            if (foundTitle && !line.isBlank() && !line.startsWith(":") && !line.startsWith("=")) {
-                if (!desc.isEmpty()) {
-                    desc.append(" ");
-                }
-                desc.append(line.trim());
-                if (desc.length() > 200) {
-                    break;
-                }
-            }
-            if (foundTitle && line.startsWith("==")) {
-                break;
-            }
-        }
-        return AsciiDocCleaner.clean(desc.toString());
     }
 
     private record CandidateResult(String path, String extension, String subject,

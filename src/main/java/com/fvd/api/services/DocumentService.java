@@ -6,7 +6,7 @@ import com.fvd.api.dto.CodeBlockInfo;
 import com.fvd.api.dto.DocumentResponse;
 import com.fvd.api.dto.DocumentSearchResponse;
 import com.fvd.api.dto.SectionInfo;
-import com.fvd.common.utils.AsciiDocCleaner;
+import com.fvd.common.utils.DescriptionExtractor;
 import com.fvd.common.utils.DocumentTitleExtractor;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
@@ -41,7 +41,6 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class DocumentService {
 
-    private static final Pattern DESCRIPTION_PATTERN = Pattern.compile("^:description:\\s*(.+)$", Pattern.MULTILINE);
     private static final Pattern SECTION_HEADER = Pattern.compile("^(={2,5})\\s+(.+)$");
 
     private final DocStore docStore;
@@ -131,7 +130,7 @@ public class DocumentService {
 
         String content = contentOpt.get();
         String title = DocumentTitleExtractor.extractTitle(content);
-        String description = extractDescription(content);
+        String description = DescriptionExtractor.extract(content);
         String extension = findExtensionForPath(version, path);
         String subject = metadataResolver.resolveSubject(version, path);
 
@@ -174,7 +173,7 @@ public class DocumentService {
 
             if (brief) {
                 String title = DocumentTitleExtractor.extractTitle(contentOpt.get());
-                String description = extractDescription(contentOpt.get());
+                String description = DescriptionExtractor.extract(contentOpt.get());
                 results.add(new DocumentResponse(
                         title, description, fileResult.path, derivedSubject,
                         fileResult.extension, null, null, matchedKws, fileResult.score));
@@ -227,7 +226,7 @@ public class DocumentService {
         String extension = findExtensionForPath(version, path);
         String subject = metadataResolver.resolveSubject(version, path);
         String title = DocumentTitleExtractor.extractTitle(content);
-        String description = extractDescription(content);
+        String description = DescriptionExtractor.extract(content);
         List<SectionInfo> sections = parseSections(content);
         List<CodeBlockInfo> codeBlocks = parseCodeBlocks(content);
 
@@ -239,36 +238,6 @@ public class DocumentService {
         }
 
         return parsed;
-    }
-
-    private String extractDescription(String content) {
-        Matcher matcher = DESCRIPTION_PATTERN.matcher(content);
-        if (matcher.find()) {
-            return AsciiDocCleaner.clean(matcher.group(1));
-        }
-        // Fall back to first paragraph after title
-        String[] lines = content.split("\n");
-        StringBuilder desc = new StringBuilder();
-        boolean foundTitle = false;
-        for (String line : lines) {
-            if (line.startsWith("= ")) {
-                foundTitle = true;
-                continue;
-            }
-            if (foundTitle && !line.isBlank() && !line.startsWith(":") && !line.startsWith("=")) {
-                if (!desc.isEmpty()) {
-                    desc.append(" ");
-                }
-                desc.append(line.trim());
-                if (desc.length() > 200) {
-                    break;
-                }
-            }
-            if (foundTitle && line.startsWith("==")) {
-                break;
-            }
-        }
-        return AsciiDocCleaner.clean(desc.toString());
     }
 
     private List<SectionInfo> parseSections(String content) {
