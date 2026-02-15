@@ -36,6 +36,7 @@ public SomeResponse example(
 - Quick search responses use `QuickSearchResponse` with lightweight `SearchResultRef` items.
 - Code sample responses use `CodeSampleSearchResponse` with `CodeSampleResult` items.
 - Search syntax responses use `SearchSyntaxResponse` with static documentation of supported search operators, examples, and tips.
+- Meta responses use `MetaResponse` with `apiInfo`, `endpoints`, `searchSyntax`, `filters`, `pagination`.
 
 ## Code Documentation
 

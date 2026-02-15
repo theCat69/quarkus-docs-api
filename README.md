@@ -64,6 +64,12 @@ All endpoints return JSON. The `version` parameter is **optional** on every endp
 |--------|------|---------|----------------|
 | `GET` | `/api/catalog` | List available subjects, extensions, and versions | `version` |
 
+### Meta
+
+| Method | Path | Summary | Key Parameters |
+|--------|------|---------|----------------|
+| `GET` | `/api/meta` | API capabilities and self-discovery for AI agents | _(none)_ |
+
 ## Quick Start
 
 ### Prerequisites
@@ -240,6 +246,12 @@ curl "http://localhost:8080/api/catalog?version=main"
   ],
   "versions": ["main", "3.27", "3.21"]
 }
+```
+
+### Get API capabilities and self-discovery information
+
+```bash
+curl "http://localhost:8080/api/meta"
 ```
 
 ### Get search syntax documentation
