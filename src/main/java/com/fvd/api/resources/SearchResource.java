@@ -93,7 +93,17 @@ public class SearchResource {
                     required = false,
                     example = "0"
             )
-            @QueryParam("offset") Integer offset) {
+            @QueryParam("offset") Integer offset,
+
+            @Parameter(
+                    description = "Comma-separated list of fields to include in each result item. " +
+                            "When omitted, all fields are returned. " +
+                            "Invalid field names return 400 with the list of available fields. " +
+                            "Example: 'title,path,score'",
+                    required = false,
+                    example = "title,path,score"
+            )
+            @QueryParam("fields") String fields) {
 
         SearchParams params = SearchParams.fromRaw(version, keywords, subject, extension, limit, offset);
         InputValidator.validateVersionExists(params.version(), cacheService.listCachedVersions());

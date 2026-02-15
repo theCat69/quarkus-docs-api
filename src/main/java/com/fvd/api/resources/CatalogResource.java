@@ -55,7 +55,17 @@ public class CatalogResource {
                     example = "main",
                     schema = @Schema(defaultValue = "main")
             )
-            @QueryParam("version") String version) {
+            @QueryParam("version") String version,
+
+            @Parameter(
+                    description = "Comma-separated list of fields to include in the response. " +
+                            "When omitted, all fields are returned. " +
+                            "Invalid field names return 400 with the list of available fields. " +
+                            "Example: 'subjects,versions'",
+                    required = false,
+                    example = "subjects,versions"
+            )
+            @QueryParam("fields") String fields) {
         version = InputValidator.resolveVersion(version);
         InputValidator.validateVersionExists(version, cacheService.listCachedVersions());
         return catalogService.getCatalog(version);

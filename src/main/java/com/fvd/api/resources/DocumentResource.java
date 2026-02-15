@@ -136,7 +136,17 @@ public class DocumentResource {
                     example = "true",
                     schema = @Schema(defaultValue = "false")
             )
-            @QueryParam("brief") Boolean brief) {
+            @QueryParam("brief") Boolean brief,
+
+            @Parameter(
+                    description = "Comma-separated list of fields to include in each result item. " +
+                            "When omitted, all fields are returned. " +
+                            "Invalid field names return 400 with the list of available fields. " +
+                            "Example: 'title,path,score'",
+                    required = false,
+                    example = "title,path,score"
+            )
+            @QueryParam("fields") String fields) {
 
         // Path mode takes precedence
         if (path != null && !path.isBlank()) {
@@ -182,7 +192,18 @@ public class DocumentResource {
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     @APIResponse(responseCode = "404", description = "All requested documents not found",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
-    public BatchDocumentResponse getDocumentsBatch(BatchDocumentRequest request) {
+    public BatchDocumentResponse getDocumentsBatch(
+            BatchDocumentRequest request,
+
+            @Parameter(
+                    description = "Comma-separated list of fields to include in the response. " +
+                            "When omitted, all fields are returned. " +
+                            "Invalid field names return 400 with the list of available fields. " +
+                            "Example: 'documents,retrievedCount'",
+                    required = false,
+                    example = "documents,retrievedCount"
+            )
+            @QueryParam("fields") String fields) {
         if (request == null) {
             throw new InvalidInputException("Request body is required");
         }

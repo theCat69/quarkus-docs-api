@@ -21,7 +21,12 @@ public SomeResponse example(
                 required = false, example = "main", schema = @Schema(defaultValue = "main"))
         @QueryParam("version") String version,
         @Parameter(description = "Description of the parameter", required = true, example = "example-value")
-        @QueryParam("param") String param) {
+        @QueryParam("param") String param,
+        @Parameter(description = "Comma-separated list of fields to include in each result item. "
+                + "When omitted, all fields are returned. "
+                + "Invalid field names return 400 with the list of available fields.",
+                required = false, example = "title,path,score")
+        @QueryParam("fields") String fields) {
     // ...
 }
 ```
@@ -29,6 +34,7 @@ public SomeResponse example(
 ## Response Format Standards
 
 - All API responses are JSON (`MediaType.APPLICATION_JSON`).
+- All item-level DTOs are annotated with `@JsonFilter("fieldSelector")` to support dynamic field selection via the `fields` query parameter. A default `serializeAll()` filter is registered at startup so responses are unaffected when `fields` is omitted. Envelope fields (`results`, `totalCount`, `returnedCount`) are never filtered.
 - Error responses use `ProblemDetail` with RFC 9457 fields: `type`, `title`, `status`, `detail`, `instance`.
 - Search/listing responses extend `PaginatedResponse<T>` with `results`, `totalCount`, `limit`, `offset`, `queriedKeywords`, and `searchTimeMs`.
 - Document responses use `DocumentResponse` with `path`, `title`, `description`, `subject`, `extension`, `matchedKeywords`, `score`, `sections`, and `codeBlocks`.

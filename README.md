@@ -34,15 +34,15 @@ Quarkiverse playbook ──► Extension zips ──► Merge & index
 
 ## API Endpoints
 
-All endpoints return JSON. The `version` parameter is **optional** on every endpoint and defaults to `main` if omitted. Invalid `version` or `subject` values return `400` with a list of valid options.
+All endpoints return JSON. The `version` parameter is **optional** on every endpoint and defaults to `main` if omitted. The `fields` parameter is **optional** on all data endpoints and accepts a comma-separated list of field names to include in each result item (e.g., `fields=title,path,score`). When omitted, all fields are returned. Invalid field names return `400` with the list of available fields. Invalid `version` or `subject` values return `400` with a list of valid options.
 
 ### Documents
 
 | Method | Path | Summary | Key Parameters |
 |--------|------|---------|----------------|
-| `GET` | `/api/documents` | Get document by path or search by keywords | `version`, `path`, `keywords` (at least one of `path`/`keywords` required), `subject`, `extension`, `brief`, `limit`, `offset` |
-| `GET` | `/api/documents/related` | Find documents related to a given document (ranked by keyword overlap similarity) | `version`, `path` (required), `limit` |
-| `POST` | `/api/documents/batch` | Retrieve multiple documents by path in a single request | JSON body: `version`, `paths` (required, max `app.batch.max-size`), `brief` |
+| `GET` | `/api/documents` | Get document by path or search by keywords | `version`, `path`, `keywords` (at least one of `path`/`keywords` required), `subject`, `extension`, `brief`, `fields`, `limit`, `offset` |
+| `GET` | `/api/documents/related` | Find documents related to a given document (ranked by keyword overlap similarity) | `version`, `path` (required), `fields`, `limit` |
+| `POST` | `/api/documents/batch` | Retrieve multiple documents by path in a single request | JSON body: `version`, `paths` (required, max `app.batch.max-size`), `brief`, `fields` |
 
 - **Path mode:** provide `path` to retrieve a single document with full structured content (sections, code blocks).
 - **Search mode:** provide `keywords` to search documents by relevance. Add `brief=true` for lightweight metadata only (title, description, subject, score — no sections or code blocks).
@@ -51,20 +51,20 @@ All endpoints return JSON. The `version` parameter is **optional** on every endp
 
 | Method | Path | Summary | Key Parameters |
 |--------|------|---------|----------------|
-| `GET` | `/api/search` | Quick discovery search returning lightweight references | `version`, `keywords` (required), `subject`, `extension`, `limit`, `offset` |
+| `GET` | `/api/search` | Quick discovery search returning lightweight references | `version`, `keywords` (required), `subject`, `extension`, `fields`, `limit`, `offset` |
 | `GET` | `/api/search/syntax` | Returns search syntax documentation (operators, examples, tips) | _(none)_ |
 
 ### Code Samples
 
 | Method | Path | Summary | Key Parameters |
 |--------|------|---------|----------------|
-| `GET` | `/api/code-samples` | Search code samples by keywords | `version`, `keywords` (required), `language`, `subject`, `extension`, `limit`, `offset` |
+| `GET` | `/api/code-samples` | Search code samples by keywords | `version`, `keywords` (required), `language`, `subject`, `extension`, `fields`, `limit`, `offset` |
 
 ### Catalog
 
 | Method | Path | Summary | Key Parameters |
 |--------|------|---------|----------------|
-| `GET` | `/api/catalog` | List available subjects, extensions, and versions | `version` |
+| `GET` | `/api/catalog` | List available subjects, extensions, and versions | `version`, `fields` |
 
 ### Meta
 
@@ -268,6 +268,18 @@ curl "http://localhost:8080/api/catalog?version=main"
   "versions": ["main", "3.27", "3.21"]
 }
 ```
+
+### Field selection (reduce response size)
+
+```bash
+# Search returning only title and path (saves tokens for AI agents)
+curl "http://localhost:8080/api/search?keywords=security&fields=title,path"
+
+# Code samples returning only content and language
+curl "http://localhost:8080/api/code-samples?keywords=rest+endpoint&fields=content,language"
+```
+
+Envelope fields (`results`, `totalCount`, `returnedCount`) are always present in paginated responses — `fields` filters only the item-level properties inside each result.
 
 ### Get API capabilities and self-discovery information
 

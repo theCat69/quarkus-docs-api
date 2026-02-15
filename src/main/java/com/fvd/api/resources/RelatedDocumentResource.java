@@ -76,7 +76,17 @@ public class RelatedDocumentResource {
 
             @Parameter(description = "Maximum number of related documents to return (default 5, max 20)",
                     required = false, example = "5")
-            @QueryParam("limit") Integer limit) {
+            @QueryParam("limit") Integer limit,
+
+            @Parameter(
+                    description = "Comma-separated list of fields to include in each result item. " +
+                            "When omitted, all fields are returned. " +
+                            "Invalid field names return 400 with the list of available fields. " +
+                            "Example: 'path,title,similarityScore'",
+                    required = false,
+                    example = "path,title,similarityScore"
+            )
+            @QueryParam("fields") String fields) {
 
         String resolvedVersion = InputValidator.resolveVersion(version);
         InputValidator.validateVersionExists(resolvedVersion, cacheService.listCachedVersions());
