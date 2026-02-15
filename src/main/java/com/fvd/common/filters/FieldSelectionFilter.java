@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 import com.fvd.common.config.FieldSelectionObjectMapperCustomizer;
 import com.fvd.common.validators.FieldSelectionValidator;
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import jakarta.annotation.Priority;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
@@ -23,6 +25,7 @@ import java.util.Set;
  */
 @Slf4j
 @Provider
+@Priority(Priorities.ENTITY_CODER + 100)
 @RegisterForReflection
 public class FieldSelectionFilter implements ContainerResponseFilter {
 

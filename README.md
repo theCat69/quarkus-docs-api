@@ -134,6 +134,9 @@ curl "http://localhost:8080/api/catalog"
 | `app.quarkiverse.playbook-repo` | `quarkiverse/quarkiverse-docs` | Repository containing the Antora playbook |
 | `app.quarkiverse.playbook-branch` | `main` | Branch for the playbook repository |
 | `app.quarkiverse.download-concurrency` | `4` | Max concurrent extension downloads |
+| `app.cache.http.max-age.versioned` | `3600` | HTTP Cache-Control max-age for versioned content (seconds) |
+| `app.cache.http.max-age.main` | `900` | HTTP Cache-Control max-age for main/latest content (seconds) |
+| `app.cache.http.max-age.catalog` | `1800` | HTTP Cache-Control max-age for catalog responses (seconds) |
 | `quarkus.datasource.db-kind` | `sqlite` | Database type (SQLite) |
 | `quarkus.datasource.jdbc.url` | `jdbc:sqlite:.cache/index.db` | SQLite database file location |
 | `quarkus.rest-client.github-api-client.url` | `https://api.github.com/repos` | GitHub API base URL |
@@ -332,6 +335,37 @@ During warmup:
     "currentVersion": "3.27"
   }
 }
+```
+
+## HTTP Caching
+
+The API adds `Cache-Control` and `ETag` headers to all `GET` responses. Clients can use conditional requests (`If-None-Match`) to avoid re-downloading unchanged data and save bandwidth.
+
+### Cache duration tiers
+
+| Tier | Max-Age | Applies to |
+|------|---------|------------|
+| Versioned | `3600s` (1 hour) | Requests with an explicit version (e.g., `version=3.27`) — content is immutable once released |
+| Main | `900s` (15 minutes) | Requests for `main` or when `version` is omitted — content changes with upstream commits |
+| Catalog | `1800s` (30 minutes) | `/api/catalog` responses — version/subject lists change infrequently |
+| Status | `no-cache` | `/api/status` — always reflects real-time readiness |
+| Meta | self-managed | `/api/meta` — static payload, long-lived ETag |
+
+### Conditional GET with ETag
+
+Responses include an `ETag` header. On subsequent requests, send `If-None-Match` with the previous ETag value to receive `304 Not Modified` when the content has not changed.
+
+```bash
+# 1. First request — returns 200 with an ETag
+curl -i "http://localhost:8080/api/documents?keywords=security&version=3.27"
+# HTTP/1.1 200 OK
+# Cache-Control: public, max-age=3600
+# ETag: "a1b2c3d4"
+
+# 2. Conditional request — returns 304 if unchanged
+curl -i -H 'If-None-Match: "a1b2c3d4"' \
+  "http://localhost:8080/api/documents?keywords=security&version=3.27"
+# HTTP/1.1 304 Not Modified
 ```
 
 ## Building & Testing

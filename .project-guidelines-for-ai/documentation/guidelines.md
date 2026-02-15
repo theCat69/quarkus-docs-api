@@ -74,6 +74,9 @@ public SomeResponse example(
 | `app.quarkiverse.playbook-repo` | `quarkiverse/quarkiverse-docs` | Antora playbook repo |
 | `app.quarkiverse.playbook-branch` | `main` | Playbook branch |
 | `app.quarkiverse.download-concurrency` | `4` | Max concurrent extension downloads |
+| `app.cache.http.max-age.versioned` | `3600` | HTTP Cache-Control max-age for versioned content (seconds) |
+| `app.cache.http.max-age.main` | `900` | HTTP Cache-Control max-age for main/latest content (seconds) |
+| `app.cache.http.max-age.catalog` | `1800` | HTTP Cache-Control max-age for catalog responses (seconds) |
 
 ### Search Tuning Reference
 
