@@ -35,6 +35,7 @@ public SomeResponse example(
 - Catalog responses use `CatalogResponse` with `subjects`, `extensions`, and `versions`.
 - Quick search responses use `QuickSearchResponse` with lightweight `SearchResultRef` items.
 - Code sample responses use `CodeSampleSearchResponse` with `CodeSampleResult` items.
+- Search syntax responses use `SearchSyntaxResponse` with static documentation of supported search operators, examples, and tips.
 
 ## Code Documentation
 

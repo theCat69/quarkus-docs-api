@@ -50,6 +50,7 @@ All endpoints return JSON. The `version` parameter is **optional** on every endp
 | Method | Path | Summary | Key Parameters |
 |--------|------|---------|----------------|
 | `GET` | `/api/search` | Quick discovery search returning lightweight references | `version`, `keywords` (required), `subject`, `extension`, `limit`, `offset` |
+| `GET` | `/api/search/syntax` | Returns search syntax documentation (operators, examples, tips) | _(none)_ |
 
 ### Code Samples
 
@@ -239,6 +240,12 @@ curl "http://localhost:8080/api/catalog?version=main"
   ],
   "versions": ["main", "3.27", "3.21"]
 }
+```
+
+### Get search syntax documentation
+
+```bash
+curl "http://localhost:8080/api/search/syntax"
 ```
 
 ## Building & Testing
