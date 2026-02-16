@@ -14,9 +14,9 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 @Schema(description = "Error detail for a single path in a batch request")
 public class BatchDocumentError {
 
-    @Schema(description = "The document path that failed", example = "nonexistent.adoc")
+    @Schema(description = "The document path that failed", examples = {"nonexistent.adoc"})
     public String path;
 
-    @Schema(description = "Error reason", example = "Document not found")
+    @Schema(description = "Error reason", examples = {"Document not found"})
     public String reason;
 }

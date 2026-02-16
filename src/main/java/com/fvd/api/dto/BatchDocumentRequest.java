@@ -16,14 +16,12 @@ import java.util.List;
 @Schema(description = "Request body for batch document retrieval")
 public class BatchDocumentRequest {
 
-    @Schema(description = "List of document paths to retrieve (max 10)",
-            required = true,
-            example = "[\"security-overview.adoc\", \"security-oidc-code-flow.adoc\"]")
+    @Schema(description = "List of document paths to retrieve (max 10)", examples = {"security-overview.adoc", "security-oidc-code-flow.adoc"})
     public List<String> paths;
 
     @Schema(description = "Quarkus version branch or tag. Defaults to 'main' if omitted.",
             defaultValue = "main",
-            example = "main")
+            examples = {"main"})
     public String version;
 
     @Schema(description = "When true, returns only metadata (title, description, path, subject, " +

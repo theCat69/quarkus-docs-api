@@ -23,15 +23,15 @@ public class PaginatedResponse<T> {
     protected int totalCount;
     protected int returnedCount;
 
-    @Schema(description = "Offset used for this page of results (0-indexed)", example = "0")
+    @Schema(description = "Offset used for this page of results (0-indexed)", examples = {"0"})
     protected int offset;
 
-    @Schema(description = "Maximum number of results requested for this page", example = "20")
+    @Schema(description = "Maximum number of results requested for this page", examples = {"20"})
     protected int limit;
 
     @Schema(description = "True if more results exist beyond this page. " +
             "When true, use offset + limit as the offset for the next page request.",
-            example = "true")
+            examples = {"true"})
     protected boolean hasMore;
 
     public static <T> PaginatedResponse<T> of(List<T> results, int total, int offset, int limit) {

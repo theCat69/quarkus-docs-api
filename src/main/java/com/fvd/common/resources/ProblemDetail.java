@@ -9,7 +9,7 @@ import java.time.Instant;
 
 /**
  * RFC 7807 Problem Details for HTTP APIs.
- * See: https://www.rfc-editor.org/rfc/rfc7807
+ * See: <a href="https://www.rfc-editor.org/rfc/rfc7807">...</a>
  */
 @RegisterForReflection
 @NoArgsConstructor
@@ -18,25 +18,25 @@ import java.time.Instant;
 public class ProblemDetail {
 
     @Schema(description = "A URI reference identifying the problem type (about:blank for HTTP status-based errors)",
-            example = "about:blank")
+            examples = {"about:blank"})
     public String type;
 
-    @Schema(description = "A short, human-readable summary of the problem type", example = "Not Found")
+    @Schema(description = "A short, human-readable summary of the problem type", examples = {"Not Found"})
     public String title;
 
-    @Schema(description = "The HTTP status code", example = "404")
+    @Schema(description = "The HTTP status code", examples = {"404"})
     public int status;
 
     @Schema(description = "A human-readable explanation specific to this occurrence of the problem",
-            example = "Document not found: _guides/nonexistent.adoc")
+            examples = {"Document not found: _guides/nonexistent.adoc"})
     public String detail;
 
     @Schema(description = "A URI reference that identifies the specific occurrence of the problem",
-            example = "/api/documents")
+            examples = {"/api/documents"})
     public String instance;
 
     @Schema(description = "ISO-8601 timestamp of when the error occurred",
-            example = "2024-01-15T10:30:00Z")
+            examples = {"2024-01-15T10:30:00Z"})
     public String timestamp;
 
     /**
