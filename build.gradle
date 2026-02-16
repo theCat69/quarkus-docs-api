@@ -24,6 +24,8 @@ dependencies {
     implementation 'io.quarkus:quarkus-agroal'
     implementation 'commons-io:commons-io:2.21.0'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+//    implementation 'io.quarkus:quarkus-jdbc-postgresql'
+//    implementation 'io.quarkus:quarkus-liquibase'
     compileOnly 'io.quarkiverse.wiremock:quarkus-wiremock:1.5.3'
     testImplementation 'io.quarkus:quarkus-junit'
     testImplementation 'io.rest-assured:rest-assured'
