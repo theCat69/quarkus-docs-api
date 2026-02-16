@@ -9,11 +9,7 @@ import com.fvd.search.SearchConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -113,7 +109,6 @@ public class AsciidocParser implements DocParser {
             if (matcher.matches()) {
                 // Flush previous section if it has content
                 if (hasNonBlankContent(currentLines) || (currentStart == 1 && i > 0)) {
-                    int endLine = i; // 0-based exclusive, but we want 1-based inclusive of last non-empty
                     int actualEnd = computeEndLine(currentStart, i);
                     if (actualEnd >= currentStart) {
                         String sectionText = String.join("\n", currentLines);
@@ -234,12 +229,6 @@ public class AsciidocParser implements DocParser {
     @Override
     public String docsPrefix(String version) {
         return "_versions/" + version + "/guides/";
-    }
-
-    @Override
-    @Deprecated
-    public String docsPrefix() {
-        return docsPrefix("main");
     }
 
     @Override

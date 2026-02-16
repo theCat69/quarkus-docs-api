@@ -443,19 +443,6 @@ class AsciidocParserTest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
-    void docsPrefixNoArgReturnsMainVersionPath() {
-        assertThat(parser.docsPrefix()).isEqualTo("_versions/main/guides/");
-    }
-
-    @Test
-    void docsPrefixDefaultMethodDelegatesToVersionedMethod() {
-        // Verify the DocParser default method delegates to docsPrefix("main")
-        DocParser docParser = parser;
-        assertThat(docParser.docsPrefix()).isEqualTo(docParser.docsPrefix("main"));
-    }
-
-    @Test
     void extractKeywordsStripsAsciiDocMarkupNoise() {
         String text = """
                 include::_includes/prerequisites.adoc[]
