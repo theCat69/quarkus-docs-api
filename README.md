@@ -4,7 +4,7 @@ REST API for caching, indexing, and searching Quarkus documentation (core and qu
 
 ## Overview
 
-**quarkus-docs-api** is a Quarkus-based REST API that downloads, caches, and indexes Quarkus documentation from the [quarkusio.github.io](https://github.com/quarkusio/quarkusio.github.io) website repository. It builds keyword and code-sample indexes in SQLite and exposes them through a search API designed for consumption by AI agents, MCP servers, IDEs, and developer tooling.
+**quarkus-docs-api** is a Quarkus-based REST API that downloads, caches, and indexes Quarkus documentation from the [quarkusio.github.io](https://github.com/quarkusio/quarkusio.github.io) website repository. It builds keyword and code-sample indexes in PostgreSQL and exposes them through a search API designed for consumption by AI agents, MCP servers, IDEs, and developer tooling.
 
 The API supports **multi-version** documentation — multiple Quarkus releases can be cached and searched simultaneously. It also ingests **quarkiverse extension docs** by parsing the Antora playbook from [quarkiverse/quarkiverse-docs](https://github.com/quarkiverse/quarkiverse-docs), downloading extension repository zips, and extracting `.adoc` files. All indexes support stemming, prefix matching, fuzzy section title matching (Levenshtein + containment + word overlap), and pagination.
 
@@ -16,7 +16,7 @@ Background jobs handle cache warmup on startup and periodic refresh using SHA-ba
 GitHub website repo (quarkusio.github.io)
         │
         ▼
-   Zip download ──► Cache extraction ──► SQLite indexing ──► REST API
+   Zip download ──► Cache extraction ──► PostgreSQL indexing ──► REST API
         │                                     ▲
         │                                     │
 Quarkiverse playbook ──► Extension zips ──► Merge & index
@@ -26,7 +26,7 @@ Quarkiverse playbook ──► Extension zips ──► Merge & index
 1. A single zip archive is downloaded per version from the GitHub website repository.
 2. AsciiDoc files are extracted and cached on disk under `_versions/<version>/guides/`.
 3. For the `main` version, the quarkiverse Antora playbook is parsed (YAML) to discover extension repositories. Each extension repo zip is downloaded and `.adoc` files are extracted under `quarkiverse/<ext-name>/`.
-4. Two SQLite-backed indexes are built: keyword index and code-sample index.
+4. Two PostgreSQL-backed indexes are built: keyword index and code-sample index.
 5. The REST API serves search queries and raw document content from these indexes and the cache.
 6. A scheduled job periodically checks SHA hashes and refreshes only changed versions.
 
@@ -83,6 +83,7 @@ All endpoints return JSON. The `version` parameter is **optional** on every endp
 ### Prerequisites
 
 - **Java 21** (required)
+- **Docker** (required) — Quarkus DevServices auto-starts a PostgreSQL container in dev/test mode
 - Gradle wrapper is included — no separate Gradle installation needed
 
 ### Run
@@ -121,7 +122,7 @@ curl "http://localhost:8080/api/catalog"
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `app.cache.dir` | `.cache` | Local directory for cached docs and SQLite database |
+| `app.cache.dir` | `.cache` | Local directory for cached docs |
 | `app.github.owner` | `quarkusio` | GitHub organization for the docs repository |
 | `app.github.repo` | `quarkusio.github.io` | GitHub repository name (website repo) |
 | `app.github.branch` | `main` | Branch to fetch from the website repository |
@@ -137,8 +138,8 @@ curl "http://localhost:8080/api/catalog"
 | `app.cache.http.max-age.versioned` | `3600` | HTTP Cache-Control max-age for versioned content (seconds) |
 | `app.cache.http.max-age.main` | `900` | HTTP Cache-Control max-age for main/latest content (seconds) |
 | `app.cache.http.max-age.catalog` | `1800` | HTTP Cache-Control max-age for catalog responses (seconds) |
-| `quarkus.datasource.db-kind` | `sqlite` | Database type (SQLite) |
-| `quarkus.datasource.jdbc.url` | `jdbc:sqlite:.cache/index.db` | SQLite database file location |
+| `quarkus.datasource.db-kind` | `postgresql` | Database type (PostgreSQL, managed by DevServices in dev/test) |
+| `quarkus.datasource.jdbc.url` | _(DevServices)_ | JDBC URL (auto-configured by Quarkus DevServices in dev/test) |
 | `quarkus.rest-client.github-api-client.url` | `https://api.github.com/repos` | GitHub API base URL |
 | `quarkus.rest-client.github-repository-client.url` | `https://github.com` | GitHub repository download base URL |
 
@@ -434,7 +435,8 @@ curl -i -H 'If-None-Match: "a1b2c3d4"' \
 - **Jackson YAML** — Antora playbook parsing
 - **Quarkus Scheduler** — Background cache warmup and refresh
 - **Quarkus ARC** (CDI) — Dependency injection
-- **Quarkus Agroal + SQLite** (quarkiverse JDBC) — Index storage
+- **Quarkus Agroal + PostgreSQL** — Index storage
+- **Quarkus Liquibase** — Database schema migration
 - **SmallRye Health** — Health checks
 - **SmallRye OpenAPI** — API documentation and Swagger UI
 - **Lombok** — Boilerplate reduction
