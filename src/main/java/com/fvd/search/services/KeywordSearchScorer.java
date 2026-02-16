@@ -11,7 +11,7 @@ import java.util.Map;
 
 @ApplicationScoped
 @RequiredArgsConstructor
-public class SqliteSearchScorer implements SearchScorer {
+public class KeywordSearchScorer implements SearchScorer {
 
     private final SearchConfig searchConfig;
 

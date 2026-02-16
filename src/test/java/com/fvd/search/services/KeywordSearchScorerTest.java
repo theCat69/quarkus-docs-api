@@ -10,13 +10,13 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class SqliteSearchScorerTest {
+class KeywordSearchScorerTest {
 
-    SqliteSearchScorer scorer;
+    KeywordSearchScorer scorer;
 
     @BeforeEach
     void setUp() {
-        scorer = new SqliteSearchScorer(new TestSearchConfig());
+        scorer = new KeywordSearchScorer(new TestSearchConfig());
     }
 
     @Test

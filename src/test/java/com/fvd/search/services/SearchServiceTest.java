@@ -63,7 +63,7 @@ class SearchServiceTest {
         cacheService = new CacheService(tempDir.toString());
         SearchConfig searchConfig = new TestSearchConfig();
         FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
-        SearchScorer searchScorer = new SqliteSearchScorer(searchConfig);
+        SearchScorer searchScorer = new KeywordSearchScorer(searchConfig);
         metadataResolver = mock(MetadataAwareSubjectResolver.class);
         when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("misc");
         when(metadataResolver.loadMetadataMap(anyString())).thenReturn(Map.of());
@@ -78,7 +78,7 @@ class SearchServiceTest {
         CacheService cs = new CacheService(tempDir.toString());
         SearchConfig searchConfig = new TestSearchConfig();
         FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
-        SearchScorer searchScorer = new SqliteSearchScorer(searchConfig);
+        SearchScorer searchScorer = new KeywordSearchScorer(searchConfig);
         return new SearchService(
                 keywordIndexStore, codeSampleIndexStore, docStore, docParser, cs, searchConfig, fuzzyMatcher, searchScorer, metadataResolver);
     }
