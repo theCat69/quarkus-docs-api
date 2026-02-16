@@ -1,40 +1,44 @@
 package com.fvd.indexs.services;
 
-import com.fvd.common.TestSqliteHelper;
 import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.services.GitHubService;
 import com.fvd.indexs.stores.IndexStore;
+import io.quarkus.test.InjectMock;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.sqlite.SQLiteDataSource;
 
-import java.nio.file.Path;
+import javax.sql.DataSource;
+import java.sql.SQLException;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
+@QuarkusTest
 class IndexServiceTest {
 
-    @TempDir
-    Path tempDir;
-
-    @Mock
-    GitHubService gitHubService;
-
+    @Inject
     IndexService indexService;
+
+    @Inject
     IndexStore indexStore;
 
+    @Inject
+    DataSource dataSource;
+
+    @InjectMock
+    GitHubService gitHubService;
+
     @BeforeEach
-    void setUp() {
-        SQLiteDataSource ds = TestSqliteHelper.createInitializedDataSource(tempDir);
-        indexStore = new IndexStore(ds);
-        indexService = new IndexService(indexStore, gitHubService);
+    void cleanup() throws SQLException {
+        try (var conn = dataSource.getConnection(); var stmt = conn.createStatement()) {
+            stmt.execute("TRUNCATE files, file_keywords, sections, section_keywords, "
+                + "code_samples, code_sample_keywords, github_index, document_metadata CASCADE");
+        }
     }
 
     @Test

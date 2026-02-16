@@ -1,55 +1,50 @@
 package com.fvd.indexs.indexers;
 
-import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.cache.services.CacheService;
-import com.fvd.common.TestSqliteHelper;
-import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
-import com.fvd.search.TestSearchConfig;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.sqlite.SQLiteDataSource;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import javax.sql.DataSource;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@QuarkusTest
 class CodeSampleIndexerTest {
 
-    @TempDir
-    Path tempDir;
+    @Inject
+    CodeSampleIndexer indexer;
 
-    private CodeSampleIndexer indexer;
-    private CodeSampleIndexStore store;
-    private DocStore docStore;
+    @Inject
+    CodeSampleIndexStore store;
+
+    @Inject
+    DocStore docStore;
+
+    @Inject
+    DataSource dataSource;
+
+    @Inject
+    CacheService cacheService;
 
     @BeforeEach
-    void setUp() {
-        CacheService cacheService = new CacheService(tempDir.toString());
-        docStore = new DocStore(cacheService);
-
-        SQLiteDataSource ds = TestSqliteHelper.createInitializedDataSource(tempDir);
-
-        store = new CodeSampleIndexStore(ds);
-        DocParser parser = new AsciidocParser(new TestSearchConfig());
-        indexer = new CodeSampleIndexer(docStore, store, parser, new TestSearchConfig());
-    }
-
-    private void writeDoc(String version, String filePath, String content) throws IOException {
-        Path docFile = tempDir.resolve(version).resolve("docs").resolve(filePath);
-        Files.createDirectories(docFile.getParent());
-        Files.writeString(docFile, content);
+    void cleanup() throws SQLException {
+        try (var conn = dataSource.getConnection(); var stmt = conn.createStatement()) {
+            stmt.execute("TRUNCATE files, file_keywords, sections, section_keywords, "
+                + "code_samples, code_sample_keywords, github_index, document_metadata CASCADE");
+        }
+        cacheService.deleteCache();
     }
 
     @Test
-    void buildExtractsCodeSamplesFromFile() throws IOException {
+    void buildExtractsCodeSamplesFromFile() {
         String doc = """
                 = Security Guide
                 
@@ -65,7 +60,7 @@ class CodeSampleIndexerTest {
                 OidcConfig config;
                 ----
                 """;
-        writeDoc("3.17", "security-oidc.adoc", doc);
+        docStore.write("3.17", "security-oidc.adoc", doc);
 
         CodeSampleIndex index = indexer.build("3.17", List.of("security-oidc.adoc"));
 
@@ -78,7 +73,7 @@ class CodeSampleIndexerTest {
     }
 
     @Test
-    void buildBoostsImportKeywords() throws IOException {
+    void buildBoostsImportKeywords() {
         String doc = """
                 = Guide
                 
@@ -96,7 +91,7 @@ class CodeSampleIndexerTest {
                 }
                 ----
                 """;
-        writeDoc("3.17", "rest.adoc", doc);
+        docStore.write("3.17", "rest.adoc", doc);
 
         CodeSampleIndex index = indexer.build("3.17", List.of("rest.adoc"));
 
@@ -114,7 +109,7 @@ class CodeSampleIndexerTest {
     }
 
     @Test
-    void buildIncludesSectionKeywords() throws IOException {
+    void buildIncludesSectionKeywords() {
         String doc = """
                 = Guide
                 
@@ -128,7 +123,7 @@ class CodeSampleIndexerTest {
                 }
                 ----
                 """;
-        writeDoc("3.17", "oidc.adoc", doc);
+        docStore.write("3.17", "oidc.adoc", doc);
 
         CodeSampleIndex index = indexer.build("3.17", List.of("oidc.adoc"));
 
@@ -140,7 +135,7 @@ class CodeSampleIndexerTest {
     }
 
     @Test
-    void buildHandlesMultipleCodeBlocksInOneFile() throws IOException {
+    void buildHandlesMultipleCodeBlocksInOneFile() {
         String doc = """
                 = Guide
                 
@@ -158,7 +153,7 @@ class CodeSampleIndexerTest {
                 <code>two</code>
                 ----
                 """;
-        writeDoc("3.17", "multi.adoc", doc);
+        docStore.write("3.17", "multi.adoc", doc);
 
         CodeSampleIndex index = indexer.build("3.17", List.of("multi.adoc"));
 
@@ -170,7 +165,7 @@ class CodeSampleIndexerTest {
     }
 
     @Test
-    void buildSkipsMissingFiles() throws IOException {
+    void buildSkipsMissingFiles() {
         String doc = """
                 = Guide
                 
@@ -179,7 +174,7 @@ class CodeSampleIndexerTest {
                 some code
                 ----
                 """;
-        writeDoc("3.17", "exists.adoc", doc);
+        docStore.write("3.17", "exists.adoc", doc);
 
         CodeSampleIndex index = indexer.build("3.17", List.of("exists.adoc", "missing.adoc"));
 
@@ -188,13 +183,13 @@ class CodeSampleIndexerTest {
     }
 
     @Test
-    void buildReturnsEmptyForNoCodeBlocks() throws IOException {
+    void buildReturnsEmptyForNoCodeBlocks() {
         String doc = """
                 = Guide
                 
                 Just text, no code blocks.
                 """;
-        writeDoc("3.17", "nocode.adoc", doc);
+        docStore.write("3.17", "nocode.adoc", doc);
 
         CodeSampleIndex index = indexer.build("3.17", List.of("nocode.adoc"));
 
@@ -209,7 +204,7 @@ class CodeSampleIndexerTest {
     }
 
     @Test
-    void buildPersistsToStore() throws IOException {
+    void buildPersistsToStore() {
         String doc = """
                 = Guide
                 
@@ -218,7 +213,7 @@ class CodeSampleIndexerTest {
                 import jakarta.inject.Inject;
                 ----
                 """;
-        writeDoc("3.17", "file.adoc", doc);
+        docStore.write("3.17", "file.adoc", doc);
 
         indexer.build("3.17", List.of("file.adoc"));
 
@@ -341,7 +336,7 @@ class CodeSampleIndexerTest {
     }
 
     @Test
-    void buildAppliesAllBoosts() throws IOException {
+    void buildAppliesAllBoosts() {
         String doc = """
                 = Security Guide
                 
@@ -357,7 +352,7 @@ class CodeSampleIndexerTest {
                 OidcConfig config;
                 ----
                 """;
-        writeDoc("3.17", "security-oidc.adoc", doc);
+        docStore.write("3.17", "security-oidc.adoc", doc);
 
         CodeSampleIndex index = indexer.build("3.17", List.of("security-oidc.adoc"));
 

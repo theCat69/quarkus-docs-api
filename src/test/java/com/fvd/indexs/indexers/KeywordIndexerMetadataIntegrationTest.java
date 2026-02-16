@@ -1,47 +1,47 @@
 package com.fvd.indexs.indexers;
 
 import com.fvd.asciidocs.model.DocumentMetadata;
-import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.cache.services.CacheService;
-import com.fvd.common.TestSqliteHelper;
-import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.DocumentMetadataStore;
-import com.fvd.indexs.stores.KeywordIndexStore;
-import com.fvd.search.TestKeywordScoringConfig;
-import com.fvd.search.TestSearchConfig;
-import com.fvd.search.services.KeywordScorer;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.sqlite.SQLiteDataSource;
 
-import java.nio.file.Path;
+import javax.sql.DataSource;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@QuarkusTest
 class KeywordIndexerMetadataIntegrationTest {
 
-    @TempDir
-    Path tempDir;
-
+    @Inject
     KeywordIndexer indexer;
+
+    @Inject
     DocStore docStore;
+
+    @Inject
     DocumentMetadataStore metadataStore;
 
+    @Inject
+    DataSource dataSource;
+
+    @Inject
+    CacheService cacheService;
+
     @BeforeEach
-    void setUp() {
-        CacheService cacheService = new CacheService(tempDir.toString());
-        docStore = new DocStore(cacheService);
-        SQLiteDataSource ds = TestSqliteHelper.createInitializedDataSource(tempDir);
-        metadataStore = new DocumentMetadataStore(ds);
-        KeywordIndexStore keywordIndexStore = new KeywordIndexStore(ds, metadataStore);
-        DocParser parser = new AsciidocParser(new TestSearchConfig());
-        KeywordScorer keywordScorer = new KeywordScorer(new TestKeywordScoringConfig());
-        indexer = new KeywordIndexer(docStore, keywordIndexStore, parser, new TestSearchConfig(), keywordScorer);
+    void cleanup() throws SQLException {
+        try (var conn = dataSource.getConnection(); var stmt = conn.createStatement()) {
+            stmt.execute("TRUNCATE files, file_keywords, sections, section_keywords, "
+                + "code_samples, code_sample_keywords, github_index, document_metadata CASCADE");
+        }
+        cacheService.deleteCache();
     }
 
     @Test
@@ -136,12 +136,7 @@ class KeywordIndexerMetadataIntegrationTest {
                 Content.
                 """;
 
-        DocParser parser = new AsciidocParser(new TestSearchConfig());
-        KeywordScorer keywordScorer = new KeywordScorer(new TestKeywordScoringConfig());
-        KeywordIndexer localIndexer = new KeywordIndexer(
-                docStore, null, parser, new TestSearchConfig(), keywordScorer);
-
-        FileKeywordEntry entry = localIndexer.buildFileEntry("test.adoc", content);
+        FileKeywordEntry entry = indexer.buildFileEntry("test.adoc", content);
 
         assertThat(entry.metadata).isNotNull();
         assertThat(entry.metadata.getCategories()).containsExactly("web");

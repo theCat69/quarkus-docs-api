@@ -1,11 +1,7 @@
 package com.fvd.search.services;
 
-import com.fvd.asciidocs.parser.AsciidocParser;
 import com.fvd.cache.services.CacheService;
-import com.fvd.common.TestSqliteHelper;
-import com.fvd.common.matchers.FuzzyMatcher;
 import com.fvd.docs.exceptions.DocNotFoundException;
-import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.indexers.CodeSampleEntry;
 import com.fvd.indexs.indexers.CodeSampleIndex;
@@ -15,21 +11,21 @@ import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.indexs.indexers.SectionKeywordEntry;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
-import com.fvd.search.SearchConfig;
-import com.fvd.search.TestSearchConfig;
 import com.fvd.subject.services.MetadataAwareSubjectResolver;
+import io.quarkus.test.InjectMock;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.sqlite.SQLiteDataSource;
 
-import java.nio.file.Path;
+import javax.sql.DataSource;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -39,48 +35,47 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+@QuarkusTest
 class SearchServiceTest {
 
-    @TempDir
-    Path tempDir;
-
+    @Inject
     SearchService searchService;
+
+    @Inject
     KeywordIndexStore keywordIndexStore;
+
+    @Inject
     CodeSampleIndexStore codeSampleIndexStore;
-    DocParser docParser;
+
+    @Inject
+    DocStore docStore;
+
+    @Inject
+    DataSource dataSource;
+
+    @Inject
     CacheService cacheService;
+
+    @InjectMock
     MetadataAwareSubjectResolver metadataResolver;
 
     @BeforeEach
-    void setUp() {
-        SQLiteDataSource ds = TestSqliteHelper.createInitializedDataSource(tempDir);
-        keywordIndexStore = new KeywordIndexStore(ds, new com.fvd.indexs.stores.DocumentMetadataStore(ds));
-        codeSampleIndexStore = new CodeSampleIndexStore(ds);
-        docParser = new AsciidocParser(new TestSearchConfig());
-        cacheService = new CacheService(tempDir.toString());
-        SearchConfig searchConfig = new TestSearchConfig();
-        FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
-        SearchScorer searchScorer = new KeywordSearchScorer(searchConfig);
-        metadataResolver = mock(MetadataAwareSubjectResolver.class);
+    void cleanup() throws SQLException {
+        try (var conn = dataSource.getConnection(); var stmt = conn.createStatement()) {
+            stmt.execute("TRUNCATE files, file_keywords, sections, section_keywords, "
+                + "code_samples, code_sample_keywords, github_index, document_metadata CASCADE");
+        }
+        cacheService.deleteCache();
+        searchService.invalidateCache("3.27");
+        searchService.invalidateCache("main");
         when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("misc");
         when(metadataResolver.loadMetadataMap(anyString())).thenReturn(Map.of());
-        searchService = new SearchService(keywordIndexStore, codeSampleIndexStore, null, docParser, cacheService, searchConfig, fuzzyMatcher, searchScorer, metadataResolver);
     }
 
     private void seedIndex(String version, KeywordIndex index) {
         keywordIndexStore.write(version, index);
-    }
-
-    private SearchService createSearchServiceWithDocStore(DocStore docStore) {
-        CacheService cs = new CacheService(tempDir.toString());
-        SearchConfig searchConfig = new TestSearchConfig();
-        FuzzyMatcher fuzzyMatcher = new FuzzyMatcher(searchConfig);
-        SearchScorer searchScorer = new KeywordSearchScorer(searchConfig);
-        return new SearchService(
-                keywordIndexStore, codeSampleIndexStore, docStore, docParser, cs, searchConfig, fuzzyMatcher, searchScorer, metadataResolver);
     }
 
     // --- File search tests ---
@@ -597,16 +592,6 @@ class SearchServiceTest {
     @Nested
     class SectionContentTests {
 
-        private SearchService sectionSearchService;
-        private DocStore realDocStore;
-
-        @BeforeEach
-        void setUpSectionContent() {
-            CacheService cs = new CacheService(tempDir.toString());
-            realDocStore = new DocStore(cs);
-            sectionSearchService = createSearchServiceWithDocStore(realDocStore);
-        }
-
         @Test
         void getSectionContentReturnsMatchingSection() {
             String docContent = """
@@ -620,9 +605,9 @@ class SearchServiceTest {
                     == Configuration
                     Config details here.
                     """;
-            realDocStore.write("3.27", "security.adoc", docContent);
+            docStore.write("3.27", "security.adoc", docContent);
 
-            SectionContentResult result = sectionSearchService.getSectionContent(
+            SectionContentResult result = searchService.getSectionContent(
                     "3.27", "security.adoc", "Overview");
 
             assertThat(result.path).isEqualTo("security.adoc");
@@ -645,9 +630,9 @@ class SearchServiceTest {
                     == Security Overview
                     Content here.
                     """;
-            realDocStore.write("3.27", "security.adoc", docContent);
+            docStore.write("3.27", "security.adoc", docContent);
 
-            SectionContentResult result = sectionSearchService.getSectionContent(
+            SectionContentResult result = searchService.getSectionContent(
                     "3.27", "security.adoc", "security overview");
 
             assertThat(result.title).isEqualTo("Security Overview");
@@ -660,7 +645,7 @@ class SearchServiceTest {
         @Test
         void getSectionContentThrowsWhenDocNotFound() {
             assertThatThrownBy(() ->
-                    sectionSearchService.getSectionContent("3.27", "nonexistent.adoc", "Overview"))
+                    searchService.getSectionContent("3.27", "nonexistent.adoc", "Overview"))
                     .isInstanceOf(DocNotFoundException.class)
                     .hasMessageContaining("Document not found");
         }
@@ -674,10 +659,10 @@ class SearchServiceTest {
                     == Overview
                     Content here.
                     """;
-            realDocStore.write("3.27", "security.adoc", docContent);
+            docStore.write("3.27", "security.adoc", docContent);
 
             assertThatThrownBy(() ->
-                    sectionSearchService.getSectionContent("3.27", "security.adoc", "Completely Unrelated XYZ123"))
+                    searchService.getSectionContent("3.27", "security.adoc", "Completely Unrelated XYZ123"))
                     .isInstanceOf(DocNotFoundException.class)
                     .hasMessageContaining("Section not found");
         }
@@ -694,9 +679,9 @@ class SearchServiceTest {
                     == Configuration Guide
                     Config content.
                     """;
-            realDocStore.write("3.27", "security.adoc", docContent);
+            docStore.write("3.27", "security.adoc", docContent);
 
-            SectionContentResult result = sectionSearchService.getSectionContent(
+            SectionContentResult result = searchService.getSectionContent(
                     "3.27", "security.adoc", "Security");
 
             assertThat(result.title).isEqualTo("Security Overview");
@@ -718,9 +703,9 @@ class SearchServiceTest {
                     == Configuration
                     Config content.
                     """;
-            realDocStore.write("3.27", "security.adoc", docContent);
+            docStore.write("3.27", "security.adoc", docContent);
 
-            SectionContentResult result = sectionSearchService.getSectionContent(
+            SectionContentResult result = searchService.getSectionContent(
                     "3.27", "security.adoc", "Overvew");
 
             assertThat(result.title).isEqualTo("Overview");
@@ -741,9 +726,9 @@ class SearchServiceTest {
                     == Authorization and Roles
                     Authz content.
                     """;
-            realDocStore.write("3.27", "security.adoc", docContent);
+            docStore.write("3.27", "security.adoc", docContent);
 
-            SectionContentResult result = sectionSearchService.getSectionContent(
+            SectionContentResult result = searchService.getSectionContent(
                     "3.27", "security.adoc", "authentication");
 
             assertThat(result.title).isEqualTo("Authentication Methods");
@@ -763,9 +748,9 @@ class SearchServiceTest {
                     == Security Overview
                     Fuzzy match content.
                     """;
-            realDocStore.write("3.27", "security.adoc", docContent);
+            docStore.write("3.27", "security.adoc", docContent);
 
-            SectionContentResult result = sectionSearchService.getSectionContent(
+            SectionContentResult result = searchService.getSectionContent(
                     "3.27", "security.adoc", "Security");
 
             assertThat(result.title).isEqualTo("Security");
@@ -780,16 +765,6 @@ class SearchServiceTest {
     @Nested
     class SectionSearchSnippetAndFilterTests {
 
-        private SearchService snippetSearchService;
-        private DocStore realDocStore;
-
-        @BeforeEach
-        void setUpSnippetTests() {
-            CacheService cs = new CacheService(tempDir.toString());
-            realDocStore = new DocStore(cs);
-            snippetSearchService = createSearchServiceWithDocStore(realDocStore);
-        }
-
         @Test
         void searchSectionsGeneratesSnippetAroundKeywordMatch() {
             String docContent = """
@@ -799,7 +774,7 @@ class SearchServiceTest {
                     == Overview
                     This section covers the security features of Quarkus including authentication and authorization mechanisms for enterprise applications.
                     """;
-            realDocStore.write("3.27", "security.adoc", docContent);
+            docStore.write("3.27", "security.adoc", docContent);
             KeywordIndex index = new KeywordIndex(List.of(
                     new FileKeywordEntry("security.adoc", List.of(), List.of(
                             new SectionKeywordEntry("Overview", 4, 5,
@@ -807,9 +782,9 @@ class SearchServiceTest {
                     ))
             ));
             keywordIndexStore.write("3.27", index);
-            snippetSearchService.invalidateCache("3.27");
+            searchService.invalidateCache("3.27");
 
-            PaginatedResult<SectionSearchResult> result = snippetSearchService.searchSections(
+            PaginatedResult<SectionSearchResult> result = searchService.searchSections(
                     "3.27", List.of("security"), null, null, null, 10, 0);
 
             assertThat(result.items()).hasSize(1);
@@ -826,7 +801,7 @@ class SearchServiceTest {
                     == Overview
                     This is a section with some general content that does not contain the searched keyword anywhere in its text body.
                     """;
-            realDocStore.write("3.27", "guide.adoc", docContent);
+            docStore.write("3.27", "guide.adoc", docContent);
             KeywordIndex index = new KeywordIndex(List.of(
                     new FileKeywordEntry("guide.adoc", List.of(), List.of(
                             new SectionKeywordEntry("Overview", 4, 5,
@@ -834,9 +809,9 @@ class SearchServiceTest {
                     ))
             ));
             keywordIndexStore.write("3.27", index);
-            snippetSearchService.invalidateCache("3.27");
+            searchService.invalidateCache("3.27");
 
-            PaginatedResult<SectionSearchResult> result = snippetSearchService.searchSections(
+            PaginatedResult<SectionSearchResult> result = searchService.searchSections(
                     "3.27", List.of("oidc"), null, null, null, 10, 0);
 
             assertThat(result.items()).hasSize(1);
@@ -857,9 +832,9 @@ class SearchServiceTest {
                     ))
             ));
             keywordIndexStore.write("3.27", index);
-            snippetSearchService.invalidateCache("3.27");
+            searchService.invalidateCache("3.27");
 
-            PaginatedResult<SectionSearchResult> result = snippetSearchService.searchSections(
+            PaginatedResult<SectionSearchResult> result = searchService.searchSections(
                     "3.27", List.of("security"), null, "authentication", null, 10, 0);
 
             assertThat(result.items()).isNotEmpty();
@@ -877,9 +852,9 @@ class SearchServiceTest {
                     ))
             ));
             keywordIndexStore.write("3.27", index);
-            snippetSearchService.invalidateCache("3.27");
+            searchService.invalidateCache("3.27");
 
-            PaginatedResult<SectionSearchResult> result = snippetSearchService.searchSections(
+            PaginatedResult<SectionSearchResult> result = searchService.searchSections(
                     "3.27", List.of("security"), null, "ZzzzCompletelyDifferent", null, 10, 0);
 
             assertThat(result.items()).isEmpty();
