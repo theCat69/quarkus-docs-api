@@ -5,6 +5,7 @@ import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.indexs.indexers.SectionKeywordEntry;
 import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -266,5 +267,72 @@ class ApiSearchResourceTest extends AbstractApiResourceTest {
                 .when().get("/api/search")
                 .then()
                 .statusCode(200);
+    }
+
+    @Test
+    void testPostSearchWithValidBody() {
+        seedDocFile();
+        seedKeywordIndex();
+        given()
+                .contentType(ContentType.JSON)
+                .body("{\"keywords\": \"security\", \"version\": \"3.27\"}")
+                .when().post("/api/search")
+                .then()
+                .statusCode(200)
+                .body("results", notNullValue())
+                .body("results.size()", greaterThan(0));
+    }
+
+    @Test
+    void testPostSearchReturnsSameResultsAsGet() {
+        seedDocFile();
+        seedKeywordIndex();
+
+        int getTotal = given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .when().get("/api/search")
+                .then()
+                .statusCode(200)
+                .extract().path("totalCount");
+
+        given()
+                .contentType(ContentType.JSON)
+                .body("{\"keywords\": \"security\", \"version\": \"3.27\"}")
+                .when().post("/api/search")
+                .then()
+                .statusCode(200)
+                .body("totalCount", equalTo(getTotal));
+    }
+
+    @Test
+    void testPostSearchWithMissingKeywords() {
+        given()
+                .contentType(ContentType.JSON)
+                .body("{\"version\": \"3.27\"}")
+                .when().post("/api/search")
+                .then()
+                .statusCode(400);
+    }
+
+    @Test
+    void testPostSearchWithNullBody() {
+        given()
+                .contentType(ContentType.JSON)
+                .body("")
+                .when().post("/api/search")
+                .then()
+                .statusCode(400);
+    }
+
+    @Test
+    void testPostSearchWithInvalidVersion() {
+        given()
+                .contentType(ContentType.JSON)
+                .body("{\"keywords\": \"security\", \"version\": \"nonexistent\"}")
+                .when().post("/api/search")
+                .then()
+                .statusCode(400)
+                .body("detail", containsString("Unknown version"));
     }
 }

@@ -43,20 +43,21 @@ class MetaServiceTest {
     void shouldReturnAllEndpoints() {
         MetaResponse response = metaService.getCapabilities();
 
-        assertThat(response.endpoints).hasSize(9);
+        assertThat(response.endpoints).hasSize(10);
         List<String> paths = response.endpoints.stream()
-                .map(e -> e.path)
+                .map(e -> e.method + " " + e.path)
                 .toList();
         assertThat(paths).containsExactly(
-                "/",
-                "/api/meta",
-                "/api/catalog",
-                "/api/search",
-                "/api/documents",
-                "/api/code-samples",
-                "/api/search/syntax",
-                "/api/documents/batch",
-                "/api/documents/related"
+                "GET /",
+                "GET /api/meta",
+                "GET /api/catalog",
+                "GET /api/search",
+                "POST /api/search",
+                "GET /api/documents",
+                "GET /api/code-samples",
+                "GET /api/search/syntax",
+                "POST /api/documents/batch",
+                "GET /api/documents/related"
         );
     }
 
@@ -69,15 +70,16 @@ class MetaServiceTest {
             assertThat(endpoint.path).isNotBlank();
         }
         // Verify specific methods
-        assertThat(findEndpoint(response, "/").method).isEqualTo("GET");
-        assertThat(findEndpoint(response, "/api/meta").method).isEqualTo("GET");
-        assertThat(findEndpoint(response, "/api/catalog").method).isEqualTo("GET");
-        assertThat(findEndpoint(response, "/api/search").method).isEqualTo("GET");
-        assertThat(findEndpoint(response, "/api/documents").method).isEqualTo("GET");
-        assertThat(findEndpoint(response, "/api/code-samples").method).isEqualTo("GET");
-        assertThat(findEndpoint(response, "/api/search/syntax").method).isEqualTo("GET");
-        assertThat(findEndpoint(response, "/api/documents/batch").method).isEqualTo("POST");
-        assertThat(findEndpoint(response, "/api/documents/related").method).isEqualTo("GET");
+        assertThat(findEndpoint(response, "GET", "/").method).isEqualTo("GET");
+        assertThat(findEndpoint(response, "GET", "/api/meta").method).isEqualTo("GET");
+        assertThat(findEndpoint(response, "GET", "/api/catalog").method).isEqualTo("GET");
+        assertThat(findEndpoint(response, "GET", "/api/search").method).isEqualTo("GET");
+        assertThat(findEndpoint(response, "POST", "/api/search").method).isEqualTo("POST");
+        assertThat(findEndpoint(response, "GET", "/api/documents").method).isEqualTo("GET");
+        assertThat(findEndpoint(response, "GET", "/api/code-samples").method).isEqualTo("GET");
+        assertThat(findEndpoint(response, "GET", "/api/search/syntax").method).isEqualTo("GET");
+        assertThat(findEndpoint(response, "POST", "/api/documents/batch").method).isEqualTo("POST");
+        assertThat(findEndpoint(response, "GET", "/api/documents/related").method).isEqualTo("GET");
     }
 
     @Test
@@ -243,6 +245,13 @@ class MetaServiceTest {
                 .filter(e -> e.path.equals(path))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Endpoint not found: " + path));
+    }
+
+    private EndpointMeta findEndpoint(MetaResponse response, String method, String path) {
+        return response.endpoints.stream()
+                .filter(e -> e.method.equals(method) && e.path.equals(path))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Endpoint not found: " + method + " " + path));
     }
 
     private Optional<ParameterMeta> findParameter(EndpointMeta endpoint, String name) {

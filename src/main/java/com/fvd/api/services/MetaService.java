@@ -61,6 +61,7 @@ public class MetaService {
                 buildMetaEndpoint(),
                 buildCatalogEndpoint(),
                 buildSearchEndpoint(),
+                buildSearchPostEndpoint(),
                 buildDocumentsEndpoint(),
                 buildCodeSamplesEndpoint(),
                 buildSearchSyntaxEndpoint(),
@@ -121,6 +122,25 @@ public class MetaService {
                         buildExtensionParameter(),
                         buildLimitParameter(),
                         buildOffsetParameter()
+                )
+        );
+    }
+
+    private EndpointMeta buildSearchPostEndpoint() {
+        return new EndpointMeta(
+                "POST",
+                "/api/search",
+                "Quick discovery search (POST)",
+                "Same as GET /api/search but accepts parameters as a JSON body. " +
+                        "Useful for complex queries that would exceed URL length limits.",
+                List.of(
+                        new ParameterMeta("body", "object", true, null,
+                                "JSON body with 'keywords' (required, space-separated search keywords), " +
+                                        "'version' (optional, default 'main'), " +
+                                        "'subject' (optional), 'extension' (optional), " +
+                                        "'limit' (optional, default 20, max 100), " +
+                                        "'offset' (optional, default 0)",
+                                null)
                 )
         );
     }

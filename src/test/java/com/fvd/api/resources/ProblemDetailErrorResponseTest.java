@@ -157,20 +157,6 @@ class ProblemDetailErrorResponseTest extends AbstractApiResourceTest {
     }
 
     @Test
-    void testPostOnGetOnlyEndpointReturnsMethodNotAllowed() {
-        given()
-                .queryParam("keywords", "security")
-                .when().post("/api/search")
-                .then()
-                .statusCode(405)
-                .body("type", equalTo("about:blank"))
-                .body("title", equalTo("Method Not Allowed"))
-                .body("status", equalTo(405))
-                .body("instance", containsString("search"))
-                .body("timestamp", notNullValue());
-    }
-
-    @Test
     void testDeleteOnGetOnlyEndpointReturnsMethodNotAllowed() {
         given()
                 .when().delete("/api/documents")

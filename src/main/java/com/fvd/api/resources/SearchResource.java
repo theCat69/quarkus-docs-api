@@ -2,12 +2,16 @@ package com.fvd.api.resources;
 
 import com.fvd.api.dto.QuickSearchResponse;
 import com.fvd.api.dto.SearchParams;
+import com.fvd.api.dto.SearchRequest;
 import com.fvd.api.services.QuickSearchService;
 import com.fvd.cache.services.CacheService;
+import com.fvd.common.exceptions.InvalidInputException;
 import com.fvd.common.resources.ProblemDetail;
 import com.fvd.common.validators.InputValidator;
 import com.fvd.subject.services.SubjectDeriver;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
@@ -106,6 +110,39 @@ public class SearchResource {
             @QueryParam("fields") String fields) {
 
         SearchParams params = SearchParams.fromRaw(version, keywords, subject, extension, limit, offset);
+        InputValidator.validateVersionExists(params.version(), cacheService.listCachedVersions());
+        InputValidator.validateSubjectExists(params.subject(), subjectDeriver.getValidSubjectNames());
+
+        return quickSearchService.search(params.version(), params.keywords(), params.subject(),
+                params.extension(), params.limit(), params.offset());
+    }
+
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Operation(
+            summary = "Quick discovery search (POST)",
+            description = "Same as GET /api/search but accepts parameters as a JSON body. " +
+                    "Useful for complex queries or when URL length limits are a concern. " +
+                    "Returns the same QuickSearchResponse."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Search results returned successfully",
+            content = @Content(schema = @Schema(implementation = QuickSearchResponse.class))
+    )
+    @APIResponse(
+            responseCode = "400",
+            description = "Invalid input parameters or keywords not provided",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))
+    )
+    public QuickSearchResponse searchPost(SearchRequest request) {
+        if (request == null) {
+            throw new InvalidInputException("Request body is required");
+        }
+
+        SearchParams params = SearchParams.fromRaw(
+                request.version, request.keywords, request.subject,
+                request.extension, request.limit, request.offset);
         InputValidator.validateVersionExists(params.version(), cacheService.listCachedVersions());
         InputValidator.validateSubjectExists(params.subject(), subjectDeriver.getValidSubjectNames());
 
