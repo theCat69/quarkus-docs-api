@@ -2,7 +2,7 @@
 
 ## Project Context
 
-Quarkus REST API (Java 21, Gradle wrapper) that caches and indexes Quarkus documentation from GitHub. SQLite-backed indexes. No authentication/authorization -- designed for internal/trusted consumption. The API reads files from a local cache on disk, so filesystem safety is critical.
+Quarkus REST API (Java 21, Gradle wrapper) that caches and indexes Quarkus documentation from GitHub. PostgreSQL-backed indexes. No authentication/authorization -- designed for internal/trusted consumption. The API reads files from a local cache on disk, so filesystem safety is critical.
 
 ## Input Validation
 
@@ -51,7 +51,7 @@ All user-supplied input must be validated before use. The project uses a central
 
 ## Data Storage
 
-- SQLite database stores indexes at `${app.cache.dir}/index.db`.
+- PostgreSQL database stores indexes (managed by Quarkus Agroal datasource).
 - Cached documentation files are stored on the local filesystem under `${app.cache.dir}/_versions/`.
 - No user data or credentials are stored.
 - No authentication or authorization is implemented.

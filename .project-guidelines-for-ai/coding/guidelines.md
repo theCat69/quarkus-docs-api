@@ -2,7 +2,7 @@
 
 ## Project Context
 
-Quarkus REST API (Java 21, Gradle wrapper) that caches and indexes Quarkus documentation from GitHub. SQLite-backed indexes. Lombok enabled. Uses Jakarta REST, Quarkus ARC (CDI), MicroProfile OpenAPI, and Jackson.
+Quarkus REST API (Java 21, Gradle wrapper) that caches and indexes Quarkus documentation from GitHub. PostgreSQL-backed indexes. Lombok enabled. Uses Jakarta REST, Quarkus ARC (CDI), MicroProfile OpenAPI, and Jackson.
 
 ## General Principles
 
@@ -73,7 +73,7 @@ Follow the established layout under `com.fvd`:
 
 - `.../resources` -- JAX-RS endpoints and response DTOs.
 - `.../services` -- business logic and orchestration.
-- `.../stores` -- persistence/IO (cache, filesystem, SQLite).
+- `.../stores` -- persistence/IO (cache, filesystem, PostgreSQL).
 - `.../clients` -- external API clients.
 - `.../exceptions` -- domain exceptions and `@Provider` exception mappers.
 - `.../validators` -- input validation helpers.

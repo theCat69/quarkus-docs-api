@@ -2,7 +2,7 @@
 
 ## Project Context
 
-Quarkus REST API (Java 21, Gradle wrapper) that caches and indexes Quarkus documentation from GitHub. SQLite-backed indexes. Lombok enabled. API documented via SmallRye OpenAPI with Swagger UI.
+Quarkus REST API (Java 21, Gradle wrapper) that caches and indexes Quarkus documentation from GitHub. PostgreSQL-backed indexes. Lombok enabled. API documented via SmallRye OpenAPI with Swagger UI.
 
 ## API Documentation
 

@@ -19,7 +19,7 @@
 The `%test` profile is automatically active when running tests. It configures:
 
 - Cache directory: `build/test-cache` (isolated from runtime).
-- SQLite database: `build/test-cache/index.db`.
+- PostgreSQL database: managed by Quarkus DevServices (Testcontainers).
 - REST clients pointed at WireMock (no real GitHub API calls).
 - Scheduler disabled.
 - Quarkiverse ingestion disabled.

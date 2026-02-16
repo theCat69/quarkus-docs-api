@@ -34,7 +34,7 @@
 - Quarkus REST, REST Client, REST Client Jackson, REST Jackson.
 - Quarkus Scheduler, SmallRye Health, SmallRye OpenAPI.
 - Quarkus ARC (CDI), Agroal (connection pooling).
-- Quarkiverse JDBC SQLite (`quarkus-jdbc-sqlite:3.0.11`).
+- Quarkus JDBC PostgreSQL + Liquibase (schema migration).
 - Jackson YAML (`jackson-dataformat-yaml`) for Antora playbook parsing.
 - Commons IO (`commons-io:2.21.0`).
 - Quarkus Container Image Docker.
@@ -51,7 +51,7 @@
 
 | Profile | Purpose |
 |---------|---------|
-| Default | Production-like settings. Cache at `.cache/`, SQLite at `.cache/index.db`. |
+| Default | Production-like settings. Cache at `.cache/`, PostgreSQL via Agroal datasource. |
 | `%dev` | REST client logging enabled, WireMock dev services disabled, caches versions `3.20,3.27,main`. |
 | `%test` | Cache at `build/test-cache`, REST clients pointed at WireMock, scheduler disabled, quarkiverse disabled. |
 
@@ -60,8 +60,8 @@
 | Directory | Contents |
 |-----------|----------|
 | `build/` | Compiled classes and build artifacts |
-| `build/test-cache/` | Test profile cache and SQLite database |
-| `.cache/` | Runtime cache (docs, indexes, SQLite database) |
+| `build/test-cache/` | Test profile cache directory (PostgreSQL managed by DevServices) |
+| `.cache/` | Runtime cache (docs, indexes; PostgreSQL database separate) |
 
 ## Container Image
 
