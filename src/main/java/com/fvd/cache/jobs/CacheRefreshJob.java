@@ -1,7 +1,22 @@
 package com.fvd.cache.jobs;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import jakarta.enterprise.context.ApplicationScoped;
+
+import io.quarkus.scheduler.Scheduled;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
 import com.fvd.api.services.DocumentService;
 import com.fvd.cache.services.CacheService;
+import com.fvd.common.utils.ExtensionPathUtils;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.clients.GithubApiFile;
@@ -9,18 +24,7 @@ import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.services.GitHubService;
 import com.fvd.indexs.services.DocChunkBuilder;
 import com.fvd.indexs.stores.IndexStore;
-import com.fvd.common.utils.ExtensionPathUtils;
 import com.fvd.quarkiverse.services.QuarkiverseService;
-import io.quarkus.scheduler.Scheduled;
-import jakarta.enterprise.context.ApplicationScoped;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 @Slf4j
 @ApplicationScoped
@@ -89,7 +93,7 @@ public class CacheRefreshJob {
             }
         }
 
-        if(!newIndex.isEmpty()) {
+        if (!newIndex.isEmpty()) {
             log.info("Should rebuild index stores");
 
             // Replace file index with new data

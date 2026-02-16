@@ -1,6 +1,7 @@
 package com.fvd.api.dto;
 
 import com.fvd.common.exceptions.InvalidInputException;
+import com.fvd.common.validators.InputValidator;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -80,5 +81,41 @@ class SearchParamsTest {
                 "main", "how does the reactive work", null, null, null);
 
         assertThat(params.q()).isEqualTo("how does the reactive work");
+    }
+
+    @Test
+    void fromRawWithQueryExceedingMaxLengthThrows() {
+        String longQuery = "a".repeat(InputValidator.MAX_QUERY_LENGTH + 1);
+        assertThatThrownBy(() -> SearchParams.fromRaw(
+                "main", longQuery, null, null, null))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("q must not exceed " + InputValidator.MAX_QUERY_LENGTH + " characters");
+    }
+
+    @Test
+    void fromRawWithQueryAtMaxLengthSucceeds() {
+        String exactQuery = "a".repeat(InputValidator.MAX_QUERY_LENGTH);
+        SearchParams params = SearchParams.fromRaw(
+                "main", exactQuery, null, null, null);
+
+        assertThat(params.q()).isEqualTo(exactQuery);
+    }
+
+    @Test
+    void fromRawWithExtensionExceedingMaxLengthThrows() {
+        String longExtension = "x".repeat(InputValidator.MAX_FILTER_LENGTH + 1);
+        assertThatThrownBy(() -> SearchParams.fromRaw(
+                "main", "security", longExtension, null, null))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("extension must not exceed " + InputValidator.MAX_FILTER_LENGTH + " characters");
+    }
+
+    @Test
+    void fromRawWithExtensionAtMaxLengthSucceeds() {
+        String exactExtension = "x".repeat(InputValidator.MAX_FILTER_LENGTH);
+        SearchParams params = SearchParams.fromRaw(
+                "main", "security", exactExtension, null, null);
+
+        assertThat(params.extension()).isEqualTo(exactExtension);
     }
 }

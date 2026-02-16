@@ -1,5 +1,15 @@
 package com.fvd.common.validators;
 
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import io.quarkus.runtime.annotations.RegisterForReflection;
+
+import lombok.experimental.UtilityClass;
+
 import com.fvd.api.dto.BatchDocumentResponse;
 import com.fvd.api.dto.CatalogResponse;
 import com.fvd.api.dto.ChunkResult;
@@ -13,14 +23,6 @@ import com.fvd.api.dto.RelatedDocumentRef;
 import com.fvd.api.dto.RelatedDocumentResponse;
 import com.fvd.api.dto.SearchResultRef;
 import com.fvd.common.exceptions.InvalidInputException;
-import io.quarkus.runtime.annotations.RegisterForReflection;
-import lombok.experimental.UtilityClass;
-
-import java.lang.reflect.Field;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Parses and validates the {@code fields} query parameter against response DTO field names.

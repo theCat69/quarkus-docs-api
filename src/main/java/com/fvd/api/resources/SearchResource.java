@@ -21,9 +21,9 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import com.fvd.api.dto.ChunkResult;
 import com.fvd.api.dto.ChunkSearchResponse;
+import com.fvd.api.dto.SearchParams;
 import com.fvd.api.dto.SearchRequest;
 import com.fvd.cache.services.CacheService;
-import com.fvd.common.SearchConstants;
 import com.fvd.common.exceptions.InvalidInputException;
 import com.fvd.common.resources.ProblemDetail;
 import com.fvd.common.validators.InputValidator;
@@ -97,15 +97,10 @@ public class SearchResource {
             )
             @QueryParam("offset") Integer offset) {
 
-        InputValidator.requireNonEmpty(q, "q");
-        String resolvedVersion = InputValidator.resolveVersion(version);
-        InputValidator.validateVersionExists(resolvedVersion, cacheService.listCachedVersions());
-        int validLimit = InputValidator.validateLimit(limit, SearchConstants.DEFAULT_LIMIT, SearchConstants.MAX_LIMIT);
-        int validOffset = InputValidator.validateOffset(offset);
-        String normalizedExtension = (extension == null || extension.isBlank()) ? null : extension.trim();
-
-        PaginatedChunkResult result = docChunkSearchService.search(q, resolvedVersion, normalizedExtension,
-                validLimit, validOffset);
+        SearchParams params = SearchParams.fromRaw(version, q, extension, limit, offset);
+        InputValidator.validateVersionExists(params.version(), cacheService.listCachedVersions());
+        PaginatedChunkResult result = docChunkSearchService.search(params.q(), params.version(),
+                params.extension(), params.limit(), params.offset());
         return toChunkSearchResponse(result);
     }
 
@@ -132,17 +127,11 @@ public class SearchResource {
             throw new InvalidInputException("Request body is required");
         }
 
-        InputValidator.requireNonEmpty(request.q, "q");
-        String resolvedVersion = InputValidator.resolveVersion(request.version);
-        InputValidator.validateVersionExists(resolvedVersion, cacheService.listCachedVersions());
-        int validLimit = InputValidator.validateLimit(request.limit, SearchConstants.DEFAULT_LIMIT,
-                SearchConstants.MAX_LIMIT);
-        int validOffset = InputValidator.validateOffset(request.offset);
-        String normalizedExtension = (request.extension == null || request.extension.isBlank())
-                ? null : request.extension.trim();
-
-        PaginatedChunkResult result = docChunkSearchService.search(request.q, resolvedVersion,
-                normalizedExtension, validLimit, validOffset);
+        SearchParams params = SearchParams.fromRaw(request.version, request.q, request.extension,
+                request.limit, request.offset);
+        InputValidator.validateVersionExists(params.version(), cacheService.listCachedVersions());
+        PaginatedChunkResult result = docChunkSearchService.search(params.q(), params.version(),
+                params.extension(), params.limit(), params.offset());
         return toChunkSearchResponse(result);
     }
 

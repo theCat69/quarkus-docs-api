@@ -13,6 +13,8 @@ import java.util.Set;
 public class InputValidator {
 
     public static final String DEFAULT_VERSION = "main";
+    public static final int MAX_QUERY_LENGTH = 500;
+    public static final int MAX_FILTER_LENGTH = 200;
 
     public static String resolveVersion(String version) {
         if (version == null || version.isBlank()) {
@@ -144,5 +146,22 @@ public class InputValidator {
             throw new InvalidInputException("offset must not be negative");
         }
         return offset;
+    }
+
+    public static void validateQueryLength(String query) {
+        if (query != null && query.length() > MAX_QUERY_LENGTH) {
+            throw new InvalidInputException("q must not exceed " + MAX_QUERY_LENGTH + " characters");
+        }
+    }
+
+    public static String normalizeAndValidateFilter(String filter, String paramName) {
+        if (filter == null || filter.isBlank()) {
+            return null;
+        }
+        String trimmed = filter.trim();
+        if (trimmed.length() > MAX_FILTER_LENGTH) {
+            throw new InvalidInputException(paramName + " must not exceed " + MAX_FILTER_LENGTH + " characters");
+        }
+        return trimmed;
     }
 }

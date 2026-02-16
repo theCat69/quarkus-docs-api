@@ -20,16 +20,13 @@ public record SearchParams(
             String version, String q,
             String extension, Integer limit, Integer offset) {
         InputValidator.requireNonEmpty(q, "q");
+        InputValidator.validateQueryLength(q);
         return SearchParams.builder()
                 .version(InputValidator.resolveVersion(version))
                 .q(q)
-                .extension(normalizeFilter(extension))
+                .extension(InputValidator.normalizeAndValidateFilter(extension, "extension"))
                 .limit(InputValidator.validateLimit(limit, SearchConstants.DEFAULT_LIMIT, SearchConstants.MAX_LIMIT))
                 .offset(InputValidator.validateOffset(offset))
                 .build();
-    }
-
-    private static String normalizeFilter(String filter) {
-        return (filter == null || filter.isBlank()) ? null : filter.trim();
     }
 }

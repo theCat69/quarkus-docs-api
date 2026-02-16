@@ -1,24 +1,28 @@
 package com.fvd.cache.jobs;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import jakarta.annotation.Priority;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
+
+import io.quarkus.runtime.StartupEvent;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
 import com.fvd.cache.services.CacheService;
 import com.fvd.cache.services.WarmupStatusTracker;
+import com.fvd.common.utils.ExtensionPathUtils;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.services.DocChunkBuilder;
 import com.fvd.indexs.services.IndexService;
-import com.fvd.common.utils.ExtensionPathUtils;
 import com.fvd.quarkiverse.services.QuarkiverseService;
-import io.quarkus.runtime.StartupEvent;
-import jakarta.annotation.Priority;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Observes;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 @Slf4j
 @ApplicationScoped
@@ -51,7 +55,7 @@ public class CacheWarmupJob {
         log.info("Starting cache warmup for versions: {}", versions);
 
         try {
-            fullReset.ifPresent((bool) -> { if(bool) cacheService.deleteCache(); });
+            fullReset.ifPresent((bool) -> { if (bool) cacheService.deleteCache(); });
 
             // Filter out versions that are already cached
             List<String> versionsToWarm = versions.stream()
