@@ -30,6 +30,6 @@ public record MatchedKeyword(
      * Backward-compatible constructor for integer weight.
      */
     public MatchedKeyword(String keyword, String source, int weight) {
-        this(keyword, keyword, source, (double) weight);
+        this(keyword, keyword, source, weight);
     }
 }

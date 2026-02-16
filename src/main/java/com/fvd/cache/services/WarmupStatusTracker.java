@@ -1,6 +1,7 @@
 package com.fvd.cache.services;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,6 +16,7 @@ public class WarmupStatusTracker {
     private final AtomicBoolean warmupStarted = new AtomicBoolean(false);
     private final AtomicReference<String> currentVersion = new AtomicReference<>(null);
     private final List<String> completedVersions = Collections.synchronizedList(new ArrayList<>());
+    @Getter
     private volatile int totalVersions = 0;
 
     public void warmupStarted(List<String> versions) {
@@ -50,10 +52,6 @@ public class WarmupStatusTracker {
 
     public List<String> getCompletedVersions() {
         return List.copyOf(completedVersions);
-    }
-
-    public int getTotalVersions() {
-        return totalVersions;
     }
 
     public int getCompletedCount() {

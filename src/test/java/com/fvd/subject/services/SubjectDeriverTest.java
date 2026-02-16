@@ -115,7 +115,7 @@ class SubjectDeriverTest {
 
     static Stream<Arguments> nullEmptyBlankInputs() {
         return Stream.of(
-                Arguments.of((String) null, "null input"),
+                Arguments.of( null, "null input"),
                 Arguments.of("", "empty input"),
                 Arguments.of("   ", "blank input")
         );

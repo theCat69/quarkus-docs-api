@@ -1,7 +1,6 @@
 package com.fvd.api.services;
 
 import com.fvd.cache.services.CacheService;
-import com.fvd.asciidocs.model.DocumentMetadata;
 import com.fvd.indexs.indexers.FileKeywordEntry;
 import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordScore;

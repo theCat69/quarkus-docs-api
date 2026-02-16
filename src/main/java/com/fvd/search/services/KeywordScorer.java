@@ -7,7 +7,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -138,7 +137,7 @@ public class KeywordScorer {
         for (String part : parts) {
             // Clean and normalize
             String cleaned = NON_WORD.matcher(part).replaceAll("").toLowerCase().trim();
-            if (!cleaned.isEmpty() && cleaned.length() >= 2 && !stopwords.contains(cleaned)) {
+            if (cleaned.length() >= 2 && !stopwords.contains(cleaned)) {
                 keywords.add(cleaned);
             }
         }

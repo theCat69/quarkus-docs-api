@@ -1,9 +1,7 @@
 package com.fvd.api.services;
 
-import com.fvd.api.dto.CodeBlockInfo;
 import com.fvd.api.dto.DocumentResponse;
 import com.fvd.api.dto.DocumentSearchResponse;
-import com.fvd.api.dto.SectionInfo;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
@@ -11,7 +9,6 @@ import com.fvd.search.services.FileSearchResult;
 import com.fvd.search.services.MatchedKeyword;
 import com.fvd.search.services.PaginatedResult;
 import com.fvd.search.services.SearchService;
-import com.fvd.asciidocs.model.DocumentMetadata;
 import com.fvd.subject.services.MetadataAwareSubjectResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,13 +21,8 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class DocumentServiceTest {

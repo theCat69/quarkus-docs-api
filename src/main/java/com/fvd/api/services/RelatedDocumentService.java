@@ -18,12 +18,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Service for finding documents related to a given source document
@@ -210,7 +205,7 @@ public class RelatedDocumentService {
         }
 
         // Sort by combined score descending
-        shared.sort(Comparator.<Map.Entry<String, Double>, Double>comparing(Map.Entry::getValue).reversed());
+        shared.sort(Map.Entry.<String, Double>comparingByValue().reversed());
 
         return shared.stream()
                 .limit(maxKeywords)

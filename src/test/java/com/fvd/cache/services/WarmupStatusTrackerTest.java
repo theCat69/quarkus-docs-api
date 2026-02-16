@@ -126,25 +126,26 @@ class WarmupStatusTrackerTest {
         tracker.warmupStarted(List.of("3.20", "3.27", "main"));
         int threadCount = 10;
         CountDownLatch latch = new CountDownLatch(threadCount);
-        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-
-        for (int i = 0; i < threadCount; i++) {
-            executor.submit(() -> {
-                try {
-                    tracker.isReady();
-                    tracker.isWarmupStarted();
-                    tracker.getCurrentVersion();
-                    tracker.getCompletedVersions();
-                    tracker.getTotalVersions();
-                    tracker.getCompletedCount();
-                } finally {
-                    latch.countDown();
-                }
-            });
+        try(ExecutorService executor = Executors.newFixedThreadPool(threadCount)) {
+            for (int i = 0; i < threadCount; i++) {
+                executor.submit(() -> {
+                    try {
+                        tracker.isReady();
+                        tracker.isWarmupStarted();
+                        tracker.getCurrentVersion();
+                        tracker.getCompletedVersions();
+                        tracker.getTotalVersions();
+                        tracker.getCompletedCount();
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+            }
+            boolean completed = latch.await(5, TimeUnit.SECONDS);
+            executor.shutdown();
+            assertThat(completed).isTrue();
         }
 
-        boolean completed = latch.await(5, TimeUnit.SECONDS);
-        executor.shutdown();
-        assertThat(completed).isTrue();
+
     }
 }

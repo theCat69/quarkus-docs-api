@@ -1,7 +1,6 @@
 package com.fvd.quarkiverse.services;
 
 import com.fvd.cache.services.CacheService;
-import com.fvd.docs.stores.DocStore;
 import com.fvd.github.clients.GithubApiFile;
 import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.services.GitHubService;
@@ -13,11 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Slf4j
 @ApplicationScoped

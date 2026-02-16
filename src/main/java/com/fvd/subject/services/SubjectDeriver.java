@@ -11,13 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
@@ -221,7 +215,7 @@ public class SubjectDeriver {
      * @return the derived subject name
      */
     public String deriveSubject(String filePath) {
-        return deriveSubject(filePath, (DocumentMetadata) null);
+        return deriveSubject(filePath,  null);
     }
 
     /**
@@ -433,10 +427,9 @@ public class SubjectDeriver {
     }
 
     private Map<String, SubjectMetadata> buildMetadataMap() {
-        Map<String, SubjectMetadata> result = new LinkedHashMap<>();
-        
+
         // Add defaults first
-        result.putAll(getDefaultMetadata());
+        Map<String, SubjectMetadata> result = new LinkedHashMap<>(getDefaultMetadata());
         
         // Override with configured definitions
         if (config.definitions() != null) {

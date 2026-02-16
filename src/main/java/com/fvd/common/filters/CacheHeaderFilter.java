@@ -77,7 +77,6 @@ public class CacheHeaderFilter implements ContainerResponseFilter {
                 response.setStatus(304);
                 response.setEntity(null);
                 response.getHeaders().remove("Content-Type");
-                return;
             }
         }
     }

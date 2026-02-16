@@ -9,7 +9,6 @@ import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.search.SearchConfig;
 import com.fvd.search.TestSearchConfig;
 import com.fvd.search.services.SearchService;
-import com.fvd.asciidocs.model.DocumentMetadata;
 import com.fvd.subject.services.MetadataAwareSubjectResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,12 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.within;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
