@@ -1,20 +1,19 @@
 package com.fvd.quarkiverse;
 
+import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.indexers.CodeSampleIndexer;
 import com.fvd.indexs.indexers.KeywordIndexer;
-import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import com.fvd.quarkiverse.services.QuarkiverseService;
 import com.fvd.search.services.SearchService;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.nio.file.Path;
+import javax.sql.DataSource;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -47,15 +46,18 @@ class QuarkiverseIntegrationTest {
     SearchService searchService;
 
     @Inject
-    SqliteSchemaInitializer schemaInitializer;
+    DataSource dataSource;
+
+    @Inject
+    CacheService cacheService;
 
     @BeforeEach
-    void cleanTestCache() throws IOException {
-        var cachePath = Path.of("build/test-cache").toFile();
-        if (cachePath.exists()) {
-            FileUtils.cleanDirectory(cachePath);
+    void cleanup() throws SQLException {
+        try (var conn = dataSource.getConnection(); var stmt = conn.createStatement()) {
+            stmt.execute("TRUNCATE files, file_keywords, sections, section_keywords, "
+                + "code_samples, code_sample_keywords, github_index, document_metadata CASCADE");
         }
-        schemaInitializer.resetSchema();
+        cacheService.deleteCache();
         searchService.invalidateCache("main");
     }
 
