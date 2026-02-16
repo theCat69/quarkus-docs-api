@@ -1,4 +1,7 @@
 databaseChangeLog:
-  - includeAll:
-      path: "scripts/"
+  - include:
+      file: "scripts/init.sql"
+      relativeToChangelogFile: true
+  - include:
+      file: "scripts/002-create-doc-chunks.sql"
       relativeToChangelogFile: true
