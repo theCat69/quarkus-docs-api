@@ -112,7 +112,8 @@ public class MetaService {
                 "Quick discovery search",
                 "Returns lightweight document references (path, title, subject, extension, " +
                         "score, matchedKeywords, snippet) without full content. Best for initial " +
-                        "discovery. Use the returned path with /api/documents?path=... to fetch full content.",
+                        "discovery. Snippets highlight matched keywords with **bold markers**. " +
+                        "Use the returned path with /api/documents?path=... to fetch full content.",
                 List.of(
                         buildVersionParameter(),
                         new ParameterMeta("keywords", "string", true, null,

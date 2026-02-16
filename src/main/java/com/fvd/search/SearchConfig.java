@@ -69,6 +69,9 @@ public interface SearchConfig {
     interface Snippet {
         @WithDefault("100")
         int contextSize();
+
+        @WithDefault("true")
+        boolean highlightEnabled();
     }
 
     interface Related {

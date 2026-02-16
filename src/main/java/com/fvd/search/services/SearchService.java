@@ -204,6 +204,12 @@ public class SearchService {
                 result.snippet = result.snippet + "...";
             }
         }
+
+        if (searchConfig.snippet().highlightEnabled()) {
+            Set<String> allKeywords = new HashSet<>(originalKeywords);
+            allKeywords.addAll(stemmedKeywords);
+            result.snippet = SnippetHighlighter.highlight(result.snippet, allKeywords);
+        }
     }
 
     private int findFirstKeywordOffset(String lowerContent, Set<String> keywords) {

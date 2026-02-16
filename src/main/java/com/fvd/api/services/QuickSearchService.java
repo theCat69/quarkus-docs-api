@@ -7,10 +7,12 @@ import com.fvd.common.SearchConstants;
 import com.fvd.common.utils.AsciiDocCleaner;
 import com.fvd.common.utils.DocumentTitleExtractor;
 import com.fvd.docs.stores.DocStore;
+import com.fvd.search.SearchConfig;
 import com.fvd.search.services.MatchedKeyword;
 import com.fvd.search.services.FileSearchResult;
 import com.fvd.search.services.PaginatedResult;
 import com.fvd.search.services.SearchService;
+import com.fvd.search.services.SnippetHighlighter;
 import com.fvd.subject.services.MetadataAwareSubjectResolver;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ public class QuickSearchService {
     private final SearchService searchService;
     private final DocStore docStore;
     private final MetadataAwareSubjectResolver metadataResolver;
+    private final SearchConfig searchConfig;
 
     /**
      * Performs a quick discovery search returning lightweight references.
@@ -64,6 +67,9 @@ public class QuickSearchService {
                     .map(DocumentTitleExtractor::extractTitle)
                     .orElse("");
             String snippet = generateSnippet(version, fileResult.path, keywordSet);
+            if (searchConfig.snippet().highlightEnabled()) {
+                snippet = SnippetHighlighter.highlight(snippet, keywordSet);
+            }
 
             List<String> matchedKws = fileResult.matchedKeywords.stream()
                     .map(MatchedKeyword::originalKeyword)

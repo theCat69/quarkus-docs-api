@@ -335,4 +335,18 @@ class ApiSearchResourceTest extends AbstractApiResourceTest {
                 .statusCode(400)
                 .body("detail", containsString("Unknown version"));
     }
+
+    @Test
+    void testSnippetsContainHighlightMarkers() {
+        seedDocFileWithKeyword();
+        seedKeywordIndexForSnippet();
+        given()
+                .queryParam("version", "3.27")
+                .queryParam("keywords", "security")
+                .when().get("/api/search")
+                .then()
+                .statusCode(200)
+                .body("results[0].snippet", notNullValue())
+                .body("results[0].snippet", containsString("**"));
+    }
 }

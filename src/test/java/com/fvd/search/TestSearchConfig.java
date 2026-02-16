@@ -123,6 +123,11 @@ public class TestSearchConfig implements SearchConfig {
         public int contextSize() {
             return 100;
         }
+
+        @Override
+        public boolean highlightEnabled() {
+            return true;
+        }
     }
 
     public static class TestRelated implements Related {
