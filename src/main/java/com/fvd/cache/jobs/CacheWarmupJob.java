@@ -4,8 +4,7 @@ import com.fvd.cache.services.CacheService;
 import com.fvd.cache.services.WarmupStatusTracker;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.services.ZipDownloadService;
-import com.fvd.indexs.indexers.CodeSampleIndexer;
-import com.fvd.indexs.indexers.KeywordIndexer;
+import com.fvd.indexs.services.DocChunkBuilder;
 import com.fvd.indexs.services.IndexService;
 import com.fvd.common.utils.ExtensionPathUtils;
 import com.fvd.quarkiverse.services.QuarkiverseService;
@@ -29,8 +28,7 @@ public class CacheWarmupJob {
     private final DocStore docStore;
     private final ZipDownloadService zipDownloadService;
     private final IndexService indexService;
-    private final KeywordIndexer keywordIndexer;
-    private final CodeSampleIndexer codeSampleIndexer;
+    private final DocChunkBuilder docChunkBuilder;
     private final CacheService cacheService;
     private final QuarkiverseService quarkiverseService;
     private final WarmupStatusTracker warmupStatusTracker;
@@ -143,18 +141,12 @@ public class CacheWarmupJob {
         log.info("Building main indexes with {} core files and {} quarkiverse files across {} extensions",
                 coreFiles.size(), quarkiversePaths.size(), filePathsByExtension.size() - 1);
 
-        keywordIndexer.build("main", filePathsByExtension);
-        log.info("Keyword index built for version main (merged)");
-
-        codeSampleIndexer.build("main", filePathsByExtension);
-        log.info("Code sample index built for version main (merged)");
+        docChunkBuilder.build("main", filePathsByExtension);
+        log.info("Doc chunks built for version main (merged)");
     }
 
     private void buildIndexes(String version, List<String> extractedFiles) {
-        keywordIndexer.build(version, extractedFiles);
-        log.info("Keyword index built for version {}", version);
-
-        codeSampleIndexer.build(version, extractedFiles);
-        log.info("Code sample index built for version {}", version);
+        docChunkBuilder.build(version, extractedFiles);
+        log.info("Doc chunks built for version {}", version);
     }
 }

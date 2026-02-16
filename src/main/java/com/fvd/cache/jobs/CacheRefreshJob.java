@@ -7,12 +7,10 @@ import com.fvd.docs.stores.DocStore;
 import com.fvd.github.clients.GithubApiFile;
 import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.services.GitHubService;
-import com.fvd.indexs.indexers.CodeSampleIndexer;
-import com.fvd.indexs.indexers.KeywordIndexer;
+import com.fvd.indexs.services.DocChunkBuilder;
 import com.fvd.indexs.stores.IndexStore;
 import com.fvd.common.utils.ExtensionPathUtils;
 import com.fvd.quarkiverse.services.QuarkiverseService;
-import com.fvd.search.services.SearchService;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
@@ -33,9 +31,7 @@ public class CacheRefreshJob {
     private final GitHubService gitHubService;
     private final IndexStore indexStore;
     private final DocStore docStore;
-    private final KeywordIndexer keywordIndexer;
-    private final CodeSampleIndexer codeSampleIndexer;
-    private final SearchService searchService;
+    private final DocChunkBuilder docChunkBuilder;
     private final DocParser docParser;
     private final QuarkiverseService quarkiverseService;
     private final DocumentService documentService;
@@ -106,13 +102,8 @@ public class CacheRefreshJob {
             List<String> allFilePaths = newIndex.stream()
                     .map(e -> stripDocsPrefix(e.path, version))
                     .toList();
-            keywordIndexer.build(version, allFilePaths);
+            docChunkBuilder.build(version, allFilePaths);
 
-            // Rebuild code sample index with all files
-            codeSampleIndexer.build(version, allFilePaths);
-
-            // Invalidate in-memory cache so next search picks up fresh data
-            searchService.invalidateCache(version);
             documentService.invalidateDocumentCache(version);
 
         }
@@ -133,10 +124,8 @@ public class CacheRefreshJob {
             List<String> allFiles = docStore.listDocFiles("main");
             Map<String, List<String>> filePathsByExtension = ExtensionPathUtils.groupByExtension(allFiles);
 
-            keywordIndexer.build("main", filePathsByExtension);
-            codeSampleIndexer.build("main", filePathsByExtension);
+            docChunkBuilder.build("main", filePathsByExtension);
 
-            searchService.invalidateCache("main");
             documentService.invalidateDocumentCache("main");
 
             log.info("Main indexes rebuilt with quarkiverse data ({} extensions)",

@@ -9,21 +9,21 @@ import com.fvd.github.clients.GithubApiFile;
 import com.fvd.github.clients.GithubApiIndex;
 import com.fvd.github.exceptions.UpstreamException;
 import com.fvd.github.services.GitHubService;
-import com.fvd.indexs.indexers.CodeSampleIndex;
-import com.fvd.indexs.indexers.CodeSampleIndexer;
-import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordIndexer;
+import com.fvd.indexs.services.DocChunkBuilder;
 import com.fvd.indexs.stores.IndexStore;
 import com.fvd.quarkiverse.services.QuarkiverseService;
 import com.fvd.search.TestSearchConfig;
-import com.fvd.search.services.SearchService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.*;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -44,13 +44,7 @@ class CacheRefreshJobTest {
     private DocStore docStore;
 
     @Mock
-    private KeywordIndexer keywordIndexer;
-
-    @Mock
-    private CodeSampleIndexer codeSampleIndexer;
-
-    @Mock
-    private SearchService searchService;
+    private DocChunkBuilder docChunkBuilder;
 
     @Mock
     private QuarkiverseService quarkiverseService;
@@ -64,7 +58,7 @@ class CacheRefreshJobTest {
 
     @BeforeEach
     void setUp() {
-        job = new CacheRefreshJob(cacheService, gitHubService, indexStore, docStore, keywordIndexer, codeSampleIndexer, searchService, docParser, quarkiverseService, documentService);
+        job = new CacheRefreshJob(cacheService, gitHubService, indexStore, docStore, docChunkBuilder, docParser, quarkiverseService, documentService);
         job.quarkiverseEnabled = false;
     }
 
@@ -82,7 +76,6 @@ class CacheRefreshJobTest {
         when(cacheService.listCachedVersions()).thenReturn(List.of("3.27"));
         when(indexStore.read("3.27")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.27")).thenReturn(oldIndex());
-        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
@@ -96,7 +89,6 @@ class CacheRefreshJobTest {
         when(gitHubService.fetchIndex("3.27")).thenReturn(newIndexWithChangedSha());
         GithubApiFile docFile = githubDocFile("updated content");
         when(gitHubService.fetchFileContent("_versions/3.27/guides/security-overview.adoc", "3.27")).thenReturn(docFile);
-        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
@@ -116,7 +108,6 @@ class CacheRefreshJobTest {
         when(gitHubService.fetchIndex("3.27")).thenReturn(newIndex);
         GithubApiFile docFile = githubDocFile("updated content");
         when(gitHubService.fetchFileContent("_versions/3.27/guides/security-overview.adoc", "3.27")).thenReturn(docFile);
-        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
@@ -124,19 +115,16 @@ class CacheRefreshJobTest {
     }
 
     @Test
-    void refreshRebuildsKeywordIndexAfterUpdate() {
+    void refreshRebuildsDocChunksAfterUpdate() {
         when(cacheService.listCachedVersions()).thenReturn(List.of("3.27"));
         when(indexStore.read("3.27")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.27")).thenReturn(newIndexWithChangedSha());
         GithubApiFile docFile = githubDocFile("updated content");
         when(gitHubService.fetchFileContent("_versions/3.27/guides/security-overview.adoc", "3.27")).thenReturn(docFile);
-        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
-        verify(keywordIndexer).build(eq("3.27"), eq(List.of("security-overview.adoc", "config.adoc")));
-        verify(codeSampleIndexer).build(eq("3.27"), eq(List.of("security-overview.adoc", "config.adoc")));
-        verify(searchService).invalidateCache("3.27");
+        verify(docChunkBuilder).build(eq("3.27"), eq(List.of("security-overview.adoc", "config.adoc")));
         verify(documentService).invalidateDocumentCache("3.27");
     }
 
@@ -145,7 +133,6 @@ class CacheRefreshJobTest {
         when(cacheService.listCachedVersions()).thenReturn(List.of("3.27"));
         when(indexStore.read("3.27")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.27")).thenReturn(oldIndex());
-        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
@@ -159,7 +146,6 @@ class CacheRefreshJobTest {
         when(gitHubService.fetchIndex("3.27")).thenReturn(newIndexWithAddedFile());
         GithubApiFile docFile = githubDocFile("new file content");
         when(gitHubService.fetchFileContent("_versions/3.27/guides/new-file.adoc", "3.27")).thenReturn(docFile);
-        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
@@ -173,12 +159,11 @@ class CacheRefreshJobTest {
         when(cacheService.listCachedVersions()).thenReturn(List.of("3.27"));
         when(indexStore.read("3.27")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.27")).thenReturn(newIndexWithRemovedFile());
-        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
         // Only config.adoc remains in the new index
-        verify(keywordIndexer).build(eq("3.27"), eq(List.of("config.adoc")));
+        verify(docChunkBuilder).build(eq("3.27"), eq(List.of("config.adoc")));
     }
 
     @Test
@@ -190,7 +175,6 @@ class CacheRefreshJobTest {
         GithubApiFile docFile2 = githubDocFile("config content");
         when(gitHubService.fetchFileContent("_versions/3.27/guides/security-overview.adoc", "3.27")).thenReturn(docFile1);
         when(gitHubService.fetchFileContent("_versions/3.27/guides/config.adoc", "3.27")).thenReturn(docFile2);
-        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
@@ -207,7 +191,6 @@ class CacheRefreshJobTest {
         when(gitHubService.fetchIndex("3.20")).thenThrow(new UpstreamException("GitHub down"));
         when(indexStore.read("3.27")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.27")).thenReturn(oldIndex());
-        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
@@ -222,18 +205,16 @@ class CacheRefreshJobTest {
 
         job.refresh();
 
-        // Should NOT modify the existing index or keyword index
+        // Should NOT modify the existing index or doc chunks
         verify(indexStore, never()).write(anyString(), anyList());
-        verify(keywordIndexer, never()).build(anyString(), anyList());
-        verify(codeSampleIndexer, never()).build(anyString(), anyList());
+        verify(docChunkBuilder, never()).build(anyString(), anyList());
     }
 
     @Test
-    void refreshNoChangesStillUpdatesIndexAndRebuildKeywords() {
+    void refreshNoChangesStillUpdatesIndexAndRebuildDocChunks() {
         when(cacheService.listCachedVersions()).thenReturn(List.of("3.27"));
         when(indexStore.read("3.27")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.27")).thenReturn(oldIndex());
-        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
@@ -241,8 +222,8 @@ class CacheRefreshJobTest {
         verify(gitHubService, never()).fetchFileContent(anyString(), anyString());
         // Index should still be written
         verify(indexStore).write("3.27", oldIndex());
-        // Keywords should still be rebuilt
-        verify(keywordIndexer).build(eq("3.27"), eq(List.of("security-overview.adoc", "config.adoc")));
+        // Doc chunks should still be rebuilt
+        verify(docChunkBuilder).build(eq("3.27"), eq(List.of("security-overview.adoc", "config.adoc")));
     }
 
     @Test
@@ -252,8 +233,6 @@ class CacheRefreshJobTest {
         when(indexStore.read("3.27")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.20")).thenReturn(oldIndex());
         when(gitHubService.fetchIndex("3.27")).thenReturn(oldIndex());
-        when(keywordIndexer.build(eq("3.20"), anyList())).thenReturn(new KeywordIndex(List.of()));
-        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
@@ -315,9 +294,6 @@ class CacheRefreshJobTest {
         when(cacheService.listCachedVersions()).thenReturn(List.of("main"));
         when(indexStore.read("main")).thenReturn(Optional.of(mainIndex()));
         when(gitHubService.fetchIndex("main")).thenReturn(mainIndex());
-        // Core refresh uses List overload
-        when(keywordIndexer.build(eq("main"), anyList())).thenReturn(new KeywordIndex(List.of()));
-        when(codeSampleIndexer.build(eq("main"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
 
         // Quarkiverse refresh returns true (changes detected)
         when(quarkiverseService.refreshAll()).thenReturn(true);
@@ -327,10 +303,6 @@ class CacheRefreshJobTest {
                 "config.adoc", "security-overview.adoc",
                 "quarkiverse/quarkus-openapi-generator/index.adoc"));
 
-        // Quarkiverse rebuild uses Map overload
-        when(keywordIndexer.build(eq("main"), anyMap())).thenReturn(new KeywordIndex(List.of()));
-        when(codeSampleIndexer.build(eq("main"), anyMap())).thenReturn(new CodeSampleIndex(List.of()));
-
         job.refresh();
 
         verify(quarkiverseService).refreshAll();
@@ -339,9 +311,7 @@ class CacheRefreshJobTest {
         Map<String, List<String>> expected = new LinkedHashMap<>();
         expected.put("quarkus-core", List.of("config.adoc", "security-overview.adoc"));
         expected.put("quarkus-openapi-generator", List.of("quarkiverse/quarkus-openapi-generator/index.adoc"));
-        verify(keywordIndexer).build(eq("main"), eq(expected));
-        verify(codeSampleIndexer).build(eq("main"), eq(expected));
-        verify(searchService, times(2)).invalidateCache("main");
+        verify(docChunkBuilder).build(eq("main"), eq(expected));
         verify(documentService, times(2)).invalidateDocumentCache("main");
     }
 
@@ -352,7 +322,6 @@ class CacheRefreshJobTest {
         when(cacheService.listCachedVersions()).thenReturn(List.of("main"));
         when(indexStore.read("main")).thenReturn(Optional.of(mainIndex()));
         when(gitHubService.fetchIndex("main")).thenReturn(mainIndex());
-        when(keywordIndexer.build(eq("main"), anyList())).thenReturn(new KeywordIndex(List.of()));
 
         // Quarkiverse refresh returns false (no changes)
         when(quarkiverseService.refreshAll()).thenReturn(false);
@@ -361,8 +330,7 @@ class CacheRefreshJobTest {
 
         verify(quarkiverseService).refreshAll();
         // Map overload should NOT be called since no changes
-        verify(keywordIndexer, never()).build(eq("main"), anyMap());
-        verify(codeSampleIndexer, never()).build(eq("main"), anyMap());
+        verify(docChunkBuilder, never()).build(eq("main"), anyMap());
     }
 
     @Test
@@ -372,7 +340,6 @@ class CacheRefreshJobTest {
         when(cacheService.listCachedVersions()).thenReturn(List.of("main"));
         when(indexStore.read("main")).thenReturn(Optional.of(mainIndex()));
         when(gitHubService.fetchIndex("main")).thenReturn(mainIndex());
-        when(keywordIndexer.build(eq("main"), anyList())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
@@ -386,7 +353,6 @@ class CacheRefreshJobTest {
         when(cacheService.listCachedVersions()).thenReturn(List.of("3.27"));
         when(indexStore.read("3.27")).thenReturn(Optional.of(oldIndex()));
         when(gitHubService.fetchIndex("3.27")).thenReturn(oldIndex());
-        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
 
         job.refresh();
 
@@ -400,7 +366,6 @@ class CacheRefreshJobTest {
         when(cacheService.listCachedVersions()).thenReturn(List.of("main"));
         when(indexStore.read("main")).thenReturn(Optional.of(mainIndex()));
         when(gitHubService.fetchIndex("main")).thenReturn(mainIndex());
-        when(keywordIndexer.build(eq("main"), anyList())).thenReturn(new KeywordIndex(List.of()));
 
         // Quarkiverse refresh throws exception
         when(quarkiverseService.refreshAll()).thenThrow(new RuntimeException("Quarkiverse down"));
@@ -409,9 +374,9 @@ class CacheRefreshJobTest {
 
         // Core refresh should have completed normally
         verify(indexStore).write("main", mainIndex());
-        verify(keywordIndexer).build(eq("main"), anyList());
+        verify(docChunkBuilder).build(eq("main"), anyList());
         // Map overload should NOT be called since quarkiverse failed
-        verify(keywordIndexer, never()).build(eq("main"), anyMap());
+        verify(docChunkBuilder, never()).build(eq("main"), anyMap());
     }
 
     @Test
@@ -423,17 +388,11 @@ class CacheRefreshJobTest {
         when(indexStore.read("main")).thenReturn(Optional.of(mainIndex()));
         when(gitHubService.fetchIndex("3.27")).thenReturn(oldIndex());
         when(gitHubService.fetchIndex("main")).thenReturn(mainIndex());
-        when(keywordIndexer.build(eq("3.27"), anyList())).thenReturn(new KeywordIndex(List.of()));
-        // Core refresh for main uses List overload
-        when(keywordIndexer.build(eq("main"), anyList())).thenReturn(new KeywordIndex(List.of()));
-        when(codeSampleIndexer.build(eq("main"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
 
         // Quarkiverse refresh returns true
         when(quarkiverseService.refreshAll()).thenReturn(true);
         when(docStore.listDocFiles("main")).thenReturn(List.of(
                 "config.adoc", "quarkiverse/quarkus-cxf/index.adoc"));
-        when(keywordIndexer.build(eq("main"), anyMap())).thenReturn(new KeywordIndex(List.of()));
-        when(codeSampleIndexer.build(eq("main"), anyMap())).thenReturn(new CodeSampleIndex(List.of()));
 
         job.refresh();
 
@@ -443,10 +402,10 @@ class CacheRefreshJobTest {
 
         // Only main gets quarkiverse merge
         verify(quarkiverseService).refreshAll();
-        verify(keywordIndexer).build(eq("main"), anyMap());
+        verify(docChunkBuilder).build(eq("main"), anyMap());
 
         // 3.27 uses List overload only
-        verify(keywordIndexer).build(eq("3.27"), anyList());
+        verify(docChunkBuilder).build(eq("3.27"), anyList());
     }
 
     @Test
@@ -456,9 +415,6 @@ class CacheRefreshJobTest {
         when(cacheService.listCachedVersions()).thenReturn(List.of("main"));
         when(indexStore.read("main")).thenReturn(Optional.of(mainIndex()));
         when(gitHubService.fetchIndex("main")).thenReturn(mainIndex());
-        // Core refresh uses List overload
-        when(keywordIndexer.build(eq("main"), anyList())).thenReturn(new KeywordIndex(List.of()));
-        when(codeSampleIndexer.build(eq("main"), anyList())).thenReturn(new CodeSampleIndex(List.of()));
 
         when(quarkiverseService.refreshAll()).thenReturn(true);
         when(docStore.listDocFiles("main")).thenReturn(List.of(
@@ -467,9 +423,6 @@ class CacheRefreshJobTest {
                 "quarkiverse/quarkus-cxf/usage.adoc",
                 "quarkiverse/quarkus-openapi-generator/index.adoc",
                 "security-overview.adoc"));
-
-        when(keywordIndexer.build(eq("main"), anyMap())).thenReturn(new KeywordIndex(List.of()));
-        when(codeSampleIndexer.build(eq("main"), anyMap())).thenReturn(new CodeSampleIndex(List.of()));
 
         job.refresh();
 
@@ -481,8 +434,7 @@ class CacheRefreshJobTest {
         expected.put("quarkus-openapi-generator", List.of(
                 "quarkiverse/quarkus-openapi-generator/index.adoc"));
 
-        verify(keywordIndexer).build(eq("main"), eq(expected));
-        verify(codeSampleIndexer).build(eq("main"), eq(expected));
+        verify(docChunkBuilder).build(eq("main"), eq(expected));
     }
 
     private List<GithubApiIndex> mainIndex() {
