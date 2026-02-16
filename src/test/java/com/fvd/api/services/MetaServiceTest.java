@@ -43,7 +43,7 @@ class MetaServiceTest {
     void shouldReturnAllEndpoints() {
         MetaResponse response = metaService.getCapabilities();
 
-        assertThat(response.endpoints).hasSize(10);
+        assertThat(response.endpoints).hasSize(9);
         List<String> paths = response.endpoints.stream()
                 .map(e -> e.method + " " + e.path)
                 .toList();
@@ -54,7 +54,6 @@ class MetaServiceTest {
                 "GET /api/search",
                 "POST /api/search",
                 "GET /api/documents",
-                "GET /api/code-samples",
                 "GET /api/search/syntax",
                 "POST /api/documents/batch",
                 "GET /api/documents/related"
@@ -76,7 +75,6 @@ class MetaServiceTest {
         assertThat(findEndpoint(response, "GET", "/api/search").method).isEqualTo("GET");
         assertThat(findEndpoint(response, "POST", "/api/search").method).isEqualTo("POST");
         assertThat(findEndpoint(response, "GET", "/api/documents").method).isEqualTo("GET");
-        assertThat(findEndpoint(response, "GET", "/api/code-samples").method).isEqualTo("GET");
         assertThat(findEndpoint(response, "GET", "/api/search/syntax").method).isEqualTo("GET");
         assertThat(findEndpoint(response, "POST", "/api/documents/batch").method).isEqualTo("POST");
         assertThat(findEndpoint(response, "GET", "/api/documents/related").method).isEqualTo("GET");
@@ -93,23 +91,13 @@ class MetaServiceTest {
     }
 
     @Test
-    void shouldMarkKeywordsAsRequiredOnSearchEndpoint() {
+    void shouldMarkQueryAsRequiredOnSearchEndpoint() {
         MetaResponse response = metaService.getCapabilities();
 
         EndpointMeta search = findEndpoint(response, "/api/search");
-        Optional<ParameterMeta> keywords = findParameter(search, "keywords");
-        assertThat(keywords).isPresent();
-        assertThat(keywords.get().required).isTrue();
-    }
-
-    @Test
-    void shouldMarkKeywordsAsRequiredOnCodeSamplesEndpoint() {
-        MetaResponse response = metaService.getCapabilities();
-
-        EndpointMeta codeSamples = findEndpoint(response, "/api/code-samples");
-        Optional<ParameterMeta> keywords = findParameter(codeSamples, "keywords");
-        assertThat(keywords).isPresent();
-        assertThat(keywords.get().required).isTrue();
+        Optional<ParameterMeta> q = findParameter(search, "q");
+        assertThat(q).isPresent();
+        assertThat(q.get().required).isTrue();
     }
 
     @Test
@@ -122,17 +110,6 @@ class MetaServiceTest {
                 .toList();
         assertThat(paramNames).contains("path", "keywords", "subject", "extension",
                 "limit", "offset", "brief");
-    }
-
-    @Test
-    void shouldIncludeLanguageParameterOnCodeSamples() {
-        MetaResponse response = metaService.getCapabilities();
-
-        EndpointMeta codeSamples = findEndpoint(response, "/api/code-samples");
-        Optional<ParameterMeta> language = findParameter(codeSamples, "language");
-        assertThat(language).isPresent();
-        assertThat(language.get().type).isEqualTo("string");
-        assertThat(language.get().required).isFalse();
     }
 
     @Test

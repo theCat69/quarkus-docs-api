@@ -2,6 +2,8 @@ package com.fvd.common.validators;
 
 import com.fvd.api.dto.BatchDocumentResponse;
 import com.fvd.api.dto.CatalogResponse;
+import com.fvd.api.dto.ChunkResult;
+import com.fvd.api.dto.ChunkSearchResponse;
 import com.fvd.api.dto.CodeSampleResult;
 import com.fvd.api.dto.CodeSampleSearchResponse;
 import com.fvd.api.dto.DocumentResponse;
@@ -32,6 +34,7 @@ public class FieldSelectionValidator {
             QuickSearchResponse.class, SearchResultRef.class,
             DocumentSearchResponse.class, DocumentResponse.class,
             CodeSampleSearchResponse.class, CodeSampleResult.class,
+            ChunkSearchResponse.class, ChunkResult.class,
             RelatedDocumentResponse.class, RelatedDocumentRef.class,
             BatchDocumentResponse.class, BatchDocumentResponse.class,
             CatalogResponse.class, CatalogResponse.class,

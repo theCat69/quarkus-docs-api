@@ -13,7 +13,9 @@ import com.fvd.indexs.indexers.CodeSampleIndex;
 import com.fvd.indexs.indexers.FileKeywordEntry;
 import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordScore;
+import com.fvd.indexs.model.DocChunk;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
+import com.fvd.indexs.stores.DocChunkStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
 import com.fvd.search.services.SearchService;
 import jakarta.inject.Inject;
@@ -30,6 +32,9 @@ abstract class AbstractApiResourceTest {
 
     @Inject
     CodeSampleIndexStore codeSampleIndexStore;
+
+    @Inject
+    DocChunkStore docChunkStore;
 
     @Inject
     DocStore docStore;
@@ -50,13 +55,17 @@ abstract class AbstractApiResourceTest {
     void cleanup() throws SQLException {
         try (var conn = dataSource.getConnection(); var stmt = conn.createStatement()) {
             stmt.execute("TRUNCATE files, file_keywords, sections, section_keywords, "
-                + "code_samples, code_sample_keywords, github_index, document_metadata CASCADE");
+                + "code_samples, code_sample_keywords, github_index, document_metadata, doc_chunks CASCADE");
         }
         cacheService.deleteCache();
         searchService.invalidateCache("3.27");
         searchService.invalidateCache("main");
         catalogService.invalidateCache("3.27");
         catalogService.invalidateCache("main");
+    }
+
+    protected void seedDocChunks(String version, List<DocChunk> chunks) {
+        docChunkStore.insertBatch(version, chunks);
     }
 
     protected void seedKeywordIndexMultiple() {

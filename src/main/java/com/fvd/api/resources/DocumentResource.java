@@ -1,12 +1,14 @@
 package com.fvd.api.resources;
 
+import java.util.List;
+
 import com.fvd.api.dto.BatchDocumentRequest;
 import com.fvd.api.dto.BatchDocumentResponse;
 import com.fvd.api.dto.DocumentResponse;
 import com.fvd.api.dto.DocumentSearchResponse;
-import com.fvd.api.dto.SearchParams;
 import com.fvd.api.services.DocumentService;
 import com.fvd.cache.services.CacheService;
+import com.fvd.common.SearchConstants;
 import com.fvd.common.exceptions.InvalidInputException;
 import com.fvd.common.resources.ProblemDetail;
 import com.fvd.common.validators.InputValidator;
@@ -163,14 +165,19 @@ public class DocumentResource {
 
         // Search mode
         if (keywords != null && !keywords.isBlank()) {
-            SearchParams params = SearchParams.fromRaw(version, keywords, subject, extension, limit, offset);
-            InputValidator.validateVersionExists(params.version(), cacheService.listCachedVersions());
-            InputValidator.validateSubjectExists(params.subject(), subjectDeriver.getValidSubjectNames());
+            String resolvedVer = InputValidator.resolveVersion(version);
+            List<String> parsedKeywords = InputValidator.parseKeywords(keywords);
+            String normalizedSubject = (subject == null || subject.isBlank()) ? null : subject.trim();
+            String normalizedExtension = (extension == null || extension.isBlank()) ? null : extension.trim();
+            int validLimit = InputValidator.validateLimit(limit, SearchConstants.DEFAULT_LIMIT, SearchConstants.MAX_LIMIT);
+            int validOffset = InputValidator.validateOffset(offset);
+            InputValidator.validateVersionExists(resolvedVer, cacheService.listCachedVersions());
+            InputValidator.validateSubjectExists(normalizedSubject, subjectDeriver.getValidSubjectNames());
 
             // brief defaults to true for keyword searches (performance)
             boolean briefMode = (brief == null) ? true : brief;
-            return documentService.searchDocuments(params.version(), params.keywords(), params.subject(),
-                    params.extension(), params.limit(), params.offset(), briefMode);
+            return documentService.searchDocuments(resolvedVer, parsedKeywords, normalizedSubject,
+                    normalizedExtension, validLimit, validOffset, briefMode);
         }
 
         // Neither provided

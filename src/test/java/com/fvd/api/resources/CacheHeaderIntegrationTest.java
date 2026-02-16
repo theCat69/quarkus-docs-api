@@ -1,7 +1,10 @@
 package com.fvd.api.resources;
 
+import com.fvd.indexs.model.DocChunk;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
@@ -31,11 +34,10 @@ class CacheHeaderIntegrationTest extends AbstractApiResourceTest {
 
     @Test
     void shouldReturnCacheHeadersOnSearch() {
-        seedKeywordIndexMultiple();
-        seedDocFilesMultiple();
+        seedSearchChunksForCache();
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
@@ -71,13 +73,12 @@ class CacheHeaderIntegrationTest extends AbstractApiResourceTest {
 
     @Test
     void shouldReturn304OnConditionalGet() {
-        seedKeywordIndexMultiple();
-        seedDocFilesMultiple();
+        seedSearchChunksForCache();
 
         // Step 1: GET the resource, capture the ETag
         String etag = given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
@@ -86,7 +87,7 @@ class CacheHeaderIntegrationTest extends AbstractApiResourceTest {
         // Step 2: Repeat with If-None-Match
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .header("If-None-Match", etag)
                 .when().get("/api/search")
                 .then()
@@ -96,13 +97,12 @@ class CacheHeaderIntegrationTest extends AbstractApiResourceTest {
 
     @Test
     void shouldProduceDifferentETagsForDifferentFields() {
-        seedKeywordIndexMultiple();
-        seedDocFilesMultiple();
+        seedSearchChunksForCache();
 
         // Request with fields=title
         String etag1 = given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .queryParam("fields", "title")
                 .when().get("/api/search")
                 .then()
@@ -110,11 +110,11 @@ class CacheHeaderIntegrationTest extends AbstractApiResourceTest {
                 .header("ETag", notNullValue())
                 .extract().header("ETag");
 
-        // Request with fields=title,path
+        // Request with fields=title,page
         String etag2 = given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
-                .queryParam("fields", "title,path")
+                .queryParam("q", "security")
+                .queryParam("fields", "title,page")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
@@ -123,5 +123,17 @@ class CacheHeaderIntegrationTest extends AbstractApiResourceTest {
 
         // ETags should be different because different fields → different byte[]
         assertThat(etag2, not(equalTo(etag1)));
+    }
+
+    private void seedSearchChunksForCache() {
+        seedDocFilesMultiple();
+        seedDocChunks("3.27", List.of(
+                new DocChunk("cache-chunk-1", "3.27", "security.adoc",
+                        "Security", "Overview",
+                        "https://quarkus.io/guides/security",
+                        List.of("security"), List.of("quarkus-core"),
+                        "Security overview",
+                        "Content about security and quarkus applications.")
+        ));
     }
 }

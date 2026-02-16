@@ -14,16 +14,13 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 @Schema(description = "Search request body for POST /api/search")
 public class SearchRequest {
 
-    @Schema(description = "Space-separated search keywords", required = true,
-            example = "security authentication oidc")
-    public String keywords;
+    @Schema(description = "Search query string", required = true,
+            example = "reactive rest endpoint")
+    public String q;
 
     @Schema(description = "Quarkus version branch or tag. Defaults to 'main' if omitted.",
             defaultValue = "main", example = "3.27")
     public String version;
-
-    @Schema(description = "Subject filter", example = "security")
-    public String subject;
 
     @Schema(description = "Extension filter", example = "quarkus-oidc")
     public String extension;

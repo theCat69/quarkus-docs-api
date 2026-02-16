@@ -55,7 +55,7 @@ class QuarkiverseIntegrationTest {
     void cleanup() throws SQLException {
         try (var conn = dataSource.getConnection(); var stmt = conn.createStatement()) {
             stmt.execute("TRUNCATE files, file_keywords, sections, section_keywords, "
-                + "code_samples, code_sample_keywords, github_index, document_metadata CASCADE");
+                + "code_samples, code_sample_keywords, github_index, document_metadata, doc_chunks CASCADE");
         }
         cacheService.deleteCache();
         searchService.invalidateCache("main");
@@ -80,15 +80,16 @@ class QuarkiverseIntegrationTest {
     void quarkiverseDocsAppearInSearchResultsForMainVersion() {
         buildQuarkiverseIndexes();
 
-        // Search for keywords from the quarkiverse doc using new /api/search endpoint
+        // Search for keywords from the quarkiverse doc using /api/documents endpoint
+        // (which still uses the keyword-based search)
         given()
                 .queryParam("version", "main")
                 .queryParam("keywords", "test extension")
         .when()
-                .get("/api/search")
+                .get("/api/documents")
         .then()
                 .statusCode(200)
-                .body("totalCount", greaterThan(0))
+                .body("results.size()", greaterThan(0))
                 .body("results[0].path", equalTo("quarkiverse/quarkus-test-extension/index.adoc"))
                 .body("results[0].extension", equalTo("quarkus-test-extension"));
     }
@@ -98,7 +99,7 @@ class QuarkiverseIntegrationTest {
         // Extract quarkiverse docs
         quarkiverseService.fetchAndExtractAll();
 
-        // Retrieve the quarkiverse doc via the new /api/documents endpoint
+        // Retrieve the quarkiverse doc via the /api/documents endpoint
         given()
                 .queryParam("version", "main")
                 .queryParam("path", "quarkiverse/quarkus-test-extension/index.adoc")
@@ -114,8 +115,7 @@ class QuarkiverseIntegrationTest {
     void quarkiverseDocsNotInIndexEndpoint() {
         buildQuarkiverseIndexes();
 
-        // The old /api/index endpoint is removed
-        // We verify that the catalog endpoint works and includes versions
+        // Verify that the catalog endpoint works and includes versions
         given()
                 .queryParam("version", "main")
         .when()
@@ -131,32 +131,15 @@ class QuarkiverseIntegrationTest {
         // Seed version 3.27 cache directory so version validation passes
         docStore.write("3.27", "_placeholder.adoc", "= Placeholder");
 
-        // Search for 3.27 should not return quarkiverse results
+        // Search for 3.27 via /api/documents should not return quarkiverse results
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "test extension")
         .when()
-                .get("/api/search")
+                .get("/api/documents")
         .then()
                 .statusCode(200)
                 .body("totalCount", equalTo(0));
-    }
-
-    @Test
-    void quarkiverseCodeSamplesAppearInSearch() {
-        buildQuarkiverseIndexes();
-
-        // Search for code samples from the quarkiverse doc using new /api/code-samples endpoint
-        given()
-                .queryParam("version", "main")
-                .queryParam("keywords", "dependency quarkus")
-        .when()
-                .get("/api/code-samples")
-        .then()
-                .statusCode(200)
-                .body("totalCount", greaterThan(0))
-                .body("results[0].documentPath", equalTo("quarkiverse/quarkus-test-extension/index.adoc"))
-                .body("results[0].extension", equalTo("quarkus-test-extension"));
     }
 
     private void buildQuarkiverseIndexes() {

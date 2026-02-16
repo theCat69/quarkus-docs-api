@@ -1,5 +1,6 @@
 package com.fvd.common.filters;
 
+import com.fvd.api.dto.ChunkSearchResponse;
 import com.fvd.api.dto.PaginatedResponse;
 import jakarta.annotation.Priority;
 import jakarta.ws.rs.Priorities;
@@ -10,7 +11,7 @@ import jakarta.ws.rs.ext.Provider;
 
 /**
  * JAX-RS response filter that adds an {@code X-Total-Count} header to responses
- * whose entity is a {@link PaginatedResponse}.
+ * whose entity is a {@link PaginatedResponse} or {@link ChunkSearchResponse}.
  * <p>
  * Runs before {@link FieldSelectionFilter} (which converts entity to {@code byte[]})
  * so the entity is still a typed DTO when inspected.
@@ -25,6 +26,9 @@ public class TotalCountHeaderFilter implements ContainerResponseFilter {
         if (entity instanceof PaginatedResponse<?> paginated) {
             response.getHeaders().putSingle("X-Total-Count",
                     String.valueOf(paginated.getTotalCount()));
+        } else if (entity instanceof ChunkSearchResponse chunkResponse) {
+            response.getHeaders().putSingle("X-Total-Count",
+                    String.valueOf(chunkResponse.total));
         }
     }
 }

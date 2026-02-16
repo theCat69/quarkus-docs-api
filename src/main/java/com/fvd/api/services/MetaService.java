@@ -63,7 +63,6 @@ public class MetaService {
                 buildSearchEndpoint(),
                 buildSearchPostEndpoint(),
                 buildDocumentsEndpoint(),
-                buildCodeSamplesEndpoint(),
                 buildSearchSyntaxEndpoint(),
                 buildDocumentsBatchEndpoint(),
                 buildDocumentsRelatedEndpoint()
@@ -109,17 +108,15 @@ public class MetaService {
         return new EndpointMeta(
                 "GET",
                 "/api/search",
-                "Quick discovery search",
-                "Returns lightweight document references (path, title, subject, extension, " +
-                        "score, matchedKeywords, snippet) without full content. Best for initial " +
-                        "discovery. Snippets highlight matched keywords with **bold markers**. " +
-                        "Use the returned path with /api/documents?path=... to fetch full content.",
+                "Search documentation chunks",
+                "Searches indexed documentation chunks by query string. Returns scored results " +
+                        "with title, section, summary, and metadata. Supports filtering by version " +
+                        "and extension. Results are sorted by relevance score descending.",
                 List.of(
                         buildVersionParameter(),
-                        new ParameterMeta("keywords", "string", true, null,
-                                "Space-separated search keywords. Stop words are automatically filtered.",
+                        new ParameterMeta("q", "string", true, null,
+                                "Search query string.",
                                 null),
-                        buildSubjectParameter(),
                         buildExtensionParameter(),
                         buildLimitParameter(),
                         buildOffsetParameter()
@@ -131,14 +128,14 @@ public class MetaService {
         return new EndpointMeta(
                 "POST",
                 "/api/search",
-                "Quick discovery search (POST)",
+                "Search documentation chunks (POST)",
                 "Same as GET /api/search but accepts parameters as a JSON body. " +
                         "Useful for complex queries that would exceed URL length limits.",
                 List.of(
                         new ParameterMeta("body", "object", true, null,
-                                "JSON body with 'keywords' (required, space-separated search keywords), " +
+                                "JSON body with 'q' (required, search query string), " +
                                         "'version' (optional, default 'main'), " +
-                                        "'subject' (optional), 'extension' (optional), " +
+                                        "'extension' (optional), " +
                                         "'limit' (optional, default 20, max 100), " +
                                         "'offset' (optional, default 0)",
                                 null)
@@ -174,30 +171,6 @@ public class MetaService {
                                 "When true, returns only metadata without sections and codeBlocks " +
                                         "(search mode only, ignored in path mode).",
                                 null)
-                )
-        );
-    }
-
-    private EndpointMeta buildCodeSamplesEndpoint() {
-        return new EndpointMeta(
-                "GET",
-                "/api/code-samples",
-                "Search code samples by keywords",
-                "Searches for code examples matching keywords. Returns code samples with full content, " +
-                        "language, context (surrounding section title), and relevance scores. " +
-                        "Results sorted by score descending.",
-                List.of(
-                        buildVersionParameter(),
-                        new ParameterMeta("keywords", "string", true, null,
-                                "Space-separated search keywords.",
-                                null),
-                        new ParameterMeta("language", "string", false, null,
-                                "Programming language filter (e.g., 'java', 'properties', 'yaml').",
-                                null),
-                        buildSubjectParameter(),
-                        buildExtensionParameter(),
-                        buildLimitParameter(),
-                        buildOffsetParameter()
                 )
         );
     }

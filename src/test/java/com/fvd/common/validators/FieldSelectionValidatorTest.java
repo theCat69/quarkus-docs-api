@@ -2,6 +2,8 @@ package com.fvd.common.validators;
 
 import com.fvd.api.dto.BatchDocumentResponse;
 import com.fvd.api.dto.CatalogResponse;
+import com.fvd.api.dto.ChunkResult;
+import com.fvd.api.dto.ChunkSearchResponse;
 import com.fvd.api.dto.CodeSampleResult;
 import com.fvd.api.dto.CodeSampleSearchResponse;
 import com.fvd.api.dto.DocumentResponse;
@@ -126,6 +128,13 @@ class FieldSelectionValidatorTest {
     }
 
     @Test
+    void shouldResolveChunkResultFromChunkSearchResponse() {
+        ChunkSearchResponse entity = ChunkSearchResponse.builder().results(List.of()).total(0).limit(20).offset(0).build();
+        Class<?> resolved = FieldSelectionValidator.resolveItemClass(entity);
+        assertThat(resolved).isEqualTo(ChunkResult.class);
+    }
+
+    @Test
     void shouldResolveRelatedDocumentRefFromRelatedDocumentResponse() {
         RelatedDocumentResponse entity = RelatedDocumentResponse.builder().results(List.of()).totalCount(0).returnedCount(0).build();
         Class<?> resolved = FieldSelectionValidator.resolveItemClass(entity);
@@ -172,6 +181,21 @@ class FieldSelectionValidatorTest {
                 .hasMessageContaining("Unknown field(s): results");
     }
 
+    @Test
+    void shouldValidateFieldsAgainstChunkResultForChunkSearchResponse() {
+        ChunkSearchResponse entity = ChunkSearchResponse.builder().results(List.of()).total(0).limit(20).offset(0).build();
+        Set<String> result = FieldSelectionValidator.parseAndValidate("title,page,score", entity);
+        assertThat(result).containsExactlyInAnyOrder("title", "page", "score");
+    }
+
+    @Test
+    void shouldRejectEnvelopeFieldsOnChunkSearchResponse() {
+        ChunkSearchResponse entity = ChunkSearchResponse.builder().results(List.of()).total(0).limit(20).offset(0).build();
+        assertThatThrownBy(() -> FieldSelectionValidator.parseAndValidate("results", entity))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("Unknown field(s): results");
+    }
+
     // --- parseAndValidate with CatalogResponse ---
 
     @Test
@@ -212,6 +236,14 @@ class FieldSelectionValidatorTest {
         assertThat(fields).containsExactlyInAnyOrder(
                 "language", "content", "context", "documentPath", "documentTitle",
                 "subject", "extension", "matchedKeywords", "score", "startLine", "endLine");
+    }
+
+    @Test
+    void shouldReturnAllPublicFieldNamesForChunkResult() {
+        Set<String> fields = FieldSelectionValidator.getFieldNames(ChunkResult.class);
+        assertThat(fields).containsExactlyInAnyOrder(
+                "id", "page", "title", "section", "summary",
+                "extensions", "topics", "score", "url");
     }
 
     @Test

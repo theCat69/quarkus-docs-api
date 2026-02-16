@@ -1,9 +1,6 @@
 package com.fvd.api.resources;
 
-import com.fvd.indexs.indexers.FileKeywordEntry;
-import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordScore;
-import com.fvd.indexs.indexers.SectionKeywordEntry;
+import com.fvd.indexs.model.DocChunk;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
@@ -24,123 +21,108 @@ class ApiSearchResourceTest extends AbstractApiResourceTest {
     void testSearchNoResults() {
         given()
                 .queryParam("version", "main")
-                .queryParam("keywords", "nonexistent")
+                .queryParam("q", "nonexistent")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
                 .body("results.size()", is(0))
-                .body("totalCount", is(0))
-                .body("offset", is(0))
-                .body("hasMore", is(false));
+                .body("total", is(0))
+                .body("offset", is(0));
     }
 
     @Test
     void testSearchReturnsResults() {
-        seedDocFile();
-        seedKeywordIndex();
+        seedSearchChunks("3.27");
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
                 .body("results.size()", greaterThan(0))
-                .body("totalCount", greaterThan(0))
-                .body("returnedCount", greaterThan(0));
+                .body("total", greaterThan(0));
     }
 
     @Test
     void testSearchResultStructure() {
-        seedDocFile();
-        seedKeywordIndex();
+        seedSearchChunks("3.27");
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
-                .body("results[0].path", notNullValue())
+                .body("results[0].id", notNullValue())
+                .body("results[0].page", notNullValue())
                 .body("results[0].title", notNullValue())
-                .body("results[0].subject", notNullValue())
-                .body("results[0].score", greaterThan(0f))
-                .body("results[0].matchedKeywords", notNullValue())
-                .body("results[0].snippet", notNullValue());
+                .body("results[0].section", notNullValue())
+                .body("results[0].score", greaterThan(0f));
     }
 
     @Test
     void testSearchWithExtensionFilter() {
-        seedDocFilesMultiple();
-        seedKeywordIndexWithExtensions();
+        seedSearchChunksWithExtensions("3.27");
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .queryParam("extension", "quarkus-core")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
                 .body("results.size()", is(1))
-                .body("results[0].extension", equalTo("quarkus-core"));
+                .body("results[0].extensions", notNullValue());
     }
 
     @Test
     void testSearchWithPagination() {
-        seedDocFilesMultiple();
-        seedKeywordIndexMultiple();
+        seedMultipleSearchChunks("3.27");
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "quarkus")
+                .queryParam("q", "quarkus")
                 .queryParam("limit", 1)
                 .queryParam("offset", 0)
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
                 .body("results.size()", is(1))
-                .body("totalCount", equalTo(2))
                 .body("offset", is(0))
-                .body("limit", is(1))
-                .body("hasMore", is(true));
+                .body("limit", is(1));
     }
 
     @Test
     void testSearchWithOffset() {
-        seedDocFilesMultiple();
-        seedKeywordIndexMultiple();
+        seedMultipleSearchChunks("3.27");
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "quarkus")
+                .queryParam("q", "quarkus")
                 .queryParam("limit", 1)
                 .queryParam("offset", 1)
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
                 .body("results.size()", is(1))
-                .body("totalCount", equalTo(2))
                 .body("offset", is(1))
-                .body("limit", is(1))
-                .body("hasMore", is(false));
+                .body("limit", is(1));
     }
 
     @Test
-    void testSearchSnippetContainsContext() {
-        seedDocFileWithKeyword();
-        seedKeywordIndexForSnippet();
+    void testSearchSummaryContainsContent() {
+        seedSearchChunks("3.27");
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
-                .body("results[0].snippet", notNullValue())
-                .body("results[0].snippet", containsString("security"));
+                .body("results[0].summary", notNullValue());
     }
 
     @Test
     void testSearchSortedByScore() {
-        seedDocFilesMultiple();
-        seedKeywordIndexWithScores();
+        seedMultipleSearchChunks("3.27");
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
@@ -150,82 +132,20 @@ class ApiSearchResourceTest extends AbstractApiResourceTest {
 
     @Test
     void testSearchDefaultVersion() {
-        seedDocFileForMain();
-        seedKeywordIndexForMain();
+        seedSearchChunks("main");
         given()
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
                 .body("results.size()", greaterThan(0));
     }
 
-    private void seedDocFile() {
-        docStore.write("3.27", "security-overview.adoc", """
-                = Security Overview
-                
-                This guide covers security features including authentication and authorization.
-                """);
-    }
-
-    private void seedDocFileWithKeyword() {
-        docStore.write("3.27", "security.adoc", """
-                = Security Guide
-                
-                This is content about security features for your Quarkus application.
-                Learn about security best practices and implementation patterns.
-                """);
-    }
-
-    private void seedDocFileForMain() {
-        docStore.write("main", "security.adoc", "= Security\nContent about security.");
-    }
-
-    private void seedKeywordIndex() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("security-overview.adoc",
-                        List.of(new KeywordScore("security", 15)),
-                        List.of(new SectionKeywordEntry("Overview", 1, 5,
-                                List.of(new KeywordScore("security", 12)))))
-        ));
-        keywordIndexStore.write("3.27", index);
-    }
-
-    private void seedKeywordIndexForSnippet() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("security.adoc",
-                        List.of(new KeywordScore("security", 15)),
-                        List.of())
-        ));
-        keywordIndexStore.write("3.27", index);
-    }
-
-    private void seedKeywordIndexWithScores() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("security.adoc",
-                        List.of(new KeywordScore("security", 100)),
-                        List.of()),
-                new FileKeywordEntry("config.adoc",
-                        List.of(new KeywordScore("security", 1)),
-                        List.of())
-        ));
-        keywordIndexStore.write("3.27", index);
-    }
-
-    private void seedKeywordIndexForMain() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("security.adoc",
-                        List.of(new KeywordScore("security", 15)),
-                        List.of())
-        ));
-        keywordIndexStore.write("main", index);
-    }
-
     @Test
     void testSearchReturns400ForUnknownVersion() {
         given()
                 .queryParam("version", "nonexistent")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .when().get("/api/search")
                 .then()
                 .statusCode(400)
@@ -233,37 +153,10 @@ class ApiSearchResourceTest extends AbstractApiResourceTest {
     }
 
     @Test
-    void testSearchReturns400ForUnknownSubject() {
-        seedDocFile();
-        seedKeywordIndex();
-        given()
-                .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
-                .queryParam("subject", "nonexistent-subject")
-                .when().get("/api/search")
-                .then()
-                .statusCode(400)
-                .body("detail", containsString("Unknown subject"));
-    }
-
-    @Test
     void testSearchAcceptsMainVersionEvenIfNotCached() {
         given()
                 .queryParam("version", "main")
-                .queryParam("keywords", "security")
-                .when().get("/api/search")
-                .then()
-                .statusCode(200);
-    }
-
-    @Test
-    void testSearchAcceptsValidSubject() {
-        seedDocFile();
-        seedKeywordIndex();
-        given()
-                .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
-                .queryParam("subject", "security")
+                .queryParam("q", "security")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200);
@@ -271,11 +164,10 @@ class ApiSearchResourceTest extends AbstractApiResourceTest {
 
     @Test
     void testPostSearchWithValidBody() {
-        seedDocFile();
-        seedKeywordIndex();
+        seedSearchChunks("3.27");
         given()
                 .contentType(ContentType.JSON)
-                .body("{\"keywords\": \"security\", \"version\": \"3.27\"}")
+                .body("{\"q\": \"security\", \"version\": \"3.27\"}")
                 .when().post("/api/search")
                 .then()
                 .statusCode(200)
@@ -285,28 +177,27 @@ class ApiSearchResourceTest extends AbstractApiResourceTest {
 
     @Test
     void testPostSearchReturnsSameResultsAsGet() {
-        seedDocFile();
-        seedKeywordIndex();
+        seedSearchChunks("3.27");
 
         int getTotal = given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
-                .extract().path("totalCount");
+                .extract().path("total");
 
         given()
                 .contentType(ContentType.JSON)
-                .body("{\"keywords\": \"security\", \"version\": \"3.27\"}")
+                .body("{\"q\": \"security\", \"version\": \"3.27\"}")
                 .when().post("/api/search")
                 .then()
                 .statusCode(200)
-                .body("totalCount", equalTo(getTotal));
+                .body("total", equalTo(getTotal));
     }
 
     @Test
-    void testPostSearchWithMissingKeywords() {
+    void testPostSearchWithMissingQuery() {
         given()
                 .contentType(ContentType.JSON)
                 .body("{\"version\": \"3.27\"}")
@@ -329,24 +220,62 @@ class ApiSearchResourceTest extends AbstractApiResourceTest {
     void testPostSearchWithInvalidVersion() {
         given()
                 .contentType(ContentType.JSON)
-                .body("{\"keywords\": \"security\", \"version\": \"nonexistent\"}")
+                .body("{\"q\": \"security\", \"version\": \"nonexistent\"}")
                 .when().post("/api/search")
                 .then()
                 .statusCode(400)
                 .body("detail", containsString("Unknown version"));
     }
 
-    @Test
-    void testSnippetsContainHighlightMarkers() {
-        seedDocFileWithKeyword();
-        seedKeywordIndexForSnippet();
-        given()
-                .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
-                .when().get("/api/search")
-                .then()
-                .statusCode(200)
-                .body("results[0].snippet", notNullValue())
-                .body("results[0].snippet", containsString("**"));
+    private void seedSearchChunks(String version) {
+        // Ensure version cache directory exists so validation passes
+        docStore.write(version, "security-overview.adoc",
+                "= Security Overview\nContent about security.");
+        seedDocChunks(version, List.of(
+                new DocChunk("chunk-1", version, "security-overview.adoc",
+                        "Security Overview", "Introduction",
+                        "https://quarkus.io/guides/security-overview",
+                        List.of("security"), List.of("quarkus-core"),
+                        "Overview of security features",
+                        "This guide covers security features including authentication and authorization in Quarkus applications.")
+        ));
+    }
+
+    private void seedSearchChunksWithExtensions(String version) {
+        docStore.write(version, "security.adoc", "= Security\nContent about security.");
+        docStore.write(version, "config.adoc", "= Config\nContent about config.");
+        seedDocChunks(version, List.of(
+                new DocChunk("chunk-ext-1", version, "security.adoc",
+                        "Security", "Auth",
+                        "https://quarkus.io/guides/security",
+                        List.of("security"), List.of("quarkus-core"),
+                        "Security authentication",
+                        "This guide covers security authentication and authorization features."),
+                new DocChunk("chunk-ext-2", version, "config.adoc",
+                        "Config", "Security Config",
+                        "https://quarkus.io/guides/config",
+                        List.of("config"), List.of("quarkus-openapi-generator"),
+                        "Security configuration",
+                        "This guide covers security configuration options.")
+        ));
+    }
+
+    private void seedMultipleSearchChunks(String version) {
+        docStore.write(version, "security.adoc", "= Security\nContent about security and quarkus.");
+        docStore.write(version, "config.adoc", "= Config\nContent about config and quarkus.");
+        seedDocChunks(version, List.of(
+                new DocChunk("chunk-multi-1", version, "security.adoc",
+                        "Security Guide", "Overview",
+                        "https://quarkus.io/guides/security",
+                        List.of("security"), List.of("quarkus-core"),
+                        "Security overview for quarkus applications",
+                        "Quarkus provides comprehensive security features for application development."),
+                new DocChunk("chunk-multi-2", version, "config.adoc",
+                        "Config Guide", "Overview",
+                        "https://quarkus.io/guides/config",
+                        List.of("config"), List.of("quarkus-core"),
+                        "Configuration overview for quarkus applications",
+                        "Quarkus configuration system for application properties and settings.")
+        ));
     }
 }

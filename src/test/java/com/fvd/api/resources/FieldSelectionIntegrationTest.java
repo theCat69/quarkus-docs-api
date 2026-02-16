@@ -1,11 +1,10 @@
 package com.fvd.api.resources;
 
-import com.fvd.indexs.indexers.CodeSampleEntry;
-import com.fvd.indexs.indexers.CodeSampleIndex;
 import com.fvd.indexs.indexers.FileKeywordEntry;
 import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.indexs.indexers.SectionKeywordEntry;
+import com.fvd.indexs.model.DocChunk;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
@@ -27,61 +26,60 @@ class FieldSelectionIntegrationTest extends AbstractApiResourceTest {
 
     @Test
     void shouldReturnOnlyRequestedFieldsOnSearchResults() {
-        seedDocAndKeywordIndex();
+        seedDocAndChunkIndex();
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
-                .queryParam("fields", "title,path")
+                .queryParam("q", "security")
+                .queryParam("fields", "title,page")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
                 .body("results[0].title", notNullValue())
-                .body("results[0].path", notNullValue())
-                .body("results[0]", not(hasKey("subject")))
-                .body("results[0]", not(hasKey("extension")))
+                .body("results[0].page", notNullValue())
+                .body("results[0]", not(hasKey("section")))
+                .body("results[0]", not(hasKey("extensions")))
                 .body("results[0]", not(hasKey("score")))
-                .body("results[0]", not(hasKey("matchedKeywords")))
-                .body("results[0]", not(hasKey("snippet")));
+                .body("results[0]", not(hasKey("topics")))
+                .body("results[0]", not(hasKey("summary")));
     }
 
     @Test
     void shouldPreserveEnvelopeFieldsWhenFieldsParamPresent() {
-        seedDocAndKeywordIndex();
+        seedDocAndChunkIndex();
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
-                .queryParam("fields", "title,path")
+                .queryParam("q", "security")
+                .queryParam("fields", "title,page")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
-                .body("totalCount", greaterThan(0))
-                .body("returnedCount", greaterThan(0))
+                .body("total", greaterThan(0))
                 .body("results", notNullValue());
     }
 
     @Test
     void shouldReturnAllFieldsWhenFieldsParamOmitted() {
-        seedDocAndKeywordIndex();
+        seedDocAndChunkIndex();
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
                 .body("results[0].title", notNullValue())
-                .body("results[0].path", notNullValue())
-                .body("results[0].subject", notNullValue())
+                .body("results[0].page", notNullValue())
+                .body("results[0].section", notNullValue())
                 .body("results[0].score", greaterThan(0f))
-                .body("results[0].matchedKeywords", notNullValue())
-                .body("results[0].snippet", notNullValue());
+                .body("results[0].topics", notNullValue())
+                .body("results[0].summary", notNullValue());
     }
 
     @Test
     void shouldReturn400ForInvalidFieldOnSearch() {
-        seedDocAndKeywordIndex();
+        seedDocAndChunkIndex();
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .queryParam("fields", "nonexistent")
                 .when().get("/api/search")
                 .then()
@@ -92,31 +90,31 @@ class FieldSelectionIntegrationTest extends AbstractApiResourceTest {
 
     @Test
     void shouldReturnSingleFieldOnSearch() {
-        seedDocAndKeywordIndex();
+        seedDocAndChunkIndex();
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .queryParam("fields", "score")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
                 .body("results[0]", hasKey("score"))
                 .body("results[0]", not(hasKey("title")))
-                .body("results[0]", not(hasKey("path")));
+                .body("results[0]", not(hasKey("page")));
     }
 
     @Test
     void shouldReturnAllFieldsWhenFieldsParamIsEmpty() {
-        seedDocAndKeywordIndex();
+        seedDocAndChunkIndex();
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .queryParam("fields", "")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
                 .body("results[0].title", notNullValue())
-                .body("results[0].path", notNullValue())
+                .body("results[0].page", notNullValue())
                 .body("results[0].score", greaterThan(0f));
     }
 
@@ -157,39 +155,6 @@ class FieldSelectionIntegrationTest extends AbstractApiResourceTest {
                 .body("$", not(hasKey("description")))
                 .body("$", not(hasKey("sections")))
                 .body("$", not(hasKey("codeBlocks")));
-    }
-
-    // --- Code samples endpoint field selection ---
-
-    @Test
-    void shouldReturnFilteredFieldsOnCodeSamples() {
-        seedDocAndCodeSampleIndex();
-        given()
-                .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
-                .queryParam("fields", "content,language")
-                .when().get("/api/code-samples")
-                .then()
-                .statusCode(200)
-                .body("results[0]", hasKey("content"))
-                .body("results[0]", hasKey("language"))
-                .body("results[0]", not(hasKey("documentPath")))
-                .body("results[0]", not(hasKey("documentTitle")))
-                .body("results[0]", not(hasKey("score")))
-                .body("results[0]", not(hasKey("context")));
-    }
-
-    @Test
-    void shouldReturn400ForInvalidFieldOnCodeSamples() {
-        seedDocAndCodeSampleIndex();
-        given()
-                .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
-                .queryParam("fields", "invalid")
-                .when().get("/api/code-samples")
-                .then()
-                .statusCode(400)
-                .body("detail", containsString("Unknown field(s): invalid"));
     }
 
     // --- Catalog endpoint field selection ---
@@ -245,7 +210,7 @@ class FieldSelectionIntegrationTest extends AbstractApiResourceTest {
     void shouldNotFilterErrorResponses() {
         given()
                 .queryParam("version", "nonexistent")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .queryParam("fields", "title")
                 .when().get("/api/search")
                 .then()
@@ -255,6 +220,18 @@ class FieldSelectionIntegrationTest extends AbstractApiResourceTest {
     }
 
     // --- Seed helpers ---
+
+    private void seedDocAndChunkIndex() {
+        seedDocFile();
+        seedDocChunks("3.27", List.of(
+                new DocChunk("field-sel-chunk-1", "3.27", "security.adoc",
+                        "Security Guide", "Overview",
+                        "https://quarkus.io/guides/security",
+                        List.of("security"), List.of("quarkus-core"),
+                        "Overview of security features",
+                        "This is the overview section about security basics and authentication.")
+        ));
+    }
 
     private void seedDocAndKeywordIndex() {
         seedDocFile();
@@ -277,17 +254,6 @@ class FieldSelectionIntegrationTest extends AbstractApiResourceTest {
                 It covers security basics.
                 """;
         docStore.write("3.27", "security.adoc", docContent);
-    }
-
-    private void seedDocAndCodeSampleIndex() {
-        docStore.write("3.27", "security.adoc", "= Security Guide\nContent about security.");
-        CodeSampleIndex index = new CodeSampleIndex(List.of(
-                new CodeSampleEntry("security.adoc", "Authentication", "java",
-                        "import io.quarkus.security.identity.SecurityIdentity;",
-                        5, 10,
-                        List.of(new KeywordScore("security", 15)))
-        ));
-        codeSampleIndexStore.write("3.27", index);
     }
 
     private void seedDocForCatalog() {

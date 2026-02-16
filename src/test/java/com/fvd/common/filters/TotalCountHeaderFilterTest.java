@@ -1,5 +1,6 @@
 package com.fvd.common.filters;
 
+import com.fvd.api.dto.ChunkSearchResponse;
 import com.fvd.api.dto.PaginatedResponse;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
@@ -39,6 +40,21 @@ class TotalCountHeaderFilterTest {
         filter.filter(request, response);
 
         assertThat(responseHeaders.getFirst("X-Total-Count")).isEqualTo("42");
+    }
+
+    @Test
+    void shouldAddTotalCountHeaderForChunkSearchResponse() {
+        ChunkSearchResponse chunkResponse = ChunkSearchResponse.builder()
+                .results(List.of())
+                .total(15)
+                .limit(20)
+                .offset(0)
+                .build();
+        when(response.getEntity()).thenReturn(chunkResponse);
+
+        filter.filter(request, response);
+
+        assertThat(responseHeaders.getFirst("X-Total-Count")).isEqualTo("15");
     }
 
     @Test

@@ -4,7 +4,11 @@ import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.notNullValue;
 
 @QuarkusTest
 class MetaResourceTest extends AbstractApiResourceTest {
@@ -32,7 +36,7 @@ class MetaResourceTest extends AbstractApiResourceTest {
                 .when().get("/api/meta")
                 .then()
                 .statusCode(200)
-                .body("endpoints.size()", equalTo(10));
+                .body("endpoints.size()", equalTo(9));
     }
 
     @Test
@@ -96,12 +100,12 @@ class MetaResourceTest extends AbstractApiResourceTest {
     }
 
     @Test
-    void testMetaEndpointContainsCodeSamplesWithLanguageParam() {
+    void testMetaEndpointContainsSearchWithQueryParam() {
         given()
                 .when().get("/api/meta")
                 .then()
                 .statusCode(200)
-                .body("endpoints.find { it.path == '/api/code-samples' }.parameters.name",
-                        hasItem("language"));
+                .body("endpoints.find { it.path == '/api/search' && it.method == 'GET' }.parameters.name",
+                        hasItem("q"));
     }
 }

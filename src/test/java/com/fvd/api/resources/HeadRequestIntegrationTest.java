@@ -1,7 +1,10 @@
 package com.fvd.api.resources;
 
+import com.fvd.indexs.model.DocChunk;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.emptyOrNullString;
@@ -13,11 +16,10 @@ class HeadRequestIntegrationTest extends AbstractApiResourceTest {
 
     @Test
     void testGetSearchIncludesTotalCountHeader() {
-        seedKeywordIndexMultiple();
-        seedDocFilesMultiple();
+        seedSearchChunksForHead();
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .when().get("/api/search")
                 .then()
                 .statusCode(200)
@@ -26,29 +28,15 @@ class HeadRequestIntegrationTest extends AbstractApiResourceTest {
 
     @Test
     void testHeadSearchReturnsTotalCountAndNoBody() {
-        seedKeywordIndexMultiple();
-        seedDocFilesMultiple();
+        seedSearchChunksForHead();
         given()
                 .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
                 .when().head("/api/search")
                 .then()
                 .statusCode(200)
                 .header("X-Total-Count", notNullValue())
                 .body(emptyOrNullString());
-    }
-
-    @Test
-    void testHeadCodeSamplesReturnsTotalCountHeader() {
-        seedCodeSampleIndex();
-        seedDocFilesMultiple();
-        given()
-                .queryParam("version", "3.27")
-                .queryParam("keywords", "security")
-                .when().head("/api/code-samples")
-                .then()
-                .statusCode(200)
-                .header("X-Total-Count", notNullValue());
     }
 
     @Test
@@ -73,5 +61,17 @@ class HeadRequestIntegrationTest extends AbstractApiResourceTest {
                 .then()
                 .statusCode(200)
                 .header("X-Total-Count", nullValue());
+    }
+
+    private void seedSearchChunksForHead() {
+        seedDocFilesMultiple();
+        seedDocChunks("3.27", List.of(
+                new DocChunk("head-chunk-1", "3.27", "security.adoc",
+                        "Security", "Overview",
+                        "https://quarkus.io/guides/security",
+                        List.of("security"), List.of("quarkus-core"),
+                        "Security overview",
+                        "Content about security and quarkus applications.")
+        ));
     }
 }

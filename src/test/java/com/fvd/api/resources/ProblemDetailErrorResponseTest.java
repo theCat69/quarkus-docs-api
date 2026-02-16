@@ -48,7 +48,7 @@ class ProblemDetailErrorResponseTest extends AbstractApiResourceTest {
     }
 
     @Test
-    void testBadRequestForMissingKeywords() {
+    void testBadRequestForMissingQuery() {
         given()
                 .queryParam("version", "3.27")
                 .when().get("/api/search")
@@ -76,19 +76,6 @@ class ProblemDetailErrorResponseTest extends AbstractApiResourceTest {
     }
 
     @Test
-    void testBadRequestForCodeSamplesMissingKeywords() {
-        given()
-                .queryParam("version", "3.27")
-                .when().get("/api/code-samples")
-                .then()
-                .statusCode(400)
-                .body("title", equalTo("Bad Request"))
-                .body("status", equalTo(400))
-                .body("instance", containsString("code-samples"))
-                .body("timestamp", notNullValue());
-    }
-
-    @Test
     void testBadRequestForDocumentsNeitherPathNorKeywords() {
         given()
                 .queryParam("version", "3.27")
@@ -104,7 +91,7 @@ class ProblemDetailErrorResponseTest extends AbstractApiResourceTest {
     @Test
     void testNonNumericLimitReturnsBadRequest() {
         given()
-                .queryParam("keywords", "rest")
+                .queryParam("q", "rest")
                 .queryParam("limit", "abc")
                 .when().get("/api/search")
                 .then()
@@ -120,7 +107,7 @@ class ProblemDetailErrorResponseTest extends AbstractApiResourceTest {
     @Test
     void testNonNumericOffsetReturnsBadRequest() {
         given()
-                .queryParam("keywords", "rest")
+                .queryParam("q", "rest")
                 .queryParam("offset", "xyz")
                 .when().get("/api/search")
                 .then()
@@ -133,7 +120,7 @@ class ProblemDetailErrorResponseTest extends AbstractApiResourceTest {
     void testUnsupportedMediaTypeReturnsNotAcceptable() {
         given()
                 .accept("application/xml")
-                .queryParam("keywords", "rest")
+                .queryParam("q", "rest")
                 .when().get("/api/search")
                 .then()
                 .statusCode(406)

@@ -14,7 +14,7 @@ class CompressionIntegrationTest {
     void testGzipCompressionEnabled() {
         given()
                 .header("Accept-Encoding", "gzip")
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
         .when()
                 .get("/api/search")
         .then()
@@ -25,7 +25,7 @@ class CompressionIntegrationTest {
     @Test
     void testCompressedResponseIsValidJson() {
         given()
-                .queryParam("keywords", "security")
+                .queryParam("q", "security")
         .when()
                 .get("/api/search")
         .then()
