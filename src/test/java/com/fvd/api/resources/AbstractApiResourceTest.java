@@ -1,6 +1,12 @@
 package com.fvd.api.resources;
 
+import java.sql.SQLException;
+import java.util.List;
+
+import javax.sql.DataSource;
+
 import com.fvd.api.services.CatalogService;
+import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.indexers.CodeSampleEntry;
 import com.fvd.indexs.indexers.CodeSampleIndex;
@@ -9,15 +15,9 @@ import com.fvd.indexs.indexers.KeywordIndex;
 import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
-import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import com.fvd.search.services.SearchService;
 import jakarta.inject.Inject;
-import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.List;
 
 /**
  * Shared setup and seed helpers for API resource integration tests.
@@ -35,7 +35,10 @@ abstract class AbstractApiResourceTest {
     DocStore docStore;
 
     @Inject
-    SqliteSchemaInitializer schemaInitializer;
+    DataSource dataSource;
+
+    @Inject
+    CacheService cacheService;
 
     @Inject
     SearchService searchService;
@@ -44,12 +47,12 @@ abstract class AbstractApiResourceTest {
     CatalogService catalogService;
 
     @BeforeEach
-    void cleanTestCache() throws IOException {
-        var cachePath = Path.of("build/test-cache").toFile();
-        if (cachePath.exists()) {
-            FileUtils.cleanDirectory(cachePath);
+    void cleanup() throws SQLException {
+        try (var conn = dataSource.getConnection(); var stmt = conn.createStatement()) {
+            stmt.execute("TRUNCATE files, file_keywords, sections, section_keywords, "
+                + "code_samples, code_sample_keywords, github_index, document_metadata CASCADE");
         }
-        schemaInitializer.resetSchema();
+        cacheService.deleteCache();
         searchService.invalidateCache("3.27");
         searchService.invalidateCache("main");
         catalogService.invalidateCache("3.27");

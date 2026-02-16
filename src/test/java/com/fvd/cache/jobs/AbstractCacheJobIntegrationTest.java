@@ -1,5 +1,11 @@
 package com.fvd.cache.jobs;
 
+import java.sql.SQLException;
+import java.util.List;
+
+import javax.sql.DataSource;
+
+import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.github.services.ZipDownloadService;
 import com.fvd.indexs.indexers.CodeSampleIndexer;
@@ -7,14 +13,8 @@ import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.indexs.services.IndexService;
 import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.KeywordIndexStore;
-import com.fvd.indexs.stores.SqliteSchemaInitializer;
 import jakarta.inject.Inject;
-import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.List;
 
 abstract class AbstractCacheJobIntegrationTest {
 
@@ -40,15 +40,18 @@ abstract class AbstractCacheJobIntegrationTest {
     CodeSampleIndexStore codeSampleIndexStore;
 
     @Inject
-    SqliteSchemaInitializer schemaInitializer;
+    DataSource dataSource;
+
+    @Inject
+    CacheService cacheService;
 
     @BeforeEach
-    void cleanTestCache() throws IOException {
-        var cachePath = Path.of("build/test-cache").toFile();
-        if (cachePath.exists()) {
-            FileUtils.cleanDirectory(cachePath);
+    void cleanup() throws SQLException {
+        try (var conn = dataSource.getConnection(); var stmt = conn.createStatement()) {
+            stmt.execute("TRUNCATE files, file_keywords, sections, section_keywords, "
+                + "code_samples, code_sample_keywords, github_index, document_metadata CASCADE");
         }
-        schemaInitializer.resetSchema();
+        cacheService.deleteCache();
     }
 
     protected List<String> simulateWarmup(String version) {
