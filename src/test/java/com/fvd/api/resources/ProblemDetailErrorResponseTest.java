@@ -1,6 +1,7 @@
 package com.fvd.api.resources;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
@@ -177,5 +178,64 @@ class ProblemDetailErrorResponseTest extends AbstractApiResourceTest {
                 .statusCode(405)
                 .body("title", equalTo("Method Not Allowed"))
                 .body("status", equalTo(405));
+    }
+
+    @Test
+    void testMalformedJsonBodyReturnsBadRequest() {
+        given()
+                .contentType(ContentType.JSON)
+                .body("not json")
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(400)
+                .body("type", equalTo("about:blank"))
+                .body("title", equalTo("Bad Request"))
+                .body("status", equalTo(400))
+                .body("detail", equalTo("Invalid JSON request body"))
+                .body("instance", containsString("documents/batch"))
+                .body("timestamp", notNullValue());
+    }
+
+    @Test
+    void testTruncatedJsonBodyReturnsBadRequest() {
+        given()
+                .contentType(ContentType.JSON)
+                .body("{\"paths\":")
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(400)
+                .body("title", equalTo("Bad Request"))
+                .body("status", equalTo(400))
+                .body("detail", equalTo("Invalid JSON request body"));
+    }
+
+    @Test
+    void testInvalidJsonSyntaxReturnsBadRequest() {
+        given()
+                .contentType(ContentType.JSON)
+                .body("{invalid}")
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(400)
+                .body("title", equalTo("Bad Request"))
+                .body("status", equalTo(400))
+                .body("detail", equalTo("Invalid JSON request body"));
+    }
+
+    @Test
+    void testEmptyBodyReturnsBadRequest() {
+        given()
+                .contentType(ContentType.JSON)
+                .body("")
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(400)
+                .body("title", equalTo("Bad Request"))
+                .body("status", equalTo(400))
+                .body("detail", equalTo("Request body is required"));
     }
 }
