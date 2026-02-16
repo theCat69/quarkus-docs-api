@@ -238,4 +238,63 @@ class ProblemDetailErrorResponseTest extends AbstractApiResourceTest {
                 .body("status", equalTo(400))
                 .body("detail", equalTo("Request body is required"));
     }
+
+    @Test
+    void testTextPlainContentTypeReturnsUnsupportedMediaType() {
+        given()
+                .contentType(ContentType.TEXT)
+                .body("some plain text")
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(415)
+                .body("type", equalTo("about:blank"))
+                .body("title", equalTo("Unsupported Media Type"))
+                .body("status", equalTo(415))
+                .body("detail", notNullValue())
+                .body("instance", containsString("documents/batch"))
+                .body("timestamp", notNullValue());
+    }
+
+    @Test
+    void testXmlContentTypeReturnsUnsupportedMediaType() {
+        given()
+                .contentType(ContentType.XML)
+                .body("<request><path>test.adoc</path></request>")
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(415)
+                .body("type", equalTo("about:blank"))
+                .body("title", equalTo("Unsupported Media Type"))
+                .body("status", equalTo(415))
+                .body("timestamp", notNullValue());
+    }
+
+    @Test
+    void testHtmlContentTypeReturnsUnsupportedMediaType() {
+        given()
+                .contentType(ContentType.HTML)
+                .body("<html><body>test</body></html>")
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(415)
+                .body("type", equalTo("about:blank"))
+                .body("title", equalTo("Unsupported Media Type"))
+                .body("status", equalTo(415))
+                .body("timestamp", notNullValue());
+    }
+
+    @Test
+    void testJsonContentTypeStillWorksOnBatchEndpoint() {
+        docStore.write("3.27", "existing.adoc", "= Existing\nContent");
+        given()
+                .contentType(ContentType.JSON)
+                .body("{\"paths\": [\"existing.adoc\"], \"version\": \"3.27\"}")
+                .when()
+                .post("/api/documents/batch")
+                .then()
+                .statusCode(200);
+    }
 }
