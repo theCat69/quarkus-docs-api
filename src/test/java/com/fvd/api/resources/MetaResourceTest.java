@@ -32,7 +32,7 @@ class MetaResourceTest extends AbstractApiResourceTest {
                 .when().get("/api/meta")
                 .then()
                 .statusCode(200)
-                .body("endpoints.size()", equalTo(8));
+                .body("endpoints.size()", equalTo(9));
     }
 
     @Test

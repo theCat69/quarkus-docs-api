@@ -57,6 +57,7 @@ public class MetaService {
 
     private List<EndpointMeta> buildEndpoints() {
         return List.of(
+                buildRootEndpoint(),
                 buildMetaEndpoint(),
                 buildCatalogEndpoint(),
                 buildSearchEndpoint(),
@@ -65,6 +66,17 @@ public class MetaService {
                 buildSearchSyntaxEndpoint(),
                 buildDocumentsBatchEndpoint(),
                 buildDocumentsRelatedEndpoint()
+        );
+    }
+
+    private EndpointMeta buildRootEndpoint() {
+        return new EndpointMeta(
+                "GET",
+                "/",
+                "API entry point",
+                "Returns a welcome message with links to /api/meta and /q/openapi. " +
+                        "Hit this first if you don't know where to start.",
+                List.of()
         );
     }
 

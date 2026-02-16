@@ -43,11 +43,12 @@ class MetaServiceTest {
     void shouldReturnAllEndpoints() {
         MetaResponse response = metaService.getCapabilities();
 
-        assertThat(response.endpoints).hasSize(8);
+        assertThat(response.endpoints).hasSize(9);
         List<String> paths = response.endpoints.stream()
                 .map(e -> e.path)
                 .toList();
         assertThat(paths).containsExactly(
+                "/",
                 "/api/meta",
                 "/api/catalog",
                 "/api/search",
@@ -68,6 +69,7 @@ class MetaServiceTest {
             assertThat(endpoint.path).isNotBlank();
         }
         // Verify specific methods
+        assertThat(findEndpoint(response, "/").method).isEqualTo("GET");
         assertThat(findEndpoint(response, "/api/meta").method).isEqualTo("GET");
         assertThat(findEndpoint(response, "/api/catalog").method).isEqualTo("GET");
         assertThat(findEndpoint(response, "/api/search").method).isEqualTo("GET");
