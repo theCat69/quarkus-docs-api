@@ -4,33 +4,34 @@ import com.fvd.common.exceptions.InvalidInputException;
 import com.fvd.indexs.indexers.CodeSampleEntry;
 import com.fvd.indexs.indexers.CodeSampleIndex;
 import com.fvd.indexs.indexers.KeywordScore;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.sqlite.SQLiteDataSource;
 
-import java.nio.file.Path;
+import javax.sql.DataSource;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@QuarkusTest
 class CodeSampleIndexStoreTest {
 
-    @TempDir
-    Path tempDir;
+    @Inject
+    CodeSampleIndexStore store;
 
-    private CodeSampleIndexStore store;
+    @Inject
+    DataSource dataSource;
 
     @BeforeEach
-    void setUp() {
-        SQLiteDataSource ds = new SQLiteDataSource();
-        ds.setUrl("jdbc:sqlite:" + tempDir.resolve("test.db"));
-        SqliteSchemaInitializer initializer = new SqliteSchemaInitializer(ds);
-        initializer.cacheDir = tempDir.toString();
-        initializer.initSchema();
-        store = new CodeSampleIndexStore(ds);
+    void cleanup() throws SQLException {
+        try (var conn = dataSource.getConnection(); var stmt = conn.createStatement()) {
+            stmt.execute("TRUNCATE files, file_keywords, sections, section_keywords, "
+                + "code_samples, code_sample_keywords, github_index, document_metadata CASCADE");
+        }
     }
 
     @Test

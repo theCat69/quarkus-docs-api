@@ -1,31 +1,35 @@
 package com.fvd.indexs.stores;
 
-import com.fvd.common.TestSqliteHelper;
 import com.fvd.common.exceptions.InvalidInputException;
 import com.fvd.github.clients.GithubApiIndex;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.sqlite.SQLiteDataSource;
 
-import java.nio.file.Path;
+import javax.sql.DataSource;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@QuarkusTest
 class IndexStoreTest {
 
-    @TempDir
-    Path tempDir;
-
+    @Inject
     IndexStore indexStore;
 
+    @Inject
+    DataSource dataSource;
+
     @BeforeEach
-    void setUp() {
-        SQLiteDataSource ds = TestSqliteHelper.createInitializedDataSource(tempDir);
-        indexStore = new IndexStore(ds);
+    void cleanup() throws SQLException {
+        try (var conn = dataSource.getConnection(); var stmt = conn.createStatement()) {
+            stmt.execute("TRUNCATE files, file_keywords, sections, section_keywords, "
+                + "code_samples, code_sample_keywords, github_index, document_metadata CASCADE");
+        }
     }
 
     @Test

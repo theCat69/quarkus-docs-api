@@ -1,13 +1,12 @@
 package com.fvd.indexs.stores;
 
 import com.fvd.asciidocs.model.DocumentMetadata;
-import com.fvd.common.TestSqliteHelper;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.sqlite.SQLiteDataSource;
 
-import java.nio.file.Path;
+import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -19,18 +18,21 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@QuarkusTest
 class DocumentMetadataStoreTest {
 
-    @TempDir
-    Path tempDir;
+    @Inject
+    DataSource dataSource;
 
-    SQLiteDataSource dataSource;
+    @Inject
     DocumentMetadataStore metadataStore;
 
     @BeforeEach
-    void setUp() {
-        dataSource = TestSqliteHelper.createInitializedDataSource(tempDir);
-        metadataStore = new DocumentMetadataStore(dataSource);
+    void cleanup() throws SQLException {
+        try (var conn = dataSource.getConnection(); var stmt = conn.createStatement()) {
+            stmt.execute("TRUNCATE files, file_keywords, sections, section_keywords, "
+                + "code_samples, code_sample_keywords, github_index, document_metadata CASCADE");
+        }
     }
 
     @Test
@@ -120,7 +122,6 @@ class DocumentMetadataStoreTest {
                 .build();
 
         try (Connection conn = dataSource.getConnection()) {
-            conn.createStatement().execute("PRAGMA foreign_keys=ON");
             metadataStore.insert(conn, fileId, metadata);
         }
 
@@ -129,7 +130,6 @@ class DocumentMetadataStoreTest {
 
         // Delete the file row - metadata should cascade delete
         try (Connection conn = dataSource.getConnection()) {
-            conn.createStatement().execute("PRAGMA foreign_keys=ON");
             try (PreparedStatement stmt = conn.prepareStatement("DELETE FROM files WHERE id = ?")) {
                 stmt.setLong(1, fileId);
                 stmt.executeUpdate();
