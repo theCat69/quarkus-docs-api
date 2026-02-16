@@ -7,8 +7,7 @@ import java.util.Map;
 
 /**
  * Abstracts search scoring to support multiple backend implementations.
- * - SQLite: Custom exact/prefix matching with configurable multipliers.
- * - PostgreSQL: Delegates to ts_rank() via native queries.
+ * Current implementation uses custom exact/prefix matching with configurable multipliers.
  */
 public interface SearchScorer {
 

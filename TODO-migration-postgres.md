@@ -136,3 +136,31 @@ This lets the agent:
 - decide relevance
 - cite sources
 - fetch full content if needed
+
+
+✅ v2.0.0 PostgreSQL Migration Plan — Complete & Approved
+The entire feature planning effort is done. Here's the final deliverable summary:
+Deliverables
+| Location | Contents |
+|----------|----------|
+| features/todo/2_0_0/phase1/phase-1-postgresql-engine-swap.md | Phase 1 spec |
+| features/todo/2_0_0/phase1/tasks/ | 9 task files (01, 02, 03, 04a, 04b, 04c, 04d, 05, 06) |
+| features/todo/2_0_0/phase2/phase-2-doc-chunks-tsvector-rearchitecture.md | Phase 2 spec |
+| features/todo/2_0_0/phase2/tasks/ | 13 task files (01–12, including 10b) |
+Execution Order
+Phase 1 — Pure engine swap (SQLite → PostgreSQL):
+01 → 02 → 03 → 04a → (04b ∥ 04c ∥ 04d) → 05 → 06
+Phase 2 — Re-architecture (doc_chunks + tsvector FTS):
+Phase 1 ─┬─► 01 ──► 02
+│    └──► 04 ──► 05 ──► 09 ──┐
+│          └──► 06 ──┐       │
+├─► 03 ─────────────┘       │
+│              └──► 08 ──┬──► 10 ──► 10b ──► 12
+└─► 07 ──────────────────┤
+└──► 11
+Stats
+- 22 task files total, all reviewed by the feature-reviewer agent
+- 20 architectural decisions captured
+- 12 review findings discovered and fixed (including 1 blocker)
+- Every task is under 61 lines with: Summary, Changes, Acceptance Criteria, Files, Dependencies
+  The plan is ready for implementation. 🚀

@@ -11,7 +11,7 @@ import java.sql.SQLException;
 import java.util.Optional;
 
 /**
- * Abstract base class for versioned stores that persist index data in SQLite.
+ * Abstract base class for versioned stores that persist index data in the database.
  * Provides common transactional write, exists, read, and delete operations.
  *
  * @param <T> the index type managed by this store

@@ -355,7 +355,7 @@ public class SearchService {
     }
 
     /**
-     * Returns the keyword index for a version, loading from SQLite and caching if needed.
+     * Returns the keyword index for a version, loading from the database and caching if needed.
      * Returns null if no index exists for the version.
      */
     public KeywordIndex getKeywordIndex(String version) {
@@ -401,7 +401,7 @@ public class SearchService {
             return cached;
         }
 
-        // Load from SQLite and cache
+        // Load from database and cache
         Optional<KeywordIndex> index = keywordIndexStore.read(version);
         if (index.isPresent()) {
             indexCache.put(version, index.get());
