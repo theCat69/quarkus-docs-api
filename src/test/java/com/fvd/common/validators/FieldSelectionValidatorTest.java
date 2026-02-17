@@ -4,14 +4,10 @@ import com.fvd.api.dto.BatchDocumentResponse;
 import com.fvd.api.dto.CatalogResponse;
 import com.fvd.api.dto.ChunkResult;
 import com.fvd.api.dto.ChunkSearchResponse;
-import com.fvd.api.dto.CodeSampleResult;
-import com.fvd.api.dto.CodeSampleSearchResponse;
 import com.fvd.api.dto.DocumentResponse;
 import com.fvd.api.dto.DocumentSearchResponse;
-import com.fvd.api.dto.QuickSearchResponse;
 import com.fvd.api.dto.RelatedDocumentRef;
 import com.fvd.api.dto.RelatedDocumentResponse;
-import com.fvd.api.dto.SearchResultRef;
 import com.fvd.common.exceptions.InvalidInputException;
 import org.junit.jupiter.api.Test;
 
@@ -28,35 +24,35 @@ class FieldSelectionValidatorTest {
 
     @Test
     void shouldReturnRequestedFieldsWhenAllValid() {
-        SearchResultRef entity = new SearchResultRef();
-        Set<String> result = FieldSelectionValidator.parseAndValidate("title,path", entity);
-        assertThat(result).containsExactlyInAnyOrder("title", "path");
+        ChunkResult entity = new ChunkResult();
+        Set<String> result = FieldSelectionValidator.parseAndValidate("title,page", entity);
+        assertThat(result).containsExactlyInAnyOrder("title", "page");
     }
 
     @Test
     void shouldReturnSingleFieldWhenValid() {
-        SearchResultRef entity = new SearchResultRef();
+        ChunkResult entity = new ChunkResult();
         Set<String> result = FieldSelectionValidator.parseAndValidate("score", entity);
         assertThat(result).containsExactly("score");
     }
 
     @Test
     void shouldTrimWhitespaceFromFieldNames() {
-        SearchResultRef entity = new SearchResultRef();
-        Set<String> result = FieldSelectionValidator.parseAndValidate(" title , path ", entity);
-        assertThat(result).containsExactlyInAnyOrder("title", "path");
+        ChunkResult entity = new ChunkResult();
+        Set<String> result = FieldSelectionValidator.parseAndValidate(" title , page ", entity);
+        assertThat(result).containsExactlyInAnyOrder("title", "page");
     }
 
     @Test
     void shouldReturnEmptySetForBlankFields() {
-        SearchResultRef entity = new SearchResultRef();
+        ChunkResult entity = new ChunkResult();
         Set<String> result = FieldSelectionValidator.parseAndValidate("  ,  , ", entity);
         assertThat(result).isEmpty();
     }
 
     @Test
     void shouldReturnEmptySetForEmptyAfterTrim() {
-        SearchResultRef entity = new SearchResultRef();
+        ChunkResult entity = new ChunkResult();
         Set<String> result = FieldSelectionValidator.parseAndValidate(",,,", entity);
         assertThat(result).isEmpty();
     }
@@ -65,7 +61,7 @@ class FieldSelectionValidatorTest {
 
     @Test
     void shouldThrowForInvalidFieldName() {
-        SearchResultRef entity = new SearchResultRef();
+        ChunkResult entity = new ChunkResult();
         assertThatThrownBy(() -> FieldSelectionValidator.parseAndValidate("nonexistent", entity))
                 .isInstanceOf(InvalidInputException.class)
                 .hasMessageContaining("Unknown field(s): nonexistent")
@@ -74,30 +70,30 @@ class FieldSelectionValidatorTest {
 
     @Test
     void shouldThrowForMixedValidAndInvalidFields() {
-        SearchResultRef entity = new SearchResultRef();
-        assertThatThrownBy(() -> FieldSelectionValidator.parseAndValidate("title,nonexistent,path", entity))
+        ChunkResult entity = new ChunkResult();
+        assertThatThrownBy(() -> FieldSelectionValidator.parseAndValidate("title,nonexistent,page", entity))
                 .isInstanceOf(InvalidInputException.class)
                 .hasMessageContaining("Unknown field(s): nonexistent")
                 .hasMessageContaining("Available fields:")
-                .hasMessageNotContaining("Unknown field(s): nonexistent, path")
+                .hasMessageNotContaining("Unknown field(s): nonexistent, page")
                 .hasMessageNotContaining("Unknown field(s): nonexistent, title")
-                .hasMessageNotContaining("Unknown field(s): path")
+                .hasMessageNotContaining("Unknown field(s): page")
                 .hasMessageNotContaining("Unknown field(s): title");
     }
 
     @Test
     void shouldListAvailableFieldsInErrorMessage() {
-        SearchResultRef entity = new SearchResultRef();
+        ChunkResult entity = new ChunkResult();
         assertThatThrownBy(() -> FieldSelectionValidator.parseAndValidate("invalid", entity))
                 .isInstanceOf(InvalidInputException.class)
                 .hasMessageContaining("title")
-                .hasMessageContaining("path")
+                .hasMessageContaining("page")
                 .hasMessageContaining("score");
     }
 
     @Test
     void shouldThrowForMultipleInvalidFields() {
-        SearchResultRef entity = new SearchResultRef();
+        ChunkResult entity = new ChunkResult();
         assertThatThrownBy(() -> FieldSelectionValidator.parseAndValidate("bad1,bad2", entity))
                 .isInstanceOf(InvalidInputException.class)
                 .hasMessageContaining("bad1")
@@ -107,24 +103,10 @@ class FieldSelectionValidatorTest {
     // --- resolveItemClass: paginated responses ---
 
     @Test
-    void shouldResolveSearchResultRefFromQuickSearchResponse() {
-        QuickSearchResponse entity = QuickSearchResponse.builder().results(List.of()).totalCount(0).returnedCount(0).build();
-        Class<?> resolved = FieldSelectionValidator.resolveItemClass(entity);
-        assertThat(resolved).isEqualTo(SearchResultRef.class);
-    }
-
-    @Test
     void shouldResolveDocumentResponseFromDocumentSearchResponse() {
         DocumentSearchResponse entity = DocumentSearchResponse.builder().results(List.of()).totalCount(0).returnedCount(0).build();
         Class<?> resolved = FieldSelectionValidator.resolveItemClass(entity);
         assertThat(resolved).isEqualTo(DocumentResponse.class);
-    }
-
-    @Test
-    void shouldResolveCodeSampleResultFromCodeSampleSearchResponse() {
-        CodeSampleSearchResponse entity = CodeSampleSearchResponse.builder().results(List.of()).totalCount(0).returnedCount(0).build();
-        Class<?> resolved = FieldSelectionValidator.resolveItemClass(entity);
-        assertThat(resolved).isEqualTo(CodeSampleResult.class);
     }
 
     @Test
@@ -167,21 +149,6 @@ class FieldSelectionValidatorTest {
     // --- parseAndValidate with paginated wrapper ---
 
     @Test
-    void shouldValidateFieldsAgainstItemTypeForPaginatedResponse() {
-        QuickSearchResponse entity = QuickSearchResponse.builder().results(List.of()).totalCount(0).returnedCount(0).build();
-        Set<String> result = FieldSelectionValidator.parseAndValidate("title,path,score", entity);
-        assertThat(result).containsExactlyInAnyOrder("title", "path", "score");
-    }
-
-    @Test
-    void shouldRejectFieldsNotOnItemTypeForPaginatedResponse() {
-        QuickSearchResponse entity = QuickSearchResponse.builder().results(List.of()).totalCount(0).returnedCount(0).build();
-        assertThatThrownBy(() -> FieldSelectionValidator.parseAndValidate("results", entity))
-                .isInstanceOf(InvalidInputException.class)
-                .hasMessageContaining("Unknown field(s): results");
-    }
-
-    @Test
     void shouldValidateFieldsAgainstChunkResultForChunkSearchResponse() {
         ChunkSearchResponse entity = ChunkSearchResponse.builder().results(List.of()).total(0).limit(20).offset(0).build();
         Set<String> result = FieldSelectionValidator.parseAndValidate("title,page,score", entity);
@@ -216,10 +183,11 @@ class FieldSelectionValidatorTest {
     // --- getFieldNames ---
 
     @Test
-    void shouldReturnAllPublicFieldNamesForSearchResultRef() {
-        Set<String> fields = FieldSelectionValidator.getFieldNames(SearchResultRef.class);
+    void shouldReturnAllPublicFieldNamesForChunkResult() {
+        Set<String> fields = FieldSelectionValidator.getFieldNames(ChunkResult.class);
         assertThat(fields).containsExactlyInAnyOrder(
-                "path", "title", "subject", "extension", "score", "matchedKeywords", "snippet");
+                "id", "page", "title", "section", "summary",
+                "extensions", "topics", "score", "url");
     }
 
     @Test
@@ -228,22 +196,6 @@ class FieldSelectionValidatorTest {
         assertThat(fields).containsExactlyInAnyOrder(
                 "title", "description", "path", "subject", "extension",
                 "sections", "codeBlocks", "matchedKeywords", "score");
-    }
-
-    @Test
-    void shouldReturnAllPublicFieldNamesForCodeSampleResult() {
-        Set<String> fields = FieldSelectionValidator.getFieldNames(CodeSampleResult.class);
-        assertThat(fields).containsExactlyInAnyOrder(
-                "language", "content", "context", "documentPath", "documentTitle",
-                "subject", "extension", "matchedKeywords", "score", "startLine", "endLine");
-    }
-
-    @Test
-    void shouldReturnAllPublicFieldNamesForChunkResult() {
-        Set<String> fields = FieldSelectionValidator.getFieldNames(ChunkResult.class);
-        assertThat(fields).containsExactlyInAnyOrder(
-                "id", "page", "title", "section", "summary",
-                "extensions", "topics", "score", "url");
     }
 
     @Test

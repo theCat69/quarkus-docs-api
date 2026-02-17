@@ -3,8 +3,8 @@ package com.fvd.common.filters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
-import com.fvd.api.dto.QuickSearchResponse;
-import com.fvd.api.dto.SearchResultRef;
+import com.fvd.api.dto.ChunkResult;
+import com.fvd.api.dto.ChunkSearchResponse;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.core.MultivaluedHashMap;
@@ -78,7 +78,7 @@ class FieldSelectionFilterTest {
 
     @Test
     void shouldNotModifyEntityWhenStatusIsError() {
-        queryParams.putSingle("fields", "title,path");
+        queryParams.putSingle("fields", "title,page");
         when(response.getStatus()).thenReturn(400);
 
         filter.filter(request, response);
@@ -88,7 +88,7 @@ class FieldSelectionFilterTest {
 
     @Test
     void shouldNotModifyEntityWhenStatusIs500() {
-        queryParams.putSingle("fields", "title,path");
+        queryParams.putSingle("fields", "title,page");
         when(response.getStatus()).thenReturn(500);
 
         filter.filter(request, response);
@@ -98,7 +98,7 @@ class FieldSelectionFilterTest {
 
     @Test
     void shouldNotModifyEntityWhenEntityIsNull() {
-        queryParams.putSingle("fields", "title,path");
+        queryParams.putSingle("fields", "title,page");
         when(response.getStatus()).thenReturn(200);
         when(response.getEntity()).thenReturn(null);
 
@@ -109,9 +109,12 @@ class FieldSelectionFilterTest {
 
     @Test
     void shouldSerializeWithOnlyRequestedFieldsForDirectDto() throws Exception {
-        queryParams.putSingle("fields", "title,path");
-        SearchResultRef entity = new SearchResultRef("test.adoc", "Test Title",
-                "security", "quarkus-core", 10.0, List.of("test"), "snippet");
+        queryParams.putSingle("fields", "title,page");
+        ChunkResult entity = ChunkResult.builder()
+                .id("chunk-1").page("test.adoc").title("Test Title")
+                .section("Overview").summary("A summary")
+                .extensions(List.of()).topics(List.of("test"))
+                .score(10.0).url("https://example.com").build();
         when(response.getStatus()).thenReturn(200);
         when(response.getEntity()).thenReturn(entity);
 
@@ -122,13 +125,15 @@ class FieldSelectionFilterTest {
 
     @Test
     void shouldSerializeOnlyRequestedFieldsContent() throws Exception {
-        queryParams.putSingle("fields", "title,path");
-        SearchResultRef entity = new SearchResultRef("test.adoc", "Test Title",
-                "security", "quarkus-core", 10.0, List.of("test"), "snippet");
+        queryParams.putSingle("fields", "title,page");
+        ChunkResult entity = ChunkResult.builder()
+                .id("chunk-1").page("test.adoc").title("Test Title")
+                .section("Overview").summary("A summary")
+                .extensions(List.of()).topics(List.of("test"))
+                .score(10.0).url("https://example.com").build();
         when(response.getStatus()).thenReturn(200);
         when(response.getEntity()).thenReturn(entity);
 
-        // Capture the entity set on the response
         org.mockito.ArgumentCaptor<Object> entityCaptor = org.mockito.ArgumentCaptor.forClass(Object.class);
 
         filter.filter(request, response);
@@ -138,23 +143,27 @@ class FieldSelectionFilterTest {
         String json = new String(jsonBytes);
 
         assertThat(json).contains("\"title\"");
-        assertThat(json).contains("\"path\"");
-        assertThat(json).doesNotContain("\"subject\"");
-        assertThat(json).doesNotContain("\"extension\"");
+        assertThat(json).contains("\"page\"");
+        assertThat(json).doesNotContain("\"section\"");
+        assertThat(json).doesNotContain("\"summary\"");
         assertThat(json).doesNotContain("\"score\"");
-        assertThat(json).doesNotContain("\"matchedKeywords\"");
-        assertThat(json).doesNotContain("\"snippet\"");
+        assertThat(json).doesNotContain("\"extensions\"");
+        assertThat(json).doesNotContain("\"topics\"");
     }
 
     @Test
     void shouldPreserveEnvelopeFieldsForPaginatedResponse() throws Exception {
         queryParams.putSingle("fields", "title");
-        SearchResultRef item = new SearchResultRef("test.adoc", "Test Title",
-                "security", "quarkus-core", 10.0, List.of("test"), "snippet");
-        QuickSearchResponse entity = QuickSearchResponse.builder()
+        ChunkResult item = ChunkResult.builder()
+                .id("chunk-1").page("test.adoc").title("Test Title")
+                .section("Overview").summary("A summary")
+                .extensions(List.of()).topics(List.of("test"))
+                .score(10.0).url("https://example.com").build();
+        ChunkSearchResponse entity = ChunkSearchResponse.builder()
                 .results(List.of(item))
-                .totalCount(1)
-                .returnedCount(1)
+                .total(1)
+                .limit(20)
+                .offset(0)
                 .build();
         when(response.getStatus()).thenReturn(200);
         when(response.getEntity()).thenReturn(entity);
@@ -169,21 +178,24 @@ class FieldSelectionFilterTest {
 
         // Envelope fields should be present
         assertThat(json).contains("\"results\"");
-        assertThat(json).contains("\"totalCount\"");
-        assertThat(json).contains("\"returnedCount\"");
+        assertThat(json).contains("\"total\"");
+        assertThat(json).contains("\"limit\"");
         // Only requested field on items
         assertThat(json).contains("\"title\"");
         // Filtered out fields should not be present
-        assertThat(json).doesNotContain("\"subject\"");
-        assertThat(json).doesNotContain("\"extension\"");
-        assertThat(json).doesNotContain("\"snippet\"");
+        assertThat(json).doesNotContain("\"section\"");
+        assertThat(json).doesNotContain("\"summary\"");
+        assertThat(json).doesNotContain("\"extensions\"");
     }
 
     @Test
     void shouldSetContentTypeToApplicationJson() {
-        queryParams.putSingle("fields", "title,path");
-        SearchResultRef entity = new SearchResultRef("test.adoc", "Test Title",
-                "security", "quarkus-core", 10.0, List.of("test"), "snippet");
+        queryParams.putSingle("fields", "title,page");
+        ChunkResult entity = ChunkResult.builder()
+                .id("chunk-1").page("test.adoc").title("Test Title")
+                .section("Overview").summary("A summary")
+                .extensions(List.of()).topics(List.of("test"))
+                .score(10.0).url("https://example.com").build();
         when(response.getStatus()).thenReturn(200);
         when(response.getEntity()).thenReturn(entity);
 
@@ -196,7 +208,7 @@ class FieldSelectionFilterTest {
     void shouldNotModifyEntityWhenFieldsParseToEmptySet() {
         queryParams.putSingle("fields", ",,,");
         when(response.getStatus()).thenReturn(200);
-        SearchResultRef entity = new SearchResultRef();
+        ChunkResult entity = new ChunkResult();
         when(response.getEntity()).thenReturn(entity);
 
         filter.filter(request, response);

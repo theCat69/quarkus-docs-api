@@ -119,48 +119,6 @@ class PaginatedResponseTest {
     }
 
     @Test
-    void inheritanceWorksWithQuickSearchResponse() {
-        SearchResultRef ref = new SearchResultRef(
-                "path.adoc", "Title", "security", "quarkus-core",
-                1.5, List.of("security"), "snippet");
-
-        QuickSearchResponse response = QuickSearchResponse.builder()
-                .results(List.of(ref))
-                .totalCount(1)
-                .returnedCount(1)
-                .offset(0)
-                .limit(20)
-                .hasMore(false)
-                .build();
-
-        assertThat(response.getResults()).hasSize(1);
-        assertThat(response.getTotalCount()).isEqualTo(1);
-        assertThat(response.getReturnedCount()).isEqualTo(1);
-        assertThat(response.getOffset()).isEqualTo(0);
-        assertThat(response.getLimit()).isEqualTo(20);
-        assertThat(response.isHasMore()).isFalse();
-        assertThat(response).isInstanceOf(PaginatedResponse.class);
-    }
-
-    @Test
-    void inheritanceWorksWithCodeSampleSearchResponse() {
-        CodeSampleSearchResponse response = CodeSampleSearchResponse.builder()
-                .results(List.of())
-                .totalCount(0)
-                .returnedCount(0)
-                .offset(0)
-                .limit(10)
-                .hasMore(false)
-                .build();
-
-        assertThat(response.getResults()).isEmpty();
-        assertThat(response.getOffset()).isEqualTo(0);
-        assertThat(response.getLimit()).isEqualTo(10);
-        assertThat(response.isHasMore()).isFalse();
-        assertThat(response).isInstanceOf(PaginatedResponse.class);
-    }
-
-    @Test
     void inheritanceWorksWithDocumentSearchResponse() {
         DocumentSearchResponse response = DocumentSearchResponse.builder()
                 .results(List.of())

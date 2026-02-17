@@ -2,8 +2,7 @@ package com.fvd.quarkiverse;
 
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.indexs.indexers.CodeSampleIndexer;
-import com.fvd.indexs.indexers.KeywordIndexer;
+import com.fvd.indexs.services.DocChunkBuilder;
 import com.fvd.quarkiverse.services.QuarkiverseService;
 import com.fvd.search.services.SearchService;
 import io.quarkus.test.junit.QuarkusTest;
@@ -34,10 +33,7 @@ class QuarkiverseIntegrationTest {
     QuarkiverseService quarkiverseService;
 
     @Inject
-    KeywordIndexer keywordIndexer;
-
-    @Inject
-    CodeSampleIndexer codeSampleIndexer;
+    DocChunkBuilder docChunkBuilder;
 
     @Inject
     DocStore docStore;
@@ -154,8 +150,7 @@ class QuarkiverseIntegrationTest {
                 filePathsByExtension.computeIfAbsent(extName, k -> new ArrayList<>()).add(path);
             }
         }
-        keywordIndexer.build("main", filePathsByExtension);
-        codeSampleIndexer.build("main", filePathsByExtension);
+        docChunkBuilder.build("main", filePathsByExtension);
     }
 
 }

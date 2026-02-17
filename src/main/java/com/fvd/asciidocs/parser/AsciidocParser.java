@@ -3,8 +3,8 @@ package com.fvd.asciidocs.parser;
 import com.fvd.asciidocs.model.DocumentMetadata;
 import com.fvd.common.Stemmer;
 import com.fvd.common.utils.AsciiDocCleaner;
+import com.fvd.common.StopWords;
 import com.fvd.docs.parser.DocParser;
-import com.fvd.indexs.indexers.KeywordIndexer;
 import com.fvd.search.SearchConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
@@ -48,7 +48,7 @@ public class AsciidocParser implements DocParser {
         List<String> tokens = tokenize(cleaned);
         Map<String, Integer> counts = new HashMap<>();
         for (String token : tokens) {
-            if(!KeywordIndexer.WORD_INDEX_BLACK_LIST.contains(token)) {
+            if(!StopWords.DEFAULT.contains(token)) {
                 counts.merge(Stemmer.stem(token), 1, Integer::sum);
             }
         }
@@ -62,7 +62,7 @@ public class AsciidocParser implements DocParser {
         List<String> tokens = tokenize(cleaned);
         Map<String, ExtractedKeyword> result = new HashMap<>();
         for (String token : tokens) {
-            if (!KeywordIndexer.WORD_INDEX_BLACK_LIST.contains(token)) {
+            if (!StopWords.DEFAULT.contains(token)) {
                 String stemmed = Stemmer.stem(token);
                 ExtractedKeyword existing = result.get(stemmed);
                 if (existing == null) {

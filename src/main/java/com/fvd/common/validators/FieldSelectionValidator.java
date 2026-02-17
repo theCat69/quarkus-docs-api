@@ -14,14 +14,10 @@ import com.fvd.api.dto.BatchDocumentResponse;
 import com.fvd.api.dto.CatalogResponse;
 import com.fvd.api.dto.ChunkResult;
 import com.fvd.api.dto.ChunkSearchResponse;
-import com.fvd.api.dto.CodeSampleResult;
-import com.fvd.api.dto.CodeSampleSearchResponse;
 import com.fvd.api.dto.DocumentResponse;
 import com.fvd.api.dto.DocumentSearchResponse;
-import com.fvd.api.dto.QuickSearchResponse;
 import com.fvd.api.dto.RelatedDocumentRef;
 import com.fvd.api.dto.RelatedDocumentResponse;
-import com.fvd.api.dto.SearchResultRef;
 import com.fvd.common.exceptions.InvalidInputException;
 
 /**
@@ -33,9 +29,7 @@ import com.fvd.common.exceptions.InvalidInputException;
 public class FieldSelectionValidator {
 
     private static final Map<Class<?>, Class<?>> ITEM_TYPE_REGISTRY = Map.of(
-            QuickSearchResponse.class, SearchResultRef.class,
             DocumentSearchResponse.class, DocumentResponse.class,
-            CodeSampleSearchResponse.class, CodeSampleResult.class,
             ChunkSearchResponse.class, ChunkResult.class,
             RelatedDocumentResponse.class, RelatedDocumentRef.class,
             BatchDocumentResponse.class, BatchDocumentResponse.class,
