@@ -52,7 +52,7 @@ class SearchSyntaxResourceTest extends AbstractApiResourceTest {
                 .when().get("/api/search/syntax")
                 .then()
                 .statusCode(200)
-                .body("scoring.matchTypes.type", hasItems("exact", "prefix"));
+                .body("scoring.matchTypes.type", hasItems("fts", "fuzzy"));
     }
 
     @Test
@@ -61,9 +61,9 @@ class SearchSyntaxResourceTest extends AbstractApiResourceTest {
                 .when().get("/api/search/syntax")
                 .then()
                 .statusCode(200)
-                .body("scoring.locationWeights", hasSize(5))
-                .body("scoring.locationWeights.location", hasItem("filename"))
-                .body("scoring.locationWeights.find { it.location == 'filename' }.weight", equalTo(10.0f));
+                .body("scoring.locationWeights", hasSize(1))
+                .body("scoring.locationWeights.location", hasItem("content"))
+                .body("scoring.locationWeights.find { it.location == 'content' }.weight", equalTo(1.0f));
     }
 
     @Test
@@ -127,6 +127,6 @@ class SearchSyntaxResourceTest extends AbstractApiResourceTest {
                 .when().get("/api/search/syntax")
                 .then()
                 .statusCode(200)
-                .body("fuzzyMatching.appliesTo", containsString("Section title search"));
+                .body("fuzzyMatching.appliesTo", containsString("FTS returns no results"));
     }
 }

@@ -161,6 +161,7 @@ public class MetaService {
                                 null),
                         new ParameterMeta("keywords", "string", false, null,
                                 "Space-separated search keywords for document search. " +
+                                        "Uses the same PostgreSQL full-text search engine as /api/search. " +
                                         "Either 'keywords' or 'path' must be provided.",
                                 null),
                         buildSubjectParameter("Subject filter (search mode only)."),
@@ -213,8 +214,8 @@ public class MetaService {
                 "/api/documents/related",
                 "Find related documents",
                 "Returns a ranked list of documents similar to a given source document, computed " +
-                        "from shared keyword overlap. Results include similarity scores and shared " +
-                        "keywords. Useful for graph-like navigation across the documentation corpus.",
+                        "from shared topic and extension overlap. Results include similarity scores " +
+                        "and shared topics. Useful for graph-like navigation across the documentation corpus.",
                 List.of(
                         buildVersionParameter(),
                         new ParameterMeta("path", "string", true, null,
@@ -282,27 +283,26 @@ public class MetaService {
                 "space",
                 "/api/search/syntax",
                 List.of(
-                        "Space-separated keywords (e.g., 'security authentication')",
-                        "Stemming (e.g., 'configuring' matches 'configuration')",
-                        "Prefix matching (e.g., 'secur' matches 'security')",
-                        "Stop word filtering (common words like 'the', 'and' are removed)",
+                        "Space-separated keywords processed by PostgreSQL plainto_tsquery",
+                        "English-language Stemming via PostgreSQL Snowball stemmer",
+                        "Fuzzy search fallback via pg_trgm trigram similarity when FTS returns no results",
+                        "Stop word filtering (PostgreSQL english dictionary)",
                         "Case-insensitive matching"
                 ),
                 List.of(
                         "Phrase search (quoted strings)",
-                        "Boolean operators (AND, OR, NOT)",
+                        "Boolean operators (AND, OR, NOT) — plainto_tsquery treats all words as AND-combined; OR/NOT not supported",
                         "Wildcards (* or ?)",
                         "Field-specific queries (field:value)",
                         "Regular expressions"
                 ),
                 List.of(
                         "Use 2-3 specific keywords for best results",
-                        "Prefer nouns over verbs (e.g., 'security' over 'securing')",
-                        "Use /api/search for quick discovery, then /api/documents?path=... for full content",
+                        "PostgreSQL stemming handles word variants automatically (e.g., 'running' matches 'run')",
+                        "Use /api/search for chunk-level discovery, then /api/documents?path=... for full content",
                         "Use brief=true on /api/documents search to avoid downloading full document content",
                         "Check /api/catalog for valid subject and extension filter values",
-                        "For comprehensive search syntax documentation including stemming examples, " +
-                                "scoring details, and stop words, call GET /api/search/syntax"
+                        "For comprehensive search syntax documentation, call GET /api/search/syntax"
                 )
         );
     }

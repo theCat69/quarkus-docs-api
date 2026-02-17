@@ -127,7 +127,7 @@ class MetaServiceTest {
 
         assertThat(response.searchSyntax.supportedFeatures).isNotEmpty();
         assertThat(response.searchSyntax.supportedFeatures).anyMatch(f -> f.contains("Stemming"));
-        assertThat(response.searchSyntax.supportedFeatures).anyMatch(f -> f.contains("Prefix matching"));
+        assertThat(response.searchSyntax.supportedFeatures).anyMatch(f -> f.contains("plainto_tsquery"));
     }
 
     @Test

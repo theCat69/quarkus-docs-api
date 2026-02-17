@@ -181,108 +181,92 @@ public class SearchSyntaxResponse {
         SearchSyntaxResponse response = new SearchSyntaxResponse();
 
         response.tokenization = new TokenizationInfo(
-                "Keywords are split by whitespace. Each token is lowercased and stemmed independently.",
-                "whitespace (spaces, tabs)",
+                "Queries are processed by PostgreSQL plainto_tsquery which tokenizes, stems, and removes stop words.",
+                "whitespace (spaces)",
                 false,
-                3,
+                1,
                 List.of(
-                        "Input is split on whitespace into individual tokens",
-                        "Each token is converted to lowercase",
-                        "Stop words are removed before processing",
-                        "Each remaining token is stemmed using suffix-stripping rules",
-                        "Stemmed tokens are matched against the keyword index"
+                        "Input is passed to plainto_tsquery('english', query)",
+                        "Text is tokenized on whitespace and punctuation",
+                        "English stop words are removed",
+                        "Remaining tokens are stemmed using the Snowball English stemmer",
+                        "Stemmed tokens are combined with AND logic for matching against tsvector indexes"
                 )
         );
 
         response.stemming = new StemmingInfo(
-                "A simple English suffix-stripping stemmer groups related word forms. " +
-                        "The stemmer is deterministic and consistent, not linguistically perfect.",
-                "Custom suffix-stripping (Porter-like)",
+                "PostgreSQL uses the Snowball English stemmer which reduces words to their root forms for broader matching.",
+                "Snowball English stemmer (PostgreSQL built-in)",
                 List.of(
                         new StemmingExample("security", "secur",
-                                List.of("securing", "secured")),
+                                List.of("securing", "secured", "securities")),
                         new StemmingExample("configuration", "configur",
                                 List.of("configurable", "configured", "configuring")),
                         new StemmingExample("running", "run",
                                 List.of("runner", "runs")),
-                        new StemmingExample("authentication", "authentic",
-                                List.of("authenticity")),
-                        new StemmingExample("injection", "injec",
+                        new StemmingExample("authentication", "authent",
+                                List.of("authenticated", "authenticating")),
+                        new StemmingExample("injection", "inject",
                                 List.of("injecting", "injectable")),
-                        new StemmingExample("management", "manage",
-                                List.of("manageable"))
+                        new StemmingExample("management", "manag",
+                                List.of("manageable", "managing"))
                 ),
-                List.of("ation", "tion", "sion", "ment", "ness", "able", "ible",
-                        "ous", "ive", "ity", "ful", "less", "ing", "ed", "ly",
-                        "er", "est", "es", "s")
+                List.of("ation", "tion", "sion", "ment", "ness", "ing", "ed", "ly",
+                        "er", "es", "s")
         );
 
         response.scoring = new ScoringInfo(
-                "Documents are scored based on keyword match location, match type, and query structure.",
+                "Results are scored using PostgreSQL ts_rank function which measures relevance " +
+                        "based on term frequency and document structure.",
                 List.of(
-                        new MatchTypeInfo("exact",
-                                "Stemmed query exactly matches indexed keyword", 1.0),
-                        new MatchTypeInfo("prefix",
-                                "Indexed keyword starts with stemmed query", 0.8)
+                        new MatchTypeInfo("fts",
+                                "Full-text search via plainto_tsquery with ts_rank scoring", 1.0),
+                        new MatchTypeInfo("fuzzy",
+                                "Trigram similarity via pg_trgm when FTS returns no results", 0.1)
                 ),
                 List.of(
-                        new LocationWeightInfo("filename", 10.0,
-                                "Keyword appears in the document filename"),
-                        new LocationWeightInfo("title", 8.0,
-                                "Keyword appears in the document title (H1)"),
-                        new LocationWeightInfo("section", 5.0,
-                                "Keyword appears in a section heading (H2)"),
-                        new LocationWeightInfo("subtitle", 2.0,
-                                "Keyword appears in a subtitle (H3+)"),
-                        new LocationWeightInfo("body", 1.0,
-                                "Keyword appears in body text")
+                        new LocationWeightInfo("content", 1.0,
+                                "ts_rank scores based on term frequency in document content")
                 ),
-                new MultiKeywordBoostInfo(1.5,
-                        "Queries with 2+ keywords receive a 1.5x score boost when multiple keywords match"),
-                new FrequencyFactorInfo("min(1.0 + log(count), 2.0)",
-                        "Repeated occurrences of a keyword increase score logarithmically, capped at 2.0x")
+                new MultiKeywordBoostInfo(1.0,
+                        "Multiple keywords are AND-combined by plainto_tsquery; no additional boost applied"),
+                new FrequencyFactorInfo(
+                        "ts_rank(content_tsv, plainto_tsquery('english', query))",
+                        "PostgreSQL ts_rank computes relevance based on term frequency and proximity")
         );
 
         response.stopWords = new StopWordsInfo(
-                "Stop words are common words automatically removed from queries before searching. " +
-                        "A query containing only stop words returns HTTP 400.",
-                "Silently removed from query. If all keywords are stop words, " +
-                        "the API returns 400 Bad Request.",
+                "PostgreSQL english dictionary automatically removes stop words during tsquery parsing.",
+                "Silently removed by PostgreSQL during query parsing. " +
+                        "A query containing only stop words may return no results.",
                 StopWords.DEFAULT.stream().sorted().toList()
         );
 
         response.fuzzyMatching = new FuzzyMatchingInfo(
-                "Fuzzy matching is used only for section title lookups (not for general keyword search). " +
-                        "It combines Levenshtein similarity, substring containment, and word overlap " +
-                        "to find the best matching section title.",
-                "Section title search only (GET /api/documents with sectionTitle parameter)",
-                "Keyword search (GET /api/search, GET /api/documents with keywords parameter)",
-                "Weighted combination: Levenshtein (0.4) + Containment (0.35) + Word Overlap (0.25)",
-                0.3
+                "When full-text search returns no results, a fallback fuzzy search uses " +
+                        "PostgreSQL pg_trgm trigram similarity to find approximate matches.",
+                "Fallback when FTS returns no results at offset 0",
+                "Primary search (uses full-text search with plainto_tsquery)",
+                "pg_trgm trigram similarity (similarity(content, query) > 0.1)",
+                0.1
         );
 
         response.supported = new SupportedFeaturesInfo(List.of(
-                new SupportedFeature("Space-separated keywords",
-                        "Multiple keywords separated by spaces: 'security oidc'",
+                new SupportedFeature("PostgreSQL Full-Text Search",
+                        "Queries processed by plainto_tsquery with English stemming and stop word removal",
                         "security oidc"),
-                new SupportedFeature("Stemming",
-                        "Words are reduced to stems for broader matching: 'configuring' matches 'configuration'",
+                new SupportedFeature("Snowball Stemming",
+                        "English Snowball stemmer reduces words to root forms for broader matching",
                         "configure"),
-                new SupportedFeature("Prefix matching",
-                        "Short query stems match longer indexed keywords at 80% score",
-                        "sec"),
-                new SupportedFeature("Multi-keyword boost",
-                        "Queries with 2+ keywords get 1.5x score boost",
-                        "rest security"),
-                new SupportedFeature("Subject filter",
-                        "Filter results by documentation subject category",
-                        "keywords=security&subject=security"),
+                new SupportedFeature("Trigram Fuzzy Fallback",
+                        "pg_trgm similarity search when FTS returns no results",
+                        "securty"),
                 new SupportedFeature("Extension filter",
                         "Filter results by Quarkus extension name",
-                        "keywords=config&extension=quarkus-core"),
+                        "q=config&extension=quarkus-core"),
                 new SupportedFeature("Pagination",
                         "Use limit and offset parameters to paginate results",
-                        "keywords=security&limit=10&offset=20")
+                        "q=security&limit=10&offset=20")
         ));
 
         response.unsupported = new UnsupportedFeaturesInfo(
@@ -290,27 +274,28 @@ public class SearchSyntaxResponse {
                 List.of(
                         new UnsupportedFeature("\"quoted phrases\"",
                                 "Quotes are treated as literal characters, not phrase delimiters. " +
-                                        "Use space-separated keywords instead.",
+                                        "plainto_tsquery does not support phrase matching.",
                                 "Use individual keywords: 'rest endpoint' instead of '\"rest endpoint\"'"),
                         new UnsupportedFeature("AND / OR / NOT",
-                                "Boolean operators are treated as regular keywords " +
-                                        "(and 'and' is a stop word that gets removed).",
+                                "plainto_tsquery treats all words as AND-combined. " +
+                                        "OR and NOT operators are not supported.",
                                 "Use space-separated keywords for AND-like behavior. " +
                                         "OR/NOT are not supported."),
                         new UnsupportedFeature("* or ? wildcards",
                                 "Glob/wildcard patterns are not supported. " +
                                         "Characters are treated as literals.",
-                                "Rely on stemming and prefix matching for broader matches."),
+                                "Rely on stemming for broader matches."),
                         new UnsupportedFeature("field:value",
                                 "Field-specific search (e.g., 'title:security') is not supported.",
                                 "Use the 'subject' or 'extension' query parameters for filtering."),
                         new UnsupportedFeature("+required -excluded",
                                 "Required/excluded term modifiers are not supported.",
-                                "All keywords are implicitly searched. " +
+                                "All keywords are implicitly AND-combined. " +
                                         "Use subject/extension filters to narrow results."),
                         new UnsupportedFeature("~ fuzzy operator",
-                                "Tilde-based fuzzy search syntax is not supported for keyword search.",
-                                "Stemming provides automatic fuzzy-like matching for word variants.")
+                                "Tilde-based fuzzy search syntax is not supported.",
+                                "Fuzzy matching via pg_trgm is applied automatically as a fallback " +
+                                        "when FTS returns no results.")
                 )
         );
 
@@ -324,32 +309,28 @@ public class SearchSyntaxResponse {
 
         response.examples = List.of(
                 new QueryExample("security oidc",
-                        "Search for documents about security and OIDC. Both keywords are stemmed and searched. " +
-                                "Multi-keyword boost applies."),
+                        "Search for documents about security and OIDC. Both words are stemmed and " +
+                                "AND-combined by PostgreSQL."),
                 new QueryExample("rest endpoint",
-                        "Search for REST endpoint documentation. 'rest' and 'endpoint' are searched independently."),
+                        "Search for REST endpoint documentation. Both terms must match in the content."),
                 new QueryExample("configure datasource",
-                        "'configure' is stemmed to 'configur', matching 'configuration', 'configurable', etc. " +
-                                "'datasource' is searched as-is."),
+                        "'configure' is stemmed by Snowball to match 'configuration', 'configuring', etc."),
                 new QueryExample("hibernate orm",
-                        "Search for Hibernate ORM documentation. " +
-                                "Use with extension=quarkus-hibernate-orm for more precise results."),
+                        "Search for Hibernate ORM docs. " +
+                                "Use extension=quarkus-hibernate-orm for precise results."),
                 new QueryExample("grpc",
-                        "Single keyword search. No multi-keyword boost, " +
-                                "but still benefits from stemming and prefix matching.")
+                        "Single keyword search. Stemmed and matched against tsvector index.")
         );
 
         response.tips = List.of(
                 "Use specific, meaningful keywords — avoid generic terms like 'how', 'what', 'use'",
-                "Prefer root word forms: 'config' instead of 'configuration' " +
-                        "(stemming helps, but shorter roots improve prefix matching)",
-                "Combine 2-3 keywords for best results — multi-keyword queries get a 1.5x score boost",
-                "Use the 'subject' parameter to narrow results to a specific documentation category",
+                "PostgreSQL stemming handles word variants automatically (e.g., 'configuring' matches 'configuration')",
+                "Combine 2-3 keywords for best results — all terms are AND-combined",
                 "Use the 'extension' parameter to filter results by Quarkus extension",
-                "Do not use quotes, boolean operators, or wildcard characters — " +
-                        "they are treated as literal text",
+                "If FTS returns no results, the API automatically falls back to fuzzy trigram matching",
+                "Do not use quotes, boolean operators, or wildcard characters — they are treated as literal text",
                 "If your query returns no results, try fewer or broader keywords",
-                "Stop words (a, the, is, how, etc.) are automatically removed — no need to include them"
+                "Stop words (a, the, is, how, etc.) are automatically removed by PostgreSQL"
         );
 
         return response;
