@@ -1,23 +1,23 @@
 package com.fvd.api.services;
 
-import com.fvd.api.dto.BatchDocumentResponse;
-import com.fvd.api.dto.DocumentResponse;
-import com.fvd.docs.parser.DocParser;
-import com.fvd.docs.stores.DocStore;
-import com.fvd.indexs.stores.KeywordIndexStore;
-import com.fvd.search.services.SearchService;
-import com.fvd.subject.services.MetadataAwareSubjectResolver;
+import java.util.List;
+import java.util.Optional;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
-import java.util.Optional;
+import com.fvd.api.dto.BatchDocumentResponse;
+import com.fvd.api.dto.DocumentResponse;
+import com.fvd.docs.parser.DocParser;
+import com.fvd.docs.stores.DocStore;
+import com.fvd.indexs.model.ChunkSearchRow;
+import com.fvd.indexs.stores.DocChunkStore;
+import com.fvd.search.services.DocChunkSearchService;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,13 +30,10 @@ class DocumentServiceBatchTest {
     private DocParser docParser;
 
     @Mock
-    private KeywordIndexStore keywordIndexStore;
+    private DocChunkSearchService docChunkSearchService;
 
     @Mock
-    private SearchService searchService;
-
-    @Mock
-    private MetadataAwareSubjectResolver metadataResolver;
+    private DocChunkStore docChunkStore;
 
     @InjectMocks
     private DocumentService documentService;
@@ -59,13 +56,24 @@ class DocumentServiceBatchTest {
             Config details here.
             """;
 
+    private static final ChunkSearchRow SECURITY_CHUNK = new ChunkSearchRow(
+            "security#overview", "3.27", "security", "Security Guide", "Overview",
+            "https://quarkus.io/guides/security#overview",
+            List.of("security"), List.of("quarkus-core"),
+            "Introduction to security features.", "This is the overview section.", 0.0);
+
+    private static final ChunkSearchRow CONFIG_CHUNK = new ChunkSearchRow(
+            "config#settings", "3.27", "config", "Config Guide", "Settings",
+            "https://quarkus.io/guides/config#settings",
+            List.of("core-concepts"), List.of("quarkus-core"),
+            "Configuration reference.", "Config details here.", 0.0);
+
     @Test
     void shouldReturnAllDocumentsWhenAllFound() {
         when(docStore.read(VERSION, "security.adoc")).thenReturn(Optional.of(SECURITY_CONTENT));
         when(docStore.read(VERSION, "config.adoc")).thenReturn(Optional.of(CONFIG_CONTENT));
-        when(metadataResolver.resolveSubject(eq(VERSION), eq("security.adoc"))).thenReturn("security");
-        when(metadataResolver.resolveSubject(eq(VERSION), eq("config.adoc"))).thenReturn("core-concepts");
-        when(keywordIndexStore.read(VERSION)).thenReturn(Optional.empty());
+        when(docChunkStore.findByPage(VERSION, "security")).thenReturn(List.of(SECURITY_CHUNK));
+        when(docChunkStore.findByPage(VERSION, "config")).thenReturn(List.of(CONFIG_CHUNK));
         when(docParser.parseSections(SECURITY_CONTENT)).thenReturn(List.of());
         when(docParser.parseCodeBlocks(SECURITY_CONTENT)).thenReturn(List.of());
         when(docParser.parseSections(CONFIG_CONTENT)).thenReturn(List.of());
@@ -85,8 +93,7 @@ class DocumentServiceBatchTest {
     void shouldReturnPartialResultsWhenSomeMissing() {
         when(docStore.read(VERSION, "security.adoc")).thenReturn(Optional.of(SECURITY_CONTENT));
         when(docStore.read(VERSION, "nonexistent.adoc")).thenReturn(Optional.empty());
-        when(metadataResolver.resolveSubject(eq(VERSION), eq("security.adoc"))).thenReturn("security");
-        when(keywordIndexStore.read(VERSION)).thenReturn(Optional.empty());
+        when(docChunkStore.findByPage(VERSION, "security")).thenReturn(List.of(SECURITY_CHUNK));
         when(docParser.parseSections(SECURITY_CONTENT)).thenReturn(List.of());
         when(docParser.parseCodeBlocks(SECURITY_CONTENT)).thenReturn(List.of());
 
@@ -121,8 +128,7 @@ class DocumentServiceBatchTest {
     @Test
     void shouldReturnBriefDocumentsWithoutSectionsAndCodeBlocks() {
         when(docStore.read(VERSION, "security.adoc")).thenReturn(Optional.of(SECURITY_CONTENT));
-        when(metadataResolver.resolveSubject(eq(VERSION), eq("security.adoc"))).thenReturn("security");
-        when(keywordIndexStore.read(VERSION)).thenReturn(Optional.empty());
+        when(docChunkStore.findByPage(VERSION, "security")).thenReturn(List.of(SECURITY_CHUNK));
 
         BatchDocumentResponse response = documentService.getDocumentsBatch(VERSION,
                 List.of("security.adoc"), true);
@@ -138,8 +144,7 @@ class DocumentServiceBatchTest {
     @Test
     void shouldReturnFullDocumentsWithSectionsAndCodeBlocks() {
         when(docStore.read(VERSION, "security.adoc")).thenReturn(Optional.of(SECURITY_CONTENT));
-        when(metadataResolver.resolveSubject(eq(VERSION), eq("security.adoc"))).thenReturn("security");
-        when(keywordIndexStore.read(VERSION)).thenReturn(Optional.empty());
+        when(docChunkStore.findByPage(VERSION, "security")).thenReturn(List.of(SECURITY_CHUNK));
         when(docParser.parseSections(SECURITY_CONTENT)).thenReturn(List.of());
         when(docParser.parseCodeBlocks(SECURITY_CONTENT)).thenReturn(List.of());
 

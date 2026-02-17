@@ -1,19 +1,25 @@
 package com.fvd.indexs.stores;
 
-import com.fvd.indexs.model.ChunkSearchRow;
-import com.fvd.indexs.model.DocChunk;
-import jakarta.enterprise.context.ApplicationScoped;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
-import javax.sql.DataSource;
 import java.sql.Array;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+
+import jakarta.enterprise.context.ApplicationScoped;
+
+import javax.sql.DataSource;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import com.fvd.indexs.model.ChunkSearchRow;
+import com.fvd.indexs.model.DocChunk;
 
 @Slf4j
 @ApplicationScoped
@@ -76,7 +82,7 @@ public class DocChunkStore {
 
         boolean hasExtension = extension != null && !extension.isEmpty();
         if (hasExtension) {
-            sql.append(" AND extensions @> ARRAY[?]::text[]");
+            sql.append(" AND ? = ANY(extensions)");
         }
         sql.append(" ORDER BY score DESC LIMIT ? OFFSET ?");
 
@@ -128,6 +134,139 @@ public class DocChunkStore {
             throw new RuntimeException("Failed to fuzzy search doc chunks for version: " + version, e);
         }
     }
+
+    /**
+     * Finds all chunks for a specific page and version.
+     * Used by DocumentService to get extension/topics for a page.
+     */
+    public List<ChunkSearchRow> findByPage(String version, String page) {
+        String sql = "SELECT id, version, page, title, section, url, topics, extensions, summary, content, "
+                + "0.0 AS score FROM doc_chunks WHERE version = ? AND page = ? LIMIT 1000";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, version);
+            stmt.setString(2, page);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                List<ChunkSearchRow> results = new ArrayList<>();
+                while (rs.next()) {
+                    results.add(mapRow(rs));
+                }
+                return results;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find doc chunks by page for version: " + version, e);
+        }
+    }
+
+    /**
+     * Returns distinct extensions with doc counts for a version.
+     * Each extension appears with the count of distinct pages that reference it.
+     */
+    public Map<String, Integer> findDistinctExtensionsWithDocCount(String version) {
+        String sql = "SELECT UNNEST(extensions) AS ext, COUNT(DISTINCT page) AS doc_count "
+                + "FROM doc_chunks WHERE version = ? GROUP BY ext ORDER BY doc_count DESC LIMIT 500";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, version);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                Map<String, Integer> result = new LinkedHashMap<>();
+                while (rs.next()) {
+                    result.put(rs.getString("ext"), rs.getInt("doc_count"));
+                }
+                return result;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find distinct extensions for version: " + version, e);
+        }
+    }
+
+    /**
+     * Returns distinct topics with doc counts for a version.
+     */
+    public Map<String, Integer> findDistinctTopicsWithDocCount(String version) {
+        String sql = "SELECT UNNEST(topics) AS topic, COUNT(DISTINCT page) AS doc_count "
+                + "FROM doc_chunks WHERE version = ? GROUP BY topic ORDER BY doc_count DESC LIMIT 500";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, version);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                Map<String, Integer> result = new LinkedHashMap<>();
+                while (rs.next()) {
+                    result.put(rs.getString("topic"), rs.getInt("doc_count"));
+                }
+                return result;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find distinct topics for version: " + version, e);
+        }
+    }
+
+    /**
+     * Finds pages that share topics or extensions with the given lists,
+     * excluding a specific page. Returns page-level results.
+     * Overlap score is computed in Java for simplicity and maintainability.
+     */
+    public List<RelatedPageRow> findRelatedPages(String version, String excludePage,
+                                                 List<String> topics, List<String> extensions, int limit) {
+        String sql = "SELECT DISTINCT ON (page) page, title, summary, topics, extensions "
+                + "FROM doc_chunks "
+                + "WHERE version = ? AND page != ? "
+                + "AND (topics && ?::text[] OR extensions && ?::text[]) "
+                + "ORDER BY page LIMIT ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, version);
+            stmt.setString(2, excludePage);
+            stmt.setArray(3, conn.createArrayOf("text",
+                    topics != null ? topics.toArray(new String[0]) : new String[0]));
+            stmt.setArray(4, conn.createArrayOf("text",
+                    extensions != null ? extensions.toArray(new String[0]) : new String[0]));
+            stmt.setInt(5, limit);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                List<RelatedPageRow> results = new ArrayList<>();
+                while (rs.next()) {
+                    Array topicsArray = rs.getArray("topics");
+                    List<String> rowTopics = topicsArray != null
+                            ? Arrays.asList((String[]) topicsArray.getArray())
+                            : List.of();
+
+                    Array extensionsArray = rs.getArray("extensions");
+                    List<String> rowExtensions = extensionsArray != null
+                            ? Arrays.asList((String[]) extensionsArray.getArray())
+                            : List.of();
+
+                    results.add(new RelatedPageRow(
+                            rs.getString("page"),
+                            rs.getString("title"),
+                            rs.getString("summary"),
+                            rowTopics,
+                            rowExtensions,
+                            0 // overlap score computed in Java
+                    ));
+                }
+                return results;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find related pages for version: " + version, e);
+        }
+    }
+
+    /**
+     * Represents a related page result with overlap metadata.
+     */
+    public record RelatedPageRow(
+            String page, String title, String summary,
+            List<String> topics, List<String> extensions,
+            int overlapScore
+    ) {}
 
     private ChunkSearchRow mapRow(ResultSet rs) throws SQLException {
         Array topicsArray = rs.getArray("topics");

@@ -1,11 +1,11 @@
 package com.fvd.api.dto;
 
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonFilter;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
 
 /**
  * Lightweight reference to a related document with similarity score.

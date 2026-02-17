@@ -1,5 +1,21 @@
 package com.fvd.api.services;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import jakarta.enterprise.context.ApplicationScoped;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
 import com.fvd.api.dto.BatchDocumentError;
 import com.fvd.api.dto.BatchDocumentResponse;
 import com.fvd.api.dto.CodeBlockInfo;
@@ -10,28 +26,11 @@ import com.fvd.common.utils.DescriptionExtractor;
 import com.fvd.common.utils.DocumentTitleExtractor;
 import com.fvd.docs.parser.DocParser;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.indexs.indexers.FileKeywordEntry;
-import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.stores.KeywordIndexStore;
-import com.fvd.search.services.MatchedKeyword;
-import com.fvd.search.services.FileSearchResult;
-import com.fvd.asciidocs.model.DocumentMetadata;
-import com.fvd.search.services.PaginatedResult;
-import com.fvd.search.services.SearchService;
-import com.fvd.subject.services.MetadataAwareSubjectResolver;
-import jakarta.enterprise.context.ApplicationScoped;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import com.fvd.indexs.model.ChunkSearchRow;
+import com.fvd.indexs.stores.DocChunkStore;
+import com.fvd.search.services.ChunkSearchResult;
+import com.fvd.search.services.DocChunkSearchService;
+import com.fvd.search.services.PaginatedChunkResult;
 
 /**
  * Service for document retrieval and search operations.
@@ -52,9 +51,8 @@ public class DocumentService {
 
     private final DocStore docStore;
     private final DocParser docParser;
-    private final KeywordIndexStore keywordIndexStore;
-    private final SearchService searchService;
-    private final MetadataAwareSubjectResolver metadataResolver;
+    private final DocChunkSearchService docChunkSearchService;
+    private final DocChunkStore docChunkStore;
 
     private final Map<String, ParsedDocument> documentCache = new ConcurrentHashMap<>();
 
@@ -138,10 +136,9 @@ public class DocumentService {
         String content = contentOpt.get();
         String title = DocumentTitleExtractor.extractTitle(content);
         String description = DescriptionExtractor.extract(content);
-        String extension = findExtensionForPath(version, path);
-        String subject = metadataResolver.resolveSubject(version, path);
+        PageMeta meta = resolvePageMeta(version, path);
 
-        return new DocumentResponse(title, description, path, subject, extension,
+        return new DocumentResponse(title, description, path, meta.subject(), meta.extension(),
                 null, null, List.of(), null);
     }
 
@@ -163,32 +160,33 @@ public class DocumentService {
         // Enforce lower limit for non-brief mode to prevent timeout
         int effectiveLimit = brief ? limit : Math.min(limit, FULL_CONTENT_MAX_LIMIT);
 
-        // Use existing search service for keyword matching
-        PaginatedResult<FileSearchResult> searchResult = searchService.searchFiles(
-                version, keywords, extension, subject, effectiveLimit, offset);
+        String queryString = String.join(" ", keywords);
+        PaginatedChunkResult searchResult = docChunkSearchService.search(
+                queryString, version, extension, effectiveLimit, offset);
 
         List<DocumentResponse> results = new ArrayList<>();
-        Map<String, DocumentMetadata> metadataMap = metadataResolver.loadMetadataMap(version);
-        for (FileSearchResult fileResult : searchResult.items()) {
-            String derivedSubject = metadataResolver.resolveSubject(fileResult.path, metadataMap);
-
-            List<String> matchedKws = fileResult.matchedKeywords.stream()
-                    .map(MatchedKeyword::originalKeyword)
-                    .toList();
-
-            Optional<String> contentOpt = docStore.read(version, fileResult.path);
-            if (contentOpt.isEmpty()) {
-                continue;
+        for (ChunkSearchResult chunkResult : searchResult.results()) {
+            // Apply subject filter post-query
+            if (subject != null && !subject.isEmpty()) {
+                List<String> topics = chunkResult.topics();
+                if (topics == null || !topics.contains(subject)) {
+                    continue;
+                }
             }
 
+            String resultSubject = (chunkResult.topics() != null && !chunkResult.topics().isEmpty())
+                    ? chunkResult.topics().get(0) : null;
+            String resultExtension = (chunkResult.extensions() != null && !chunkResult.extensions().isEmpty())
+                    ? chunkResult.extensions().get(0) : null;
+            String resultPath = chunkResult.page() + ".adoc";
+
             if (brief) {
-                String title = DocumentTitleExtractor.extractTitle(contentOpt.get());
-                String description = DescriptionExtractor.extract(contentOpt.get());
                 results.add(new DocumentResponse(
-                        title, description, fileResult.path, derivedSubject,
-                        fileResult.extension, null, null, matchedKws, fileResult.score));
+                        chunkResult.title(), chunkResult.summary(), resultPath,
+                        resultSubject, resultExtension,
+                        null, null, List.of(), chunkResult.score()));
             } else {
-                ParsedDocument parsed = getOrParseDocument(version, fileResult.path);
+                ParsedDocument parsed = getOrParseDocument(version, resultPath);
                 if (parsed == null) {
                     continue;
                 }
@@ -196,7 +194,7 @@ public class DocumentService {
                         parsed.title(), parsed.description(), parsed.path(),
                         parsed.subject(), parsed.extension(),
                         parsed.sections(), parsed.codeBlocks(),
-                        matchedKws, fileResult.score));
+                        List.of(), chunkResult.score()));
             }
         }
 
@@ -243,15 +241,14 @@ public class DocumentService {
         }
 
         String content = contentOpt.get();
-        String extension = findExtensionForPath(version, path);
-        String subject = metadataResolver.resolveSubject(version, path);
+        PageMeta meta = resolvePageMeta(version, path);
         String title = DocumentTitleExtractor.extractTitle(content);
         String description = DescriptionExtractor.extract(content);
         List<SectionInfo> sections = parseSections(content);
         List<CodeBlockInfo> codeBlocks = parseCodeBlocks(content);
 
         ParsedDocument parsed = new ParsedDocument(
-                title, description, path, subject, extension, sections, codeBlocks);
+                title, description, path, meta.subject(), meta.extension(), sections, codeBlocks);
 
         if (documentCacheEnabled) {
             documentCache.put(cacheKey, parsed);
@@ -311,17 +308,17 @@ public class DocumentService {
         return codeBlocks;
     }
 
-    private String findExtensionForPath(String version, String path) {
-        Optional<KeywordIndex> indexOpt = keywordIndexStore.read(version);
-        if (indexOpt.isEmpty()) {
-            return null;
-        }
+    private record PageMeta(String subject, String extension) {}
 
-        for (FileKeywordEntry file : indexOpt.get().files) {
-            if (file.path.equals(path)) {
-                return file.extension;
-            }
+    private PageMeta resolvePageMeta(String version, String path) {
+        String page = path.endsWith(".adoc") ? path.substring(0, path.length() - 5) : path;
+        List<ChunkSearchRow> chunks = docChunkStore.findByPage(version, page);
+        if (chunks.isEmpty()) {
+            return new PageMeta(null, null);
         }
-        return null;
+        ChunkSearchRow first = chunks.get(0);
+        String subject = (first.topics() != null && !first.topics().isEmpty()) ? first.topics().get(0) : null;
+        String extension = (first.extensions() != null && !first.extensions().isEmpty()) ? first.extensions().get(0) : null;
+        return new PageMeta(subject, extension);
     }
 }

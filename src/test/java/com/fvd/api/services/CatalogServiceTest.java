@@ -1,27 +1,22 @@
 package com.fvd.api.services;
 
-import com.fvd.cache.services.CacheService;
-import com.fvd.indexs.indexers.FileKeywordEntry;
-import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordScore;
-import com.fvd.indexs.stores.KeywordIndexStore;
-import com.fvd.subject.services.MetadataAwareSubjectResolver;
-import com.fvd.subject.services.SubjectDeriver;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import com.fvd.cache.services.CacheService;
+import com.fvd.indexs.stores.DocChunkStore;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class CatalogServiceTest {
@@ -29,23 +24,17 @@ class CatalogServiceTest {
     @TempDir
     Path tempDir;
 
-    private SubjectDeriver subjectDeriver;
-    private MetadataAwareSubjectResolver metadataResolver;
-    private KeywordIndexStore keywordIndexStore;
+    private DocChunkStore docChunkStore;
     private CacheService cacheService;
     private CatalogService catalogService;
 
     @BeforeEach
     void setUp() {
-        subjectDeriver = mock(SubjectDeriver.class);
-        metadataResolver = mock(MetadataAwareSubjectResolver.class);
-        keywordIndexStore = mock(KeywordIndexStore.class);
+        docChunkStore = mock(DocChunkStore.class);
         cacheService = mock(CacheService.class);
         when(cacheService.versionDir("main")).thenReturn(tempDir.resolve("main"));
         when(cacheService.listCachedVersions()).thenReturn(List.of("main"));
-        when(metadataResolver.loadMetadataMap(anyString())).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("misc");
-        catalogService = new CatalogService(subjectDeriver, metadataResolver, keywordIndexStore, cacheService);
+        catalogService = new CatalogService(docChunkStore, cacheService);
     }
 
     @Test
@@ -54,16 +43,10 @@ class CatalogServiceTest {
         Files.createDirectories(extDir);
         Files.writeString(extDir.resolve(".extension-title"), "Quarkus OpenAPI Generator");
 
-        KeywordIndex index = new KeywordIndex();
-        FileKeywordEntry entry = new FileKeywordEntry(
-                "quarkiverse/quarkus-openapi-generator/index.adoc",
-                List.of(new KeywordScore("openapi", 5)),
-                List.of(),
-                "quarkus-openapi-generator"
-        );
-        index.files = List.of(entry);
-        when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
-        when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
+        Map<String, Integer> extensionsMap = new LinkedHashMap<>();
+        extensionsMap.put("quarkus-openapi-generator", 1);
+        when(docChunkStore.findDistinctExtensionsWithDocCount("main")).thenReturn(extensionsMap);
+        when(docChunkStore.findDistinctTopicsWithDocCount("main")).thenReturn(Map.of());
 
         var catalog = catalogService.getCatalog("main");
 
@@ -72,17 +55,11 @@ class CatalogServiceTest {
     }
 
     @Test
-    void extensionWithoutTitleFileGetsEmptyDescription() throws Exception {
-        KeywordIndex index = new KeywordIndex();
-        FileKeywordEntry entry = new FileKeywordEntry(
-                "quarkiverse/my-ext/index.adoc",
-                List.of(new KeywordScore("test", 5)),
-                List.of(),
-                "my-ext"
-        );
-        index.files = List.of(entry);
-        when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
-        when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
+    void extensionWithoutTitleFileGetsEmptyDescription() {
+        Map<String, Integer> extensionsMap = new LinkedHashMap<>();
+        extensionsMap.put("my-ext", 1);
+        when(docChunkStore.findDistinctExtensionsWithDocCount("main")).thenReturn(extensionsMap);
+        when(docChunkStore.findDistinctTopicsWithDocCount("main")).thenReturn(Map.of());
 
         var catalog = catalogService.getCatalog("main");
 
@@ -91,17 +68,11 @@ class CatalogServiceTest {
     }
 
     @Test
-    void quarkusCoreGetsHardcodedDescription() throws Exception {
-        KeywordIndex index = new KeywordIndex();
-        FileKeywordEntry entry = new FileKeywordEntry(
-                "security-overview.adoc",
-                List.of(new KeywordScore("security", 5)),
-                List.of(),
-                null
-        );
-        index.files = List.of(entry);
-        when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
-        when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
+    void quarkusCoreGetsHardcodedDescription() {
+        Map<String, Integer> extensionsMap = new LinkedHashMap<>();
+        extensionsMap.put("quarkus-core", 1);
+        when(docChunkStore.findDistinctExtensionsWithDocCount("main")).thenReturn(extensionsMap);
+        when(docChunkStore.findDistinctTopicsWithDocCount("main")).thenReturn(Map.of());
 
         var catalog = catalogService.getCatalog("main");
 
@@ -111,51 +82,11 @@ class CatalogServiceTest {
     }
 
     @Test
-    void extensionKeywordsAreAggregatedAndSortedByWeight() throws Exception {
-        KeywordIndex index = new KeywordIndex();
-        FileKeywordEntry file1 = new FileKeywordEntry(
-                "quarkiverse/my-ext/page1.adoc",
-                List.of(
-                        new KeywordScore("secur", 10),
-                        new KeywordScore("oidc", 8),
-                        new KeywordScore("auth", 5)
-                ),
-                List.of(),
-                "my-ext"
-        );
-        FileKeywordEntry file2 = new FileKeywordEntry(
-                "quarkiverse/my-ext/page2.adoc",
-                List.of(
-                        new KeywordScore("secur", 6),
-                        new KeywordScore("jwt", 4)
-                ),
-                List.of(),
-                "my-ext"
-        );
-        index.files = List.of(file1, file2);
-        when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
-        when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
-
-        var catalog = catalogService.getCatalog("main");
-
-        assertThat(catalog.extensions).hasSize(1);
-        // secur: 10+6=16, oidc: 8, auth: 5, jwt: 4
-        assertThat(catalog.extensions.get(0).keywords)
-                .containsExactly("secur", "oidc", "auth", "jwt");
-    }
-
-    @Test
-    void extensionWithNoKeywordsGetsEmptyList() throws Exception {
-        KeywordIndex index = new KeywordIndex();
-        FileKeywordEntry entry = new FileKeywordEntry(
-                "quarkiverse/my-ext/index.adoc",
-                List.of(),
-                List.of(),
-                "my-ext"
-        );
-        index.files = List.of(entry);
-        when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
-        when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
+    void extensionKeywordsAreAlwaysEmptyInNewModel() {
+        Map<String, Integer> extensionsMap = new LinkedHashMap<>();
+        extensionsMap.put("my-ext", 2);
+        when(docChunkStore.findDistinctExtensionsWithDocCount("main")).thenReturn(extensionsMap);
+        when(docChunkStore.findDistinctTopicsWithDocCount("main")).thenReturn(Map.of());
 
         var catalog = catalogService.getCatalog("main");
 
@@ -164,56 +95,80 @@ class CatalogServiceTest {
     }
 
     @Test
-    void multipleExtensionsGetIndependentKeywords() throws Exception {
-        KeywordIndex index = new KeywordIndex();
-        FileKeywordEntry file1 = new FileKeywordEntry(
-                "quarkiverse/ext-a/page.adoc",
-                List.of(new KeywordScore("rest", 10)),
-                List.of(),
-                "ext-a"
-        );
-        FileKeywordEntry file2 = new FileKeywordEntry(
-                "quarkiverse/ext-b/page.adoc",
-                List.of(new KeywordScore("data", 8)),
-                List.of(),
-                "ext-b"
-        );
-        index.files = List.of(file1, file2);
-        when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
-        when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
-
-        var catalog = catalogService.getCatalog("main");
-
-        assertThat(catalog.extensions).hasSize(2);
-        var extA = catalog.extensions.stream().filter(e -> e.name.equals("ext-a")).findFirst().orElseThrow();
-        var extB = catalog.extensions.stream().filter(e -> e.name.equals("ext-b")).findFirst().orElseThrow();
-        assertThat(extA.keywords).containsExactly("rest");
-        assertThat(extB.keywords).containsExactly("data");
-    }
-
-    @Test
-    void keywordsAreLimitedToTopFifteen() throws Exception {
-        KeywordIndex index = new KeywordIndex();
-        List<KeywordScore> manyKeywords = new ArrayList<>();
-        for (int i = 0; i < 20; i++) {
-            manyKeywords.add(new KeywordScore("kw" + i, 20 - i));
-        }
-        FileKeywordEntry entry = new FileKeywordEntry(
-                "quarkiverse/my-ext/index.adoc",
-                manyKeywords,
-                List.of(),
-                "my-ext"
-        );
-        index.files = List.of(entry);
-        when(keywordIndexStore.read("main")).thenReturn(Optional.of(index));
-        when(subjectDeriver.getAllSubjects()).thenReturn(List.of());
+    void extensionWithNoKeywordsGetsEmptyList() {
+        Map<String, Integer> extensionsMap = new LinkedHashMap<>();
+        extensionsMap.put("my-ext", 1);
+        when(docChunkStore.findDistinctExtensionsWithDocCount("main")).thenReturn(extensionsMap);
+        when(docChunkStore.findDistinctTopicsWithDocCount("main")).thenReturn(Map.of());
 
         var catalog = catalogService.getCatalog("main");
 
         assertThat(catalog.extensions).hasSize(1);
-        assertThat(catalog.extensions.get(0).keywords).hasSize(15);
-        // Top 15 should be kw0 through kw14 (highest scores)
-        assertThat(catalog.extensions.get(0).keywords.get(0)).isEqualTo("kw0");
-        assertThat(catalog.extensions.get(0).keywords.get(14)).isEqualTo("kw14");
+        assertThat(catalog.extensions.get(0).keywords).isEmpty();
+    }
+
+    @Test
+    void multipleExtensionsAreSortedByDocCountThenName() {
+        Map<String, Integer> extensionsMap = new LinkedHashMap<>();
+        extensionsMap.put("ext-a", 1);
+        extensionsMap.put("ext-b", 3);
+        extensionsMap.put("ext-c", 1);
+        when(docChunkStore.findDistinctExtensionsWithDocCount("main")).thenReturn(extensionsMap);
+        when(docChunkStore.findDistinctTopicsWithDocCount("main")).thenReturn(Map.of());
+
+        var catalog = catalogService.getCatalog("main");
+
+        assertThat(catalog.extensions).hasSize(3);
+        // ext-b (3 docs) first, then ext-a and ext-c (1 doc each, alphabetical)
+        assertThat(catalog.extensions.get(0).name).isEqualTo("ext-b");
+        assertThat(catalog.extensions.get(1).name).isEqualTo("ext-a");
+        assertThat(catalog.extensions.get(2).name).isEqualTo("ext-c");
+    }
+
+    @Test
+    void topicsAreReturnedAsSubjects() {
+        Map<String, Integer> topicsMap = new LinkedHashMap<>();
+        topicsMap.put("security", 5);
+        topicsMap.put("rest-apis", 3);
+        when(docChunkStore.findDistinctTopicsWithDocCount("main")).thenReturn(topicsMap);
+        when(docChunkStore.findDistinctExtensionsWithDocCount("main")).thenReturn(Map.of());
+
+        var catalog = catalogService.getCatalog("main");
+
+        assertThat(catalog.subjects).hasSize(2);
+        assertThat(catalog.subjects.get(0).name).isEqualTo("security");
+        assertThat(catalog.subjects.get(0).displayName).isEqualTo("Security");
+        assertThat(catalog.subjects.get(0).docCount).isEqualTo(5);
+        assertThat(catalog.subjects.get(0).keywords).isEmpty();
+        assertThat(catalog.subjects.get(1).name).isEqualTo("rest-apis");
+        assertThat(catalog.subjects.get(1).displayName).isEqualTo("Rest Apis");
+        assertThat(catalog.subjects.get(1).docCount).isEqualTo(3);
+    }
+
+    @Test
+    void catalogCachesAndInvalidatesCorrectly() {
+        Map<String, Integer> topicsMap = new LinkedHashMap<>();
+        topicsMap.put("security", 1);
+        when(docChunkStore.findDistinctTopicsWithDocCount("main")).thenReturn(topicsMap);
+        when(docChunkStore.findDistinctExtensionsWithDocCount("main")).thenReturn(Map.of());
+
+        // First call builds catalog
+        var catalog1 = catalogService.getCatalog("main");
+        assertThat(catalog1.subjects).hasSize(1);
+
+        // Second call should return cached result
+        var catalog2 = catalogService.getCatalog("main");
+        assertThat(catalog2).isSameAs(catalog1);
+
+        // DocChunkStore should only be called once (cached second time)
+        verify(docChunkStore, times(1)).findDistinctTopicsWithDocCount("main");
+
+        // Invalidate and re-fetch
+        catalogService.invalidateCache("main");
+        var catalog3 = catalogService.getCatalog("main");
+
+        // Should have called DocChunkStore again after invalidation
+        verify(docChunkStore, times(2)).findDistinctTopicsWithDocCount("main");
+        assertThat(catalog3).isNotSameAs(catalog1);
     }
 }

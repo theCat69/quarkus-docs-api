@@ -1,28 +1,31 @@
 package com.fvd.api.services;
 
-import com.fvd.api.dto.DocumentResponse;
-import com.fvd.api.dto.DocumentSearchResponse;
-import com.fvd.docs.parser.DocParser;
-import com.fvd.docs.stores.DocStore;
-import com.fvd.indexs.stores.KeywordIndexStore;
-import com.fvd.search.services.FileSearchResult;
-import com.fvd.search.services.MatchedKeyword;
-import com.fvd.search.services.PaginatedResult;
-import com.fvd.search.services.SearchService;
-import com.fvd.subject.services.MetadataAwareSubjectResolver;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import com.fvd.api.dto.DocumentResponse;
+import com.fvd.api.dto.DocumentSearchResponse;
+import com.fvd.docs.parser.DocParser;
+import com.fvd.docs.stores.DocStore;
+import com.fvd.indexs.model.ChunkSearchRow;
+import com.fvd.indexs.stores.DocChunkStore;
+import com.fvd.search.services.ChunkSearchResult;
+import com.fvd.search.services.DocChunkSearchService;
+import com.fvd.search.services.PaginatedChunkResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DocumentServiceTest {
@@ -34,13 +37,10 @@ class DocumentServiceTest {
     private DocParser docParser;
 
     @Mock
-    private KeywordIndexStore keywordIndexStore;
+    private DocChunkSearchService docChunkSearchService;
 
     @Mock
-    private SearchService searchService;
-
-    @Mock
-    private MetadataAwareSubjectResolver metadataResolver;
+    private DocChunkStore docChunkStore;
 
     private DocumentService documentService;
 
@@ -61,15 +61,18 @@ class DocumentServiceTest {
 
     @BeforeEach
     void setUp() {
-        documentService = new DocumentService(docStore, docParser, keywordIndexStore, searchService, metadataResolver);
+        documentService = new DocumentService(docStore, docParser, docChunkSearchService, docChunkStore);
         documentService.documentCacheEnabled = true;
     }
 
     @Test
     void getDocumentByPathCachesOnFirstCallAndReturnsCachedOnSecond() {
+        ChunkSearchRow chunkRow = new ChunkSearchRow(
+                "security-overview#intro", "main", "security-overview", "Security Overview",
+                "intro", "https://quarkus.io/guides/security-overview",
+                List.of("security"), List.of("quarkus-core"), "Overview of security", "content", 0.0);
         when(docStore.read("main", "security-overview.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
-        when(metadataResolver.resolveSubject(eq("main"), eq("security-overview.adoc"))).thenReturn("security");
-        when(keywordIndexStore.read("main")).thenReturn(Optional.empty());
+        when(docChunkStore.findByPage("main", "security-overview")).thenReturn(List.of(chunkRow));
         when(docParser.parseSections(SAMPLE_CONTENT)).thenReturn(List.of(
                 new DocParser.Section("Authentication", 7, 9, Map.of("authent", 1)),
                 new DocParser.Section("Authorization", 11, 13, Map.of("author", 1))
@@ -96,10 +99,17 @@ class DocumentServiceTest {
 
     @Test
     void invalidateDocumentCacheClearsOnlySpecifiedVersion() {
+        ChunkSearchRow chunkRow = new ChunkSearchRow(
+                "doc1#intro", "main", "doc1", "Doc1", "intro", null,
+                List.of("general"), List.of(), "Summary", "content", 0.0);
+        ChunkSearchRow chunkRow327 = new ChunkSearchRow(
+                "doc1#intro", "3.27", "doc1", "Doc1", "intro", null,
+                List.of("general"), List.of(), "Summary", "content", 0.0);
+
         when(docStore.read(eq("main"), eq("doc1.adoc"))).thenReturn(Optional.of(SAMPLE_CONTENT));
         when(docStore.read(eq("3.27"), eq("doc1.adoc"))).thenReturn(Optional.of(SAMPLE_CONTENT));
-        when(metadataResolver.resolveSubject(anyString(), eq("doc1.adoc"))).thenReturn("general");
-        when(keywordIndexStore.read(anyString())).thenReturn(Optional.empty());
+        when(docChunkStore.findByPage("main", "doc1")).thenReturn(List.of(chunkRow));
+        when(docChunkStore.findByPage("3.27", "doc1")).thenReturn(List.of(chunkRow327));
         when(docParser.parseSections(SAMPLE_CONTENT)).thenReturn(List.of());
         when(docParser.parseCodeBlocks(SAMPLE_CONTENT)).thenReturn(List.of());
 
@@ -124,9 +134,11 @@ class DocumentServiceTest {
     void cacheDisabledParsesEveryCall() {
         documentService.documentCacheEnabled = false;
 
+        ChunkSearchRow chunkRow = new ChunkSearchRow(
+                "doc#intro", "main", "doc", "Doc", "intro", null,
+                List.of("general"), List.of(), "Summary", "content", 0.0);
         when(docStore.read("main", "doc.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
-        when(metadataResolver.resolveSubject(eq("main"), eq("doc.adoc"))).thenReturn("general");
-        when(keywordIndexStore.read("main")).thenReturn(Optional.empty());
+        when(docChunkStore.findByPage("main", "doc")).thenReturn(List.of(chunkRow));
         when(docParser.parseSections(SAMPLE_CONTENT)).thenReturn(List.of());
         when(docParser.parseCodeBlocks(SAMPLE_CONTENT)).thenReturn(List.of());
 
@@ -154,19 +166,18 @@ class DocumentServiceTest {
 
     @Test
     void searchDocumentsNonBriefModeUsesCache() {
-        List<MatchedKeyword> matchedKeywords = List.of(
-                new MatchedKeyword("security", "security", "body", 5.0));
-        FileSearchResult fileResult = new FileSearchResult(
-                "security-overview.adoc", 10.0, matchedKeywords, "quarkus-core");
-        PaginatedResult<FileSearchResult> searchResult = new PaginatedResult<>(List.of(fileResult), 1);
+        ChunkSearchResult chunkResult = new ChunkSearchResult(
+                "security-overview#auth", "security-overview", "Security Overview", "Authentication",
+                "Auth details", List.of("quarkus-core"), List.of("security"), 10.0,
+                "https://quarkus.io/guides/security-overview#authentication");
+        PaginatedChunkResult searchResult = new PaginatedChunkResult(List.of(chunkResult), 1, 5, 0);
+        when(docChunkSearchService.search("security", "main", null, 5, 0)).thenReturn(searchResult);
 
-        when(searchService.searchFiles("main", List.of("security"), null, null, 5, 0))
-                .thenReturn(searchResult);
+        ChunkSearchRow chunkRow = new ChunkSearchRow(
+                "security-overview#intro", "main", "security-overview", "Security Overview",
+                "intro", null, List.of("security"), List.of("quarkus-core"), "Overview", "content", 0.0);
+        when(docChunkStore.findByPage("main", "security-overview")).thenReturn(List.of(chunkRow));
         when(docStore.read("main", "security-overview.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
-        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(eq("security-overview.adoc"), any(Map.class))).thenReturn("security");
-        when(metadataResolver.resolveSubject(eq("main"), eq("security-overview.adoc"))).thenReturn("security");
-        when(keywordIndexStore.read("main")).thenReturn(Optional.empty());
         when(docParser.parseSections(SAMPLE_CONTENT)).thenReturn(List.of());
         when(docParser.parseCodeBlocks(SAMPLE_CONTENT)).thenReturn(List.of());
 
@@ -180,34 +191,18 @@ class DocumentServiceTest {
                 "main", List.of("security"), null, null, 10, 0, false);
         assertThat(response2.getResults()).hasSize(1);
 
-        // docStore.read called twice for brief check in searchDocuments (once per call),
-        // but getOrParseDocument only reads docStore on the first call
-        // In searchDocuments, docStore.read is called for the brief/non-brief branch check,
-        // then getOrParseDocument is called which also reads docStore on first call.
-        // Actually: searchDocuments reads docStore first (for brief check), then getOrParseDocument
-        // reads it again if not cached. On second call, searchDocuments reads docStore but
-        // getOrParseDocument finds it cached.
-        // So: 2 (from searchDocuments) + 1 (from getOrParseDocument first call) = 3
-        // Wait - let me re-read the code. The non-brief branch calls getOrParseDocument directly,
-        // but docStore.read is called before the brief check for the contentOpt check.
-        // First call: docStore.read(1) + getOrParseDocument->docStore.read(2) = 2 reads
-        // Second call: docStore.read(3) + getOrParseDocument returns cached = 3 reads total
-        verify(docStore, times(3)).read("main", "security-overview.adoc");
+        // docStore.read called once (getOrParseDocument first call), second call uses cache
+        verify(docStore, times(1)).read("main", "security-overview.adoc");
     }
 
     @Test
     void searchDocumentsBriefModeDoesNotPopulateCache() {
-        List<MatchedKeyword> matchedKeywords = List.of(
-                new MatchedKeyword("security", "security", "body", 5.0));
-        FileSearchResult fileResult = new FileSearchResult(
-                "security-overview.adoc", 10.0, matchedKeywords, "quarkus-core");
-        PaginatedResult<FileSearchResult> searchResult = new PaginatedResult<>(List.of(fileResult), 1);
-
-        when(searchService.searchFiles("main", List.of("security"), null, null, 10, 0))
-                .thenReturn(searchResult);
-        when(docStore.read("main", "security-overview.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
-        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(eq("security-overview.adoc"), any(Map.class))).thenReturn("security");
+        ChunkSearchResult chunkResult = new ChunkSearchResult(
+                "security-overview#auth", "security-overview", "Security Overview", "Authentication",
+                "Auth details", List.of("quarkus-core"), List.of("security"), 10.0,
+                "https://quarkus.io/guides/security-overview#authentication");
+        PaginatedChunkResult searchResult = new PaginatedChunkResult(List.of(chunkResult), 1, 10, 0);
+        when(docChunkSearchService.search("security", "main", null, 10, 0)).thenReturn(searchResult);
 
         // Brief mode search
         DocumentSearchResponse response = documentService.searchDocuments(
@@ -217,34 +212,39 @@ class DocumentServiceTest {
         assertThat(response.getResults().get(0).codeBlocks).isNull();
 
         // Now do a getDocumentByPath - cache should NOT have been populated by brief mode
-        when(keywordIndexStore.read("main")).thenReturn(Optional.empty());
+        ChunkSearchRow chunkRow = new ChunkSearchRow(
+                "security-overview#intro", "main", "security-overview", "Security Overview",
+                "intro", null, List.of("security"), List.of("quarkus-core"), "Overview", "content", 0.0);
+        when(docChunkStore.findByPage("main", "security-overview")).thenReturn(List.of(chunkRow));
+        when(docStore.read("main", "security-overview.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
         when(docParser.parseSections(SAMPLE_CONTENT)).thenReturn(List.of());
         when(docParser.parseCodeBlocks(SAMPLE_CONTENT)).thenReturn(List.of());
 
         documentService.getDocumentByPath("main", "security-overview.adoc");
 
-        // docStore.read called: 1 (brief search) + 1 (getDocumentByPath via getOrParseDocument) = 2
-        verify(docStore, times(2)).read("main", "security-overview.adoc");
+        // docStore.read called once (from getDocumentByPath via getOrParseDocument)
+        // Brief mode does not read from docStore
+        verify(docStore, times(1)).read("main", "security-overview.adoc");
         // parseSections should be called (cache was not populated by brief mode)
         verify(docParser, times(1)).parseSections(SAMPLE_CONTENT);
     }
 
     @Test
     void searchDocumentsNonBriefCapsLimitAtFullContentMaxLimit() {
-        List<MatchedKeyword> matchedKeywords = List.of(
-                new MatchedKeyword("security", "security", "body", 5.0));
-        FileSearchResult fileResult = new FileSearchResult(
-                "security-overview.adoc", 10.0, matchedKeywords, "quarkus-core");
-        PaginatedResult<FileSearchResult> searchResult = new PaginatedResult<>(List.of(fileResult), 1);
+        ChunkSearchResult chunkResult = new ChunkSearchResult(
+                "security-overview#auth", "security-overview", "Security Overview", "Authentication",
+                "Auth details", List.of("quarkus-core"), List.of("security"), 10.0,
+                "https://quarkus.io/guides/security-overview#authentication");
+        PaginatedChunkResult searchResult = new PaginatedChunkResult(List.of(chunkResult), 1, 5, 0);
 
         // When brief=false and limit=20, effective limit should be capped at 5
-        when(searchService.searchFiles("main", List.of("security"), null, null, 5, 0))
-                .thenReturn(searchResult);
+        when(docChunkSearchService.search("security", "main", null, 5, 0)).thenReturn(searchResult);
+
+        ChunkSearchRow chunkRow = new ChunkSearchRow(
+                "security-overview#intro", "main", "security-overview", "Security Overview",
+                "intro", null, List.of("security"), List.of("quarkus-core"), "Overview", "content", 0.0);
+        when(docChunkStore.findByPage("main", "security-overview")).thenReturn(List.of(chunkRow));
         when(docStore.read("main", "security-overview.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
-        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(eq("security-overview.adoc"), any(Map.class))).thenReturn("security");
-        when(metadataResolver.resolveSubject(eq("main"), eq("security-overview.adoc"))).thenReturn("security");
-        when(keywordIndexStore.read("main")).thenReturn(Optional.empty());
         when(docParser.parseSections(SAMPLE_CONTENT)).thenReturn(List.of());
         when(docParser.parseCodeBlocks(SAMPLE_CONTENT)).thenReturn(List.of());
 
@@ -252,50 +252,46 @@ class DocumentServiceTest {
                 "main", List.of("security"), null, null, 20, 0, false);
         assertThat(response.getResults()).hasSize(1);
 
-        // Verify searchService was called with effective limit of 5 (not 20)
-        verify(searchService).searchFiles("main", List.of("security"), null, null, 5, 0);
-        verify(searchService, never()).searchFiles("main", List.of("security"), null, null, 20, 0);
+        // Verify docChunkSearchService was called with effective limit of 5 (not 20)
+        verify(docChunkSearchService).search("security", "main", null, 5, 0);
+        verify(docChunkSearchService, never()).search("security", "main", null, 20, 0);
     }
 
     @Test
     void searchDocumentsBriefModeUsesOriginalLimit() {
-        List<MatchedKeyword> matchedKeywords = List.of(
-                new MatchedKeyword("security", "security", "body", 5.0));
-        FileSearchResult fileResult = new FileSearchResult(
-                "security-overview.adoc", 10.0, matchedKeywords, "quarkus-core");
-        PaginatedResult<FileSearchResult> searchResult = new PaginatedResult<>(List.of(fileResult), 1);
+        ChunkSearchResult chunkResult = new ChunkSearchResult(
+                "security-overview#auth", "security-overview", "Security Overview", "Authentication",
+                "Auth details", List.of("quarkus-core"), List.of("security"), 10.0,
+                "https://quarkus.io/guides/security-overview#authentication");
+        PaginatedChunkResult searchResult = new PaginatedChunkResult(List.of(chunkResult), 1, 20, 0);
 
         // When brief=true and limit=20, effective limit should remain 20
-        when(searchService.searchFiles("main", List.of("security"), null, null, 20, 0))
-                .thenReturn(searchResult);
-        when(docStore.read("main", "security-overview.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
-        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(eq("security-overview.adoc"), any(Map.class))).thenReturn("security");
+        when(docChunkSearchService.search("security", "main", null, 20, 0)).thenReturn(searchResult);
 
         DocumentSearchResponse response = documentService.searchDocuments(
                 "main", List.of("security"), null, null, 20, 0, true);
         assertThat(response.getResults()).hasSize(1);
 
-        // Verify searchService was called with original limit of 20
-        verify(searchService).searchFiles("main", List.of("security"), null, null, 20, 0);
+        // Verify docChunkSearchService was called with original limit of 20
+        verify(docChunkSearchService).search("security", "main", null, 20, 0);
     }
 
     @Test
     void searchDocumentsNonBriefSetsWarningWhenTotalExceedsLimit() {
-        List<MatchedKeyword> matchedKeywords = List.of(
-                new MatchedKeyword("rest", "rest", "body", 5.0));
-        FileSearchResult fileResult = new FileSearchResult(
-                "rest.adoc", 10.0, matchedKeywords, "quarkus-core");
+        ChunkSearchResult chunkResult = new ChunkSearchResult(
+                "rest#intro", "rest", "REST", "Intro",
+                "REST details", List.of("quarkus-core"), List.of("rest-apis"), 10.0,
+                "https://quarkus.io/guides/rest");
         // Total is 10, which exceeds FULL_CONTENT_MAX_LIMIT (5)
-        PaginatedResult<FileSearchResult> searchResult = new PaginatedResult<>(List.of(fileResult), 10);
+        PaginatedChunkResult searchResult = new PaginatedChunkResult(List.of(chunkResult), 10, 5, 0);
 
-        when(searchService.searchFiles("main", List.of("rest"), null, null, 5, 0))
-                .thenReturn(searchResult);
+        when(docChunkSearchService.search("rest", "main", null, 5, 0)).thenReturn(searchResult);
+
+        ChunkSearchRow chunkRow = new ChunkSearchRow(
+                "rest#intro", "main", "rest", "REST", "intro", null,
+                List.of("rest-apis"), List.of("quarkus-core"), "REST overview", "content", 0.0);
+        when(docChunkStore.findByPage("main", "rest")).thenReturn(List.of(chunkRow));
         when(docStore.read("main", "rest.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
-        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(eq("rest.adoc"), any(Map.class))).thenReturn("rest-apis");
-        when(metadataResolver.resolveSubject(eq("main"), eq("rest.adoc"))).thenReturn("rest-apis");
-        when(keywordIndexStore.read("main")).thenReturn(Optional.empty());
         when(docParser.parseSections(SAMPLE_CONTENT)).thenReturn(List.of());
         when(docParser.parseCodeBlocks(SAMPLE_CONTENT)).thenReturn(List.of());
 
@@ -309,20 +305,20 @@ class DocumentServiceTest {
 
     @Test
     void searchDocumentsNonBriefNoWarningWhenTotalBelowLimit() {
-        List<MatchedKeyword> matchedKeywords = List.of(
-                new MatchedKeyword("oidc", "oidc", "body", 5.0));
-        FileSearchResult fileResult = new FileSearchResult(
-                "oidc.adoc", 10.0, matchedKeywords, "quarkus-core");
+        ChunkSearchResult chunkResult = new ChunkSearchResult(
+                "oidc#intro", "oidc", "OIDC", "Intro",
+                "OIDC details", List.of("quarkus-core"), List.of("security"), 10.0,
+                "https://quarkus.io/guides/oidc");
         // Total is 3, which is below FULL_CONTENT_MAX_LIMIT (5)
-        PaginatedResult<FileSearchResult> searchResult = new PaginatedResult<>(List.of(fileResult), 3);
+        PaginatedChunkResult searchResult = new PaginatedChunkResult(List.of(chunkResult), 3, 5, 0);
 
-        when(searchService.searchFiles("main", List.of("oidc"), null, null, 5, 0))
-                .thenReturn(searchResult);
+        when(docChunkSearchService.search("oidc", "main", null, 5, 0)).thenReturn(searchResult);
+
+        ChunkSearchRow chunkRow = new ChunkSearchRow(
+                "oidc#intro", "main", "oidc", "OIDC", "intro", null,
+                List.of("security"), List.of("quarkus-core"), "OIDC overview", "content", 0.0);
+        when(docChunkStore.findByPage("main", "oidc")).thenReturn(List.of(chunkRow));
         when(docStore.read("main", "oidc.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
-        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(eq("oidc.adoc"), any(Map.class))).thenReturn("security");
-        when(metadataResolver.resolveSubject(eq("main"), eq("oidc.adoc"))).thenReturn("security");
-        when(keywordIndexStore.read("main")).thenReturn(Optional.empty());
         when(docParser.parseSections(SAMPLE_CONTENT)).thenReturn(List.of());
         when(docParser.parseCodeBlocks(SAMPLE_CONTENT)).thenReturn(List.of());
 

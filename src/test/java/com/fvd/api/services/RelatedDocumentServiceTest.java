@@ -1,112 +1,87 @@
 package com.fvd.api.services;
 
-import com.fvd.api.dto.RelatedDocumentResponse;
-import com.fvd.docs.exceptions.DocNotFoundException;
-import com.fvd.docs.stores.DocStore;
-import com.fvd.indexs.indexers.FileKeywordEntry;
-import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordScore;
-import com.fvd.search.SearchConfig;
-import com.fvd.search.TestSearchConfig;
-import com.fvd.search.services.SearchService;
-import com.fvd.subject.services.MetadataAwareSubjectResolver;
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import com.fvd.api.dto.RelatedDocumentResponse;
+import com.fvd.docs.exceptions.DocNotFoundException;
+import com.fvd.indexs.model.ChunkSearchRow;
+import com.fvd.indexs.stores.DocChunkStore;
+import com.fvd.search.SearchConfig;
+import com.fvd.search.TestSearchConfig;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class RelatedDocumentServiceTest {
 
     @Mock
-    private SearchService searchService;
-
-    @Mock
-    private DocStore docStore;
-
-    @Mock
-    private MetadataAwareSubjectResolver metadataResolver;
+    private DocChunkStore docChunkStore;
 
     private final SearchConfig searchConfig = new TestSearchConfig();
 
     private RelatedDocumentService service;
 
-    private static final String DOC_CONTENT_SECURITY = """
-            = Security Overview
-            :description: An overview of Quarkus security features
-            
-            This document covers security basics.
-            """;
-
-    private static final String DOC_CONTENT_OIDC = """
-            = OpenID Connect
-            :description: OIDC authentication guide
-            
-            Guide to using OIDC with Quarkus.
-            """;
-
     @BeforeEach
     void setUp() {
-        service = new RelatedDocumentService(searchService, docStore, metadataResolver, searchConfig);
+        service = new RelatedDocumentService(docChunkStore, searchConfig);
     }
 
     @Test
     void shouldReturnRelatedDocumentsRankedBySimilarity() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("security-overview.adoc",
-                        List.of(new KeywordScore("secur", 10), new KeywordScore("oidc", 8),
-                                new KeywordScore("authent", 5)),
-                        List.of(), "quarkus-core"),
-                new FileKeywordEntry("security-oidc.adoc",
-                        List.of(new KeywordScore("secur", 10), new KeywordScore("oidc", 12),
-                                new KeywordScore("authent", 7)),
-                        List.of(), "quarkus-core"),
-                new FileKeywordEntry("config.adoc",
-                        List.of(new KeywordScore("secur", 2), new KeywordScore("config", 15)),
-                        List.of(), "quarkus-core")
-        ));
+        // Source document with topics=[security, oidc] and extensions=[quarkus-core]
+        ChunkSearchRow sourceChunk = new ChunkSearchRow(
+                "security-overview#intro", "main", "security-overview", "Security Overview",
+                "intro", null, List.of("security", "oidc"), List.of("quarkus-core"),
+                "Overview of security", "content", 0.0);
+        when(docChunkStore.findByPage("main", "security-overview")).thenReturn(List.of(sourceChunk));
 
-        when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("security");
-        when(docStore.read(eq("main"), eq("security-oidc.adoc"))).thenReturn(Optional.of(DOC_CONTENT_OIDC));
-        when(docStore.read(eq("main"), eq("config.adoc"))).thenReturn(Optional.of("= Config\nConfig doc."));
+        // Candidates: security-oidc shares 2 topics + 1 ext, config shares 0 topics + 1 ext
+        DocChunkStore.RelatedPageRow securityOidc = new DocChunkStore.RelatedPageRow(
+                "security-oidc", "Security OIDC", "OIDC guide",
+                List.of("security", "oidc"), List.of("quarkus-core"), 0);
+        DocChunkStore.RelatedPageRow config = new DocChunkStore.RelatedPageRow(
+                "config", "Config", "Config doc",
+                List.of("core-concepts"), List.of("quarkus-core"), 0);
+        when(docChunkStore.findRelatedPages(eq("main"), eq("security-overview"),
+                anyList(), anyList(), anyInt()))
+                .thenReturn(List.of(securityOidc, config));
 
         RelatedDocumentResponse response = service.findRelatedDocuments(
                 "main", "security-overview.adoc", null, null, 10);
 
         assertThat(response.getResults()).hasSize(2);
-        // security-oidc.adoc should rank higher (more shared high-weight keywords)
+        // security-oidc shares 3 tags (security, oidc, quarkus-core) => higher score
         assertThat(response.getResults().get(0).path).isEqualTo("security-oidc.adoc");
         assertThat(response.getResults().get(0).similarityScore)
                 .isGreaterThan(response.getResults().get(1).similarityScore);
     }
 
     @Test
-    void shouldExcludeSourceDocumentFromResults() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("source.adoc",
-                        List.of(new KeywordScore("test", 10)),
-                        List.of(), "quarkus-core"),
-                new FileKeywordEntry("other.adoc",
-                        List.of(new KeywordScore("test", 10)),
-                        List.of(), "quarkus-core")
-        ));
+    void shouldExcludeSourceDocumentViaQuery() {
+        ChunkSearchRow sourceChunk = new ChunkSearchRow(
+                "source#intro", "main", "source", "Source", "intro", null,
+                List.of("test"), List.of("quarkus-core"), "Source doc", "content", 0.0);
+        when(docChunkStore.findByPage("main", "source")).thenReturn(List.of(sourceChunk));
 
-        when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("misc");
-        when(docStore.read(eq("main"), eq("other.adoc"))).thenReturn(Optional.of("= Other\nOther doc."));
+        DocChunkStore.RelatedPageRow other = new DocChunkStore.RelatedPageRow(
+                "other", "Other", "Other doc",
+                List.of("test"), List.of("quarkus-core"), 0);
+        when(docChunkStore.findRelatedPages(eq("main"), eq("source"),
+                anyList(), anyList(), anyInt()))
+                .thenReturn(List.of(other));
 
         RelatedDocumentResponse response = service.findRelatedDocuments(
                 "main", "source.adoc", null, null, 10);
@@ -117,23 +92,20 @@ class RelatedDocumentServiceTest {
 
     @Test
     void shouldFilterBySubject() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("source.adoc",
-                        List.of(new KeywordScore("secur", 10)),
-                        List.of(), "quarkus-core"),
-                new FileKeywordEntry("security-doc.adoc",
-                        List.of(new KeywordScore("secur", 10)),
-                        List.of(), "quarkus-core"),
-                new FileKeywordEntry("config-doc.adoc",
-                        List.of(new KeywordScore("secur", 5)),
-                        List.of(), "quarkus-core")
-        ));
+        ChunkSearchRow sourceChunk = new ChunkSearchRow(
+                "source#intro", "main", "source", "Source", "intro", null,
+                List.of("security"), List.of("quarkus-core"), "Source doc", "content", 0.0);
+        when(docChunkStore.findByPage("main", "source")).thenReturn(List.of(sourceChunk));
 
-        when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(eq("security-doc.adoc"), any(Map.class))).thenReturn("security");
-        when(metadataResolver.resolveSubject(eq("config-doc.adoc"), any(Map.class))).thenReturn("core-concepts");
-        when(docStore.read(eq("main"), eq("security-doc.adoc"))).thenReturn(Optional.of("= Security\nSec doc."));
+        DocChunkStore.RelatedPageRow securityDoc = new DocChunkStore.RelatedPageRow(
+                "security-doc", "Security Doc", "Security details",
+                List.of("security"), List.of("quarkus-core"), 0);
+        DocChunkStore.RelatedPageRow configDoc = new DocChunkStore.RelatedPageRow(
+                "config-doc", "Config Doc", "Config details",
+                List.of("core-concepts"), List.of("quarkus-core"), 0);
+        when(docChunkStore.findRelatedPages(eq("main"), eq("source"),
+                anyList(), anyList(), anyInt()))
+                .thenReturn(List.of(securityDoc, configDoc));
 
         RelatedDocumentResponse response = service.findRelatedDocuments(
                 "main", "source.adoc", "security", null, 10);
@@ -144,22 +116,20 @@ class RelatedDocumentServiceTest {
 
     @Test
     void shouldFilterByExtension() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("source.adoc",
-                        List.of(new KeywordScore("rest", 10)),
-                        List.of(), "quarkus-core"),
-                new FileKeywordEntry("core-doc.adoc",
-                        List.of(new KeywordScore("rest", 8)),
-                        List.of(), "quarkus-core"),
-                new FileKeywordEntry("openapi-doc.adoc",
-                        List.of(new KeywordScore("rest", 8)),
-                        List.of(), "quarkus-openapi-generator")
-        ));
+        ChunkSearchRow sourceChunk = new ChunkSearchRow(
+                "source#intro", "main", "source", "Source", "intro", null,
+                List.of("rest-apis"), List.of("quarkus-core"), "Source doc", "content", 0.0);
+        when(docChunkStore.findByPage("main", "source")).thenReturn(List.of(sourceChunk));
 
-        when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("rest-apis");
-        when(docStore.read(eq("main"), eq("core-doc.adoc"))).thenReturn(Optional.of("= Core\nCore doc."));
+        DocChunkStore.RelatedPageRow coreDoc = new DocChunkStore.RelatedPageRow(
+                "core-doc", "Core Doc", "Core details",
+                List.of("rest-apis"), List.of("quarkus-core"), 0);
+        DocChunkStore.RelatedPageRow openapiDoc = new DocChunkStore.RelatedPageRow(
+                "openapi-doc", "OpenAPI Doc", "OpenAPI details",
+                List.of("rest-apis"), List.of("quarkus-openapi-generator"), 0);
+        when(docChunkStore.findRelatedPages(eq("main"), eq("source"),
+                anyList(), anyList(), anyInt()))
+                .thenReturn(List.of(coreDoc, openapiDoc));
 
         RelatedDocumentResponse response = service.findRelatedDocuments(
                 "main", "source.adoc", null, "quarkus-core", 10);
@@ -170,25 +140,23 @@ class RelatedDocumentServiceTest {
 
     @Test
     void shouldRespectLimitParameter() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("source.adoc",
-                        List.of(new KeywordScore("kw", 10)),
-                        List.of(), "quarkus-core"),
-                new FileKeywordEntry("doc1.adoc",
-                        List.of(new KeywordScore("kw", 9)),
-                        List.of(), "quarkus-core"),
-                new FileKeywordEntry("doc2.adoc",
-                        List.of(new KeywordScore("kw", 8)),
-                        List.of(), "quarkus-core"),
-                new FileKeywordEntry("doc3.adoc",
-                        List.of(new KeywordScore("kw", 7)),
-                        List.of(), "quarkus-core")
-        ));
+        ChunkSearchRow sourceChunk = new ChunkSearchRow(
+                "source#intro", "main", "source", "Source", "intro", null,
+                List.of("test"), List.of("quarkus-core"), "Source doc", "content", 0.0);
+        when(docChunkStore.findByPage("main", "source")).thenReturn(List.of(sourceChunk));
 
-        when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("misc");
-        when(docStore.read(eq("main"), anyString())).thenReturn(Optional.of("= Doc\nContent."));
+        DocChunkStore.RelatedPageRow doc1 = new DocChunkStore.RelatedPageRow(
+                "doc1", "Doc1", "Summary1",
+                List.of("test"), List.of("quarkus-core"), 0);
+        DocChunkStore.RelatedPageRow doc2 = new DocChunkStore.RelatedPageRow(
+                "doc2", "Doc2", "Summary2",
+                List.of("test"), List.of("quarkus-core"), 0);
+        DocChunkStore.RelatedPageRow doc3 = new DocChunkStore.RelatedPageRow(
+                "doc3", "Doc3", "Summary3",
+                List.of("test"), List.of("quarkus-core"), 0);
+        when(docChunkStore.findRelatedPages(eq("main"), eq("source"),
+                anyList(), anyList(), anyInt()))
+                .thenReturn(List.of(doc1, doc2, doc3));
 
         RelatedDocumentResponse response = service.findRelatedDocuments(
                 "main", "source.adoc", null, null, 2);
@@ -199,18 +167,15 @@ class RelatedDocumentServiceTest {
 
     @Test
     void shouldReturnEmptyWhenNoRelatedDocuments() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("source.adoc",
-                        List.of(new KeywordScore("unique1", 10)),
-                        List.of(), "quarkus-core"),
-                new FileKeywordEntry("other.adoc",
-                        List.of(new KeywordScore("unique2", 10)),
-                        List.of(), "quarkus-core")
-        ));
+        // Source has unique topics that no other doc shares
+        ChunkSearchRow sourceChunk = new ChunkSearchRow(
+                "source#intro", "main", "source", "Source", "intro", null,
+                List.of("unique-topic"), List.of("unique-ext"), "Source doc", "content", 0.0);
+        when(docChunkStore.findByPage("main", "source")).thenReturn(List.of(sourceChunk));
 
-        when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("misc");
+        when(docChunkStore.findRelatedPages(eq("main"), eq("source"),
+                anyList(), anyList(), anyInt()))
+                .thenReturn(List.of());
 
         RelatedDocumentResponse response = service.findRelatedDocuments(
                 "main", "source.adoc", null, null, 10);
@@ -221,13 +186,7 @@ class RelatedDocumentServiceTest {
 
     @Test
     void shouldThrowDocNotFoundWhenDocumentNotInIndex() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("existing.adoc",
-                        List.of(new KeywordScore("kw", 10)),
-                        List.of(), "quarkus-core")
-        ));
-
-        when(searchService.getKeywordIndex("main")).thenReturn(index);
+        when(docChunkStore.findByPage("main", "nonexistent")).thenReturn(List.of());
 
         assertThatThrownBy(() -> service.findRelatedDocuments(
                 "main", "nonexistent.adoc", null, null, 10))
@@ -236,195 +195,125 @@ class RelatedDocumentServiceTest {
     }
 
     @Test
-    void shouldThrowDocNotFoundWhenNoIndexForVersion() {
-        when(searchService.getKeywordIndex("missing")).thenReturn(null);
+    void shouldThrowDocNotFoundWhenNoChunksForVersion() {
+        when(docChunkStore.findByPage("missing", "any")).thenReturn(List.of());
 
         assertThatThrownBy(() -> service.findRelatedDocuments(
                 "missing", "any.adoc", null, null, 10))
                 .isInstanceOf(DocNotFoundException.class)
-                .hasMessageContaining("No keyword index available");
+                .hasMessageContaining("Document not found in index");
     }
 
     @Test
-    void shouldComputeCorrectCosineSimilarityForIdenticalVectors() {
-        Map<String, Double> vectorA = Map.of("kw1", 10.0, "kw2", 5.0);
-        Map<String, Double> vectorB = Map.of("kw1", 10.0, "kw2", 5.0);
+    void shouldComputeOverlapScoreCorrectly() {
+        // Source: topics=[security, oidc, auth], extensions=[quarkus-core]
+        // Candidate: topics=[security, oidc], extensions=[quarkus-core]
+        // Overlap = 2 shared topics + 1 shared extension = 3
+        // totalSourceTags = 3 topics + 1 extension = 4
+        // normalized = 3/4 = 0.75
+        ChunkSearchRow sourceChunk = new ChunkSearchRow(
+                "source#intro", "main", "source", "Source", "intro", null,
+                List.of("security", "oidc", "auth"), List.of("quarkus-core"),
+                "Source doc", "content", 0.0);
+        when(docChunkStore.findByPage("main", "source")).thenReturn(List.of(sourceChunk));
 
-        double similarity = service.computeCosineSimilarity(vectorA, vectorB);
-
-        assertThat(similarity).isCloseTo(1.0, within(0.001));
-    }
-
-    @Test
-    void shouldComputeZeroSimilarityForOrthogonalVectors() {
-        Map<String, Double> vectorA = Map.of("kw1", 10.0, "kw2", 5.0);
-        Map<String, Double> vectorB = Map.of("kw3", 10.0, "kw4", 5.0);
-
-        double similarity = service.computeCosineSimilarity(vectorA, vectorB);
-
-        assertThat(similarity).isEqualTo(0.0);
-    }
-
-    @Test
-    void shouldComputeCorrectCosineSimilarityForPartialOverlap() {
-        Map<String, Double> vectorA = Map.of("kw1", 10.0, "kw2", 5.0);
-        Map<String, Double> vectorB = Map.of("kw1", 10.0, "kw3", 5.0);
-
-        double similarity = service.computeCosineSimilarity(vectorA, vectorB);
-
-        // dot = 10*10 = 100; normA = sqrt(100+25) = sqrt(125); normB = sqrt(100+25) = sqrt(125)
-        // similarity = 100 / 125 = 0.8
-        assertThat(similarity).isCloseTo(0.8, within(0.001));
-    }
-
-    @Test
-    void shouldReturnZeroSimilarityForEmptyVector() {
-        Map<String, Double> vectorA = new HashMap<>();
-        Map<String, Double> vectorB = Map.of("kw1", 10.0);
-
-        double similarity = service.computeCosineSimilarity(vectorA, vectorB);
-
-        assertThat(similarity).isEqualTo(0.0);
-    }
-
-    @Test
-    void shouldExcludeDocumentsBelowMinSimilarity() {
-        // One doc shares a keyword, but with very low score
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("source.adoc",
-                        List.of(new KeywordScore("secur", 10), new KeywordScore("oidc", 8)),
-                        List.of(), "quarkus-core"),
-                new FileKeywordEntry("barely-related.adoc",
-                        List.of(new KeywordScore("secur", 1), new KeywordScore("unrelated", 100)),
-                        List.of(), "quarkus-core")
-        ));
-
-        when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("misc");
-
-        // The similarity is very low because "barely-related" has a huge unrelated keyword
-        // and only shares "secur" with low weight
-        RelatedDocumentResponse response = service.findRelatedDocuments(
-                "main", "source.adoc", null, null, 10);
-
-        // All results should have similarity >= minSimilarity (0.05)
-        for (var ref : response.getResults()) {
-            assertThat(ref.similarityScore).isGreaterThanOrEqualTo(searchConfig.related().minSimilarity());
-        }
-    }
-
-    @Test
-    void shouldIncludeSharedKeywordsCappedAtMax() {
-        // Create a document with many shared keywords
-        List<KeywordScore> sourceKeywords = new java.util.ArrayList<>();
-        List<KeywordScore> candidateKeywords = new java.util.ArrayList<>();
-        for (int i = 0; i < 15; i++) {
-            sourceKeywords.add(new KeywordScore("kw" + i, 10 - i));
-            candidateKeywords.add(new KeywordScore("kw" + i, 10 - i));
-        }
-
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("source.adoc", sourceKeywords, List.of(), "quarkus-core"),
-                new FileKeywordEntry("candidate.adoc", candidateKeywords, List.of(), "quarkus-core")
-        ));
-
-        when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("misc");
-        when(docStore.read(eq("main"), eq("candidate.adoc"))).thenReturn(Optional.of("= Candidate\nContent."));
+        DocChunkStore.RelatedPageRow candidate = new DocChunkStore.RelatedPageRow(
+                "candidate", "Candidate", "Summary",
+                List.of("security", "oidc"), List.of("quarkus-core"), 0);
+        when(docChunkStore.findRelatedPages(eq("main"), eq("source"),
+                anyList(), anyList(), anyInt()))
+                .thenReturn(List.of(candidate));
 
         RelatedDocumentResponse response = service.findRelatedDocuments(
                 "main", "source.adoc", null, null, 10);
 
         assertThat(response.getResults()).hasSize(1);
-        // Shared keywords should be capped at maxSharedKeywords (10)
-        assertThat(response.getResults().get(0).sharedKeywords).hasSize(10);
+        assertThat(response.getResults().get(0).similarityScore).isCloseTo(0.75, within(0.001));
     }
 
     @Test
-    void shouldExtractSharedKeywordsSortedByCombinedScore() {
-        Map<String, Double> vectorA = Map.of("high", 10.0, "low", 1.0, "mid", 5.0);
-        Map<String, Double> vectorB = Map.of("high", 8.0, "low", 2.0, "mid", 6.0);
-        Map<String, String> originals = Map.of("high", "high", "low", "low", "mid", "mid");
+    void shouldNormalizeSimilarityScore() {
+        // Source: topics=[a, b], extensions=[]
+        // Candidate: topics=[a], extensions=[]
+        // Overlap = 1 shared topic, totalSourceTags = 2
+        // normalized = 1/2 = 0.5
+        ChunkSearchRow sourceChunk = new ChunkSearchRow(
+                "source#intro", "main", "source", "Source", "intro", null,
+                List.of("a", "b"), List.of(),
+                "Source doc", "content", 0.0);
+        when(docChunkStore.findByPage("main", "source")).thenReturn(List.of(sourceChunk));
 
-        List<String> shared = service.extractSharedKeywords(vectorA, vectorB, 10, originals);
+        DocChunkStore.RelatedPageRow candidate = new DocChunkStore.RelatedPageRow(
+                "candidate", "Candidate", "Summary",
+                List.of("a"), List.of(), 0);
+        when(docChunkStore.findRelatedPages(eq("main"), eq("source"),
+                anyList(), anyList(), anyInt()))
+                .thenReturn(List.of(candidate));
 
-        assertThat(shared).containsExactly("high", "mid", "low");
+        RelatedDocumentResponse response = service.findRelatedDocuments(
+                "main", "source.adoc", null, null, 10);
+
+        assertThat(response.getResults()).hasSize(1);
+        assertThat(response.getResults().get(0).similarityScore).isCloseTo(0.5, within(0.001));
     }
 
     @Test
-    void shouldReturnOriginalFormsInSharedKeywords() {
-        Map<String, Double> vectorA = Map.of("secur", 10.0, "configur", 5.0);
-        Map<String, Double> vectorB = Map.of("secur", 8.0, "configur", 6.0);
-        Map<String, String> originals = Map.of("secur", "security", "configur", "configuration");
+    void shouldIncludeSharedTopicsAsSharedKeywords() {
+        ChunkSearchRow sourceChunk = new ChunkSearchRow(
+                "source#intro", "main", "source", "Source", "intro", null,
+                List.of("security", "oidc", "auth"), List.of("quarkus-core"),
+                "Source doc", "content", 0.0);
+        when(docChunkStore.findByPage("main", "source")).thenReturn(List.of(sourceChunk));
 
-        List<String> shared = service.extractSharedKeywords(vectorA, vectorB, 10, originals);
-
-        assertThat(shared).containsExactly("security", "configuration");
-    }
-
-    @Test
-    void shouldFallBackToStemmedFormWhenNoOriginal() {
-        Map<String, Double> vectorA = Map.of("secur", 10.0, "oidc", 5.0);
-        Map<String, Double> vectorB = Map.of("secur", 8.0, "oidc", 6.0);
-        // No originals map entry for "oidc" — should fall back to stemmed form
-        Map<String, String> originals = Map.of("secur", "security");
-
-        List<String> shared = service.extractSharedKeywords(vectorA, vectorB, 10, originals);
-
-        assertThat(shared).contains("security", "oidc");
-    }
-
-    @Test
-    void shouldReturnOriginalFormsInSharedKeywordsViaFindRelated() {
-        // Use KeywordScore with originalWord to verify end-to-end flow
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("source.adoc",
-                        List.of(new KeywordScore("secur", "security", 10, "body", 1),
-                                new KeywordScore("configur", "configuration", 8, "body", 1)),
-                        List.of(), "quarkus-core"),
-                new FileKeywordEntry("related.adoc",
-                        List.of(new KeywordScore("secur", "security", 10, "body", 1),
-                                new KeywordScore("configur", "configuration", 7, "body", 1)),
-                        List.of(), "quarkus-core")
-        ));
-
-        when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("security");
-        when(docStore.read("main", "related.adoc")).thenReturn(Optional.of(DOC_CONTENT_SECURITY));
+        DocChunkStore.RelatedPageRow candidate = new DocChunkStore.RelatedPageRow(
+                "candidate", "Candidate", "Summary",
+                List.of("security", "oidc", "unrelated"), List.of("quarkus-core"), 0);
+        when(docChunkStore.findRelatedPages(eq("main"), eq("source"),
+                anyList(), anyList(), anyInt()))
+                .thenReturn(List.of(candidate));
 
         RelatedDocumentResponse response = service.findRelatedDocuments(
                 "main", "source.adoc", null, null, 10);
 
         assertThat(response.getResults()).hasSize(1);
         assertThat(response.getResults().get(0).sharedKeywords)
-                .contains("security", "configuration")
-                .doesNotContain("secur", "configur");
+                .contains("security", "oidc")
+                .doesNotContain("unrelated", "auth");
+    }
+
+    @Test
+    void shouldReturnEmptyResponseWhenSourceHasNoTopicsOrExtensions() {
+        ChunkSearchRow sourceChunk = new ChunkSearchRow(
+                "source#intro", "main", "source", "Source", "intro", null,
+                List.of(), List.of(), "Source doc", "content", 0.0);
+        when(docChunkStore.findByPage("main", "source")).thenReturn(List.of(sourceChunk));
+
+        RelatedDocumentResponse response = service.findRelatedDocuments(
+                "main", "source.adoc", null, null, 10);
+
+        assertThat(response.getResults()).isEmpty();
+        assertThat(response.getTotalCount()).isEqualTo(0);
     }
 
     @Test
     void shouldEnrichResultsWithTitleAndDescription() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("source.adoc",
-                        List.of(new KeywordScore("secur", 10)),
-                        List.of(), "quarkus-core"),
-                new FileKeywordEntry("related.adoc",
-                        List.of(new KeywordScore("secur", 10)),
-                        List.of(), "quarkus-core")
-        ));
+        ChunkSearchRow sourceChunk = new ChunkSearchRow(
+                "source#intro", "main", "source", "Source", "intro", null,
+                List.of("security"), List.of("quarkus-core"), "Source doc", "content", 0.0);
+        when(docChunkStore.findByPage("main", "source")).thenReturn(List.of(sourceChunk));
 
-        when(searchService.getKeywordIndex("main")).thenReturn(index);
-        when(metadataResolver.loadMetadataMap("main")).thenReturn(Map.of());
-        when(metadataResolver.resolveSubject(anyString(), any(Map.class))).thenReturn("security");
-        when(docStore.read("main", "related.adoc")).thenReturn(Optional.of(DOC_CONTENT_SECURITY));
+        DocChunkStore.RelatedPageRow candidate = new DocChunkStore.RelatedPageRow(
+                "related", "Security Overview", "An overview of Quarkus security features",
+                List.of("security"), List.of("quarkus-core"), 0);
+        when(docChunkStore.findRelatedPages(eq("main"), eq("source"),
+                anyList(), anyList(), anyInt()))
+                .thenReturn(List.of(candidate));
 
         RelatedDocumentResponse response = service.findRelatedDocuments(
                 "main", "source.adoc", null, null, 10);
 
         assertThat(response.getResults()).hasSize(1);
         assertThat(response.getResults().get(0).title).isEqualTo("Security Overview");
-        assertThat(response.getResults().get(0).description).isNotBlank();
+        assertThat(response.getResults().get(0).description).isEqualTo("An overview of Quarkus security features");
     }
 }

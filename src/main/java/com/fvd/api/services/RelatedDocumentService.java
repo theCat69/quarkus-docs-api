@@ -1,42 +1,38 @@
 package com.fvd.api.services;
 
-import com.fvd.api.dto.RelatedDocumentRef;
-import com.fvd.api.dto.RelatedDocumentResponse;
-import com.fvd.asciidocs.model.DocumentMetadata;
-import com.fvd.common.utils.DescriptionExtractor;
-import com.fvd.common.utils.DocumentTitleExtractor;
-import com.fvd.common.utils.FilterUtils;
-import com.fvd.docs.exceptions.DocNotFoundException;
-import com.fvd.docs.stores.DocStore;
-import com.fvd.indexs.indexers.FileKeywordEntry;
-import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordScore;
-import com.fvd.search.SearchConfig;
-import com.fvd.search.services.SearchService;
-import com.fvd.subject.services.MetadataAwareSubjectResolver;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import jakarta.enterprise.context.ApplicationScoped;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.*;
+import com.fvd.api.dto.RelatedDocumentRef;
+import com.fvd.api.dto.RelatedDocumentResponse;
+import com.fvd.docs.exceptions.DocNotFoundException;
+import com.fvd.indexs.model.ChunkSearchRow;
+import com.fvd.indexs.stores.DocChunkStore;
+import com.fvd.search.SearchConfig;
 
 /**
  * Service for finding documents related to a given source document
- * using weighted cosine similarity on keyword vectors from the keyword index.
+ * using topic and extension overlap similarity from the doc_chunks index.
  */
 @Slf4j
 @ApplicationScoped
 @RequiredArgsConstructor
 public class RelatedDocumentService {
 
-    private final SearchService searchService;
-    private final DocStore docStore;
-    private final MetadataAwareSubjectResolver metadataResolver;
+    private final DocChunkStore docChunkStore;
     private final SearchConfig searchConfig;
 
     /**
      * Finds documents related to the source document at the given path,
-     * ranked by cosine similarity of keyword vectors.
+     * ranked by overlap of shared topics and extensions.
      *
      * @param version         the documentation version
      * @param sourcePath      path of the source document
@@ -48,89 +44,127 @@ public class RelatedDocumentService {
     public RelatedDocumentResponse findRelatedDocuments(String version, String sourcePath,
                                                         String subjectFilter, String extensionFilter,
                                                         int limit) {
-        KeywordIndex index = searchService.getKeywordIndex(version);
-        if (index == null) {
-            throw new DocNotFoundException("No keyword index available for version: " + version);
-        }
+        String sourcePage = sourcePath.endsWith(".adoc")
+                ? sourcePath.substring(0, sourcePath.length() - 5)
+                : sourcePath;
 
-        // Find source document entry
-        FileKeywordEntry sourceEntry = null;
-        for (FileKeywordEntry file : index.files) {
-            if (file.path.equals(sourcePath)) {
-                sourceEntry = file;
-                break;
-            }
-        }
-        if (sourceEntry == null) {
+        List<ChunkSearchRow> sourceChunks = docChunkStore.findByPage(version, sourcePage);
+        if (sourceChunks.isEmpty()) {
             throw new DocNotFoundException("Document not found in index: " + sourcePath);
         }
 
-        // Build source keyword vector and original word lookup
-        Map<String, Double> sourceVector = buildKeywordVector(sourceEntry);
-        Map<String, String> sourceOriginals = buildOriginalWordLookup(sourceEntry);
+        // Collect all topics and extensions from source chunks (union across all chunks)
+        Set<String> sourceTopics = new HashSet<>();
+        Set<String> sourceExtensions = new HashSet<>();
+        for (ChunkSearchRow chunk : sourceChunks) {
+            if (chunk.topics() != null) {
+                sourceTopics.addAll(chunk.topics());
+            }
+            if (chunk.extensions() != null) {
+                sourceExtensions.addAll(chunk.extensions());
+            }
+        }
+
+        if (sourceTopics.isEmpty() && sourceExtensions.isEmpty()) {
+            return RelatedDocumentResponse.builder()
+                    .results(List.of())
+                    .totalCount(0)
+                    .returnedCount(0)
+                    .offset(0)
+                    .limit(limit)
+                    .hasMore(false)
+                    .build();
+        }
+
+        // Get more than needed for post-query filtering
+        int fetchLimit = (int) Math.min((long) limit * 3, 100);
+        List<DocChunkStore.RelatedPageRow> candidates = docChunkStore.findRelatedPages(
+                version, sourcePage,
+                new ArrayList<>(sourceTopics),
+                new ArrayList<>(sourceExtensions),
+                fetchLimit);
 
         double minSimilarity = searchConfig.related().minSimilarity();
         int maxSharedKeywords = searchConfig.related().maxSharedKeywords();
+        int totalSourceTags = sourceTopics.size() + sourceExtensions.size();
 
-        // Compute similarity against all other documents
-        List<CandidateResult> candidates = new ArrayList<>();
-        Map<String, DocumentMetadata> metadataMap = metadataResolver.loadMetadataMap(version);
-        for (FileKeywordEntry candidate : index.files) {
-            if (candidate.path.equals(sourcePath)) {
+        // Compute overlap score and filter
+        List<CandidateResult> scoredCandidates = new ArrayList<>();
+        for (DocChunkStore.RelatedPageRow candidate : candidates) {
+            // Apply subject filter
+            if (subjectFilter != null && !subjectFilter.isEmpty()) {
+                if (candidate.topics() == null || !candidate.topics().contains(subjectFilter)) {
+                    continue;
+                }
+            }
+
+            // Apply extension filter
+            if (extensionFilter != null && !extensionFilter.isEmpty()) {
+                if (candidate.extensions() == null || !candidate.extensions().contains(extensionFilter)) {
+                    continue;
+                }
+            }
+
+            // Compute overlap score: shared topics + shared extensions
+            List<String> sharedTopics = new ArrayList<>();
+            if (candidate.topics() != null) {
+                for (String topic : candidate.topics()) {
+                    if (sourceTopics.contains(topic)) {
+                        sharedTopics.add(topic);
+                    }
+                }
+            }
+
+            int sharedExtensionCount = 0;
+            if (candidate.extensions() != null) {
+                for (String ext : candidate.extensions()) {
+                    if (sourceExtensions.contains(ext)) {
+                        sharedExtensionCount++;
+                    }
+                }
+            }
+
+            int overlapCount = sharedTopics.size() + sharedExtensionCount;
+            double normalizedScore = totalSourceTags > 0
+                    ? (double) overlapCount / totalSourceTags
+                    : 0.0;
+
+            if (normalizedScore < minSimilarity) {
                 continue;
             }
 
-            // Apply filters
-            String derivedSubject = metadataResolver.resolveSubject(candidate.path, metadataMap);
-            if (!FilterUtils.matchesFilter(subjectFilter, derivedSubject)) {
-                continue;
-            }
-            if (!FilterUtils.matchesFilter(extensionFilter, candidate.extension)) {
-                continue;
-            }
+            // Cap shared topics at maxSharedKeywords for the sharedKeywords field
+            List<String> cappedSharedTopics = sharedTopics.size() > maxSharedKeywords
+                    ? sharedTopics.subList(0, maxSharedKeywords)
+                    : sharedTopics;
 
-            Map<String, Double> candidateVector = buildKeywordVector(candidate);
-            double similarity = computeCosineSimilarity(sourceVector, candidateVector);
+            String candidateSubject = (candidate.topics() != null && !candidate.topics().isEmpty())
+                    ? candidate.topics().get(0) : null;
+            String candidateExtension = (candidate.extensions() != null && !candidate.extensions().isEmpty())
+                    ? candidate.extensions().get(0) : null;
 
-            if (similarity < minSimilarity) {
-                continue;
-            }
-
-            // Merge original word lookups from source and candidate, preferring longest
-            Map<String, String> candidateOriginals = buildOriginalWordLookup(candidate);
-            Map<String, String> mergedOriginals = new HashMap<>(sourceOriginals);
-            for (Map.Entry<String, String> e : candidateOriginals.entrySet()) {
-                mergedOriginals.merge(e.getKey(), e.getValue(),
-                        (a, b) -> a.length() >= b.length() ? a : b);
-            }
-
-            List<String> shared = extractSharedKeywords(sourceVector, candidateVector,
-                    maxSharedKeywords, mergedOriginals);
-            candidates.add(new CandidateResult(candidate.path, candidate.extension,
-                    derivedSubject, similarity, shared));
+            scoredCandidates.add(new CandidateResult(
+                    candidate.page() + ".adoc",
+                    candidate.title(),
+                    candidate.summary(),
+                    candidateSubject,
+                    candidateExtension,
+                    normalizedScore,
+                    cappedSharedTopics));
         }
 
-        // Sort by similarity descending
-        candidates.sort(Comparator.comparingDouble(CandidateResult::similarityScore).reversed());
+        // Sort by overlap score descending
+        scoredCandidates.sort(Comparator.comparingDouble(CandidateResult::similarityScore).reversed());
 
-        int totalCount = candidates.size();
-        List<CandidateResult> topN = candidates.subList(0, Math.min(limit, candidates.size()));
+        int totalCount = scoredCandidates.size();
+        List<CandidateResult> topN = scoredCandidates.subList(0, Math.min(limit, scoredCandidates.size()));
 
-        // Enrich with title and description
         List<RelatedDocumentRef> results = new ArrayList<>();
         for (CandidateResult cr : topN) {
-            String title = "";
-            String description = "";
-
-            Optional<String> contentOpt = docStore.read(version, cr.path());
-            if (contentOpt.isPresent()) {
-                String content = contentOpt.get();
-                title = DocumentTitleExtractor.extractTitle(content);
-                description = DescriptionExtractor.extract(content);
-            }
-
             results.add(new RelatedDocumentRef(
-                    cr.path(), title, description, cr.subject(), cr.extension(),
+                    cr.path(), cr.title(),
+                    cr.description() != null ? cr.description() : "",
+                    cr.subject(), cr.extension(),
                     cr.similarityScore(), cr.sharedKeywords()));
         }
 
@@ -144,76 +178,8 @@ public class RelatedDocumentService {
                 .build();
     }
 
-    Map<String, Double> buildKeywordVector(FileKeywordEntry entry) {
-        Map<String, Double> vector = new HashMap<>();
-        for (KeywordScore ks : entry.keywords) {
-            vector.put(ks.word, (double) ks.score);
-        }
-        return vector;
-    }
-
-    /**
-     * Builds a lookup map from stemmed keyword to its best original (un-stemmed) form
-     * for a given file keyword entry. When multiple KeywordScores share the same stem,
-     * the longest originalWord is kept as it is typically the most descriptive.
-     */
-    Map<String, String> buildOriginalWordLookup(FileKeywordEntry entry) {
-        Map<String, String> lookup = new HashMap<>();
-        for (KeywordScore ks : entry.keywords) {
-            String existing = lookup.get(ks.word);
-            if (existing == null || (ks.originalWord != null && ks.originalWord.length() > existing.length())) {
-                lookup.put(ks.word, ks.originalWord != null ? ks.originalWord : ks.word);
-            }
-        }
-        return lookup;
-    }
-
-    double computeCosineSimilarity(Map<String, Double> vectorA, Map<String, Double> vectorB) {
-        double dotProduct = 0.0;
-        double normA = 0.0;
-        double normB = 0.0;
-
-        for (Map.Entry<String, Double> entry : vectorA.entrySet()) {
-            double a = entry.getValue();
-            normA += a * a;
-            Double b = vectorB.get(entry.getKey());
-            if (b != null) {
-                dotProduct += a * b;
-            }
-        }
-
-        for (double b : vectorB.values()) {
-            normB += b * b;
-        }
-
-        if (normA == 0 || normB == 0) {
-            return 0.0;
-        }
-
-        return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-    }
-
-    List<String> extractSharedKeywords(Map<String, Double> vectorA, Map<String, Double> vectorB,
-                                       int maxKeywords,
-                                       Map<String, String> originalWordLookup) {
-        List<Map.Entry<String, Double>> shared = new ArrayList<>();
-        for (Map.Entry<String, Double> entry : vectorA.entrySet()) {
-            Double bValue = vectorB.get(entry.getKey());
-            if (bValue != null) {
-                shared.add(Map.entry(entry.getKey(), entry.getValue() + bValue));
-            }
-        }
-
-        // Sort by combined score descending
-        shared.sort(Map.Entry.<String, Double>comparingByValue().reversed());
-
-        return shared.stream()
-                .limit(maxKeywords)
-                .map(e -> originalWordLookup.getOrDefault(e.getKey(), e.getKey()))
-                .toList();
-    }
-
-    private record CandidateResult(String path, String extension, String subject,
+    private record CandidateResult(String path, String title, String description,
+                                   String subject, String extension,
                                    double similarityScore, List<String> sharedKeywords) {
     }
 }

@@ -1,12 +1,12 @@
 package com.fvd.api.dto;
 
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonFilter;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
-
-import java.util.List;
 
 /**
  * Response for batch document retrieval with partial failure support.
