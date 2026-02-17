@@ -37,8 +37,7 @@ abstract class AbstractApiResourceTest {
     @BeforeEach
     void cleanup() throws SQLException {
         try (var conn = dataSource.getConnection(); var stmt = conn.createStatement()) {
-            stmt.execute("TRUNCATE files, file_keywords, sections, section_keywords, "
-                + "code_samples, code_sample_keywords, github_index, document_metadata, doc_chunks CASCADE");
+            stmt.execute("TRUNCATE github_index, doc_chunks CASCADE");
         }
         cacheService.deleteCache();
         catalogService.invalidateCache("3.27");
