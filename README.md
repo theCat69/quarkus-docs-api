@@ -4,9 +4,9 @@ REST API for caching, indexing, and searching Quarkus documentation (core and qu
 
 ## Overview
 
-**quarkus-docs-api** is a Quarkus-based REST API that downloads, caches, and indexes Quarkus documentation from the [quarkusio.github.io](https://github.com/quarkusio/quarkusio.github.io) website repository. It builds keyword and code-sample indexes in PostgreSQL and exposes them through a search API designed for consumption by AI agents, MCP servers, IDEs, and developer tooling.
+**quarkus-docs-api** is a Quarkus-based REST API that downloads, caches, and indexes Quarkus documentation from the [quarkusio.github.io](https://github.com/quarkusio/quarkusio.github.io) website repository. It builds a unified `doc_chunks` full-text search index in PostgreSQL and exposes it through a search API designed for consumption by AI agents, MCP servers, IDEs, and developer tooling.
 
-The API supports **multi-version** documentation — multiple Quarkus releases can be cached and searched simultaneously. It also ingests **quarkiverse extension docs** by parsing the Antora playbook from [quarkiverse/quarkiverse-docs](https://github.com/quarkiverse/quarkiverse-docs), downloading extension repository zips, and extracting `.adoc` files. All indexes support stemming, prefix matching, fuzzy section title matching (Levenshtein + containment + word overlap), and pagination.
+The API supports **multi-version** documentation — multiple Quarkus releases can be cached and searched simultaneously. It also ingests **quarkiverse extension docs** by parsing the Antora playbook from [quarkiverse/quarkiverse-docs](https://github.com/quarkiverse/quarkiverse-docs), downloading extension repository zips, and extracting `.adoc` files. Search uses PostgreSQL `plainto_tsquery` with `ts_rank` scoring and `pg_trgm` trigram similarity as a fuzzy fallback. All results are paginated.
 
 Background jobs handle cache warmup on startup and periodic refresh using SHA-based incremental updates, so only changed files trigger re-indexing.
 
@@ -26,8 +26,8 @@ Quarkiverse playbook ──► Extension zips ──► Merge & index
 1. A single zip archive is downloaded per version from the GitHub website repository.
 2. AsciiDoc files are extracted and cached on disk under `_versions/<version>/guides/`.
 3. For the `main` version, the quarkiverse Antora playbook is parsed (YAML) to discover extension repositories. Each extension repo zip is downloaded and `.adoc` files are extracted under `quarkiverse/<ext-name>/`.
-4. Two PostgreSQL-backed indexes are built: keyword index and code-sample index.
-5. The REST API serves search queries and raw document content from these indexes and the cache.
+4. A single `doc_chunks` table with `tsvector` column is built for full-text search.
+5. The REST API serves search queries and raw document content from the index and the cache.
 6. A scheduled job periodically checks SHA hashes and refreshes only changed versions.
 
 **Main packages:** `api`, `asciidocs`, `cache`, `common`, `docs`, `github`, `indexs`, `quarkiverse`, `search`, `subject`.
@@ -47,18 +47,13 @@ All endpoints return JSON. The `version` parameter is **optional** on every endp
 - **Path mode:** provide `path` to retrieve a single document with full structured content (sections, code blocks).
 - **Search mode:** provide `keywords` to search documents by relevance. Keyword searches default to `brief=true` (lightweight metadata only — title, description, subject, score — no sections or code blocks). Set `brief=false` for full content, which is capped at 5 results; a `warning` field is included in the response when results are limited by this cap.
 
-### Quick Search
+### Search
 
 | Method | Path | Summary | Key Parameters |
 |--------|------|---------|----------------|
-| `GET` | `/api/search` | Quick discovery search returning lightweight references | `version`, `keywords` (required), `subject`, `extension`, `fields`, `limit`, `offset` |
+| `GET` | `/api/search` | Search documentation chunks returning scored results with metadata | `q` (required), `version`, `extension`, `limit`, `offset` |
+| `POST` | `/api/search` | Same as GET but accepts parameters as a JSON body | JSON body: `q` (required), `version`, `extension`, `limit`, `offset` |
 | `GET` | `/api/search/syntax` | Returns search syntax documentation (operators, examples, tips) | _(none)_ |
-
-### Code Samples
-
-| Method | Path | Summary | Key Parameters |
-|--------|------|---------|----------------|
-| `GET` | `/api/code-samples` | Search code samples by keywords | `version`, `keywords` (required), `language`, `subject`, `extension`, `fields`, `limit`, `offset` |
 
 ### Catalog
 
@@ -145,31 +140,18 @@ curl "http://localhost:8080/api/catalog"
 
 ### Advanced / Search Tuning
 
-All `search.*` keys are configurable via `application.properties` or environment variables.
+Search scoring is handled by PostgreSQL (`ts_rank` for full-text search, `pg_trgm` similarity for fuzzy fallback). The following `search.*` keys are configurable via `application.properties` or environment variables.
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `search.boost.filename-boost` | `10` | Score boost for filename matches |
-| `search.boost.title-boost` | `5` | Score boost for document title matches |
-| `search.boost.import-boost` | `5` | Score boost for import statement matches |
-| `search.boost.section-title-boost` | `5` | Score boost for section title matches |
-| `search.boost.multi-keyword-boost` | `1.5` | Multiplier when multiple keywords match |
-| `search.boost.prefix-match-multiplier` | `0.8` | Discount factor for prefix (partial) matches |
-| `search.fuzzy.levenshtein-weight` | `0.4` | Weight for Levenshtein similarity in fuzzy matching |
-| `search.fuzzy.containment-weight` | `0.35` | Weight for substring containment in fuzzy matching |
-| `search.fuzzy.word-overlap-weight` | `0.25` | Weight for word overlap in fuzzy matching |
-| `search.fuzzy.default-threshold` | `0.3` | Minimum fuzzy match score to accept |
-| `search.fuzzy.containment-partial-threshold` | `0.5` | Threshold for partial containment matches |
-| `search.fuzzy.word-overlap-keyword-threshold` | `0.3` | Threshold for word overlap keyword matches |
 | `search.index.min-keyword-score` | `2` | Minimum keyword score to include in index |
-| `search.index.min-token-length` | `3` | Minimum token length for indexing |
-| `search.snippet.context-size` | `100` | Characters of context around content search matches |
+| `search.boost.annotation-boost` | `10` | Score boost for annotation matches during indexing |
+| `search.boost.annotation-packages` | `io.quarkus,jakarta,...` | Annotation packages to boost during indexing |
+| `search.snippet.highlight-enabled` | `true` | Enable snippet highlighting in search results |
 | `search.related.default-limit` | `5` | Default number of related documents to return |
 | `search.related.max-limit` | `20` | Maximum allowed limit for related documents |
 | `search.related.min-similarity` | `0.05` | Minimum similarity score to include a related document |
 | `search.related.max-shared-keywords` | `10` | Maximum shared keywords to consider for similarity |
-| `search.annotation-boost` | _(unset)_ | Score boost for annotation matches |
-| `search.annotation-packages` | _(unset)_ | Annotation packages to boost during indexing |
 
 ## Examples
 
@@ -267,16 +249,10 @@ curl "http://localhost:8080/api/documents?keywords=security+oidc&brief=true"
 }
 ```
 
-### Quick discovery search
+### Search documentation chunks
 
 ```bash
-curl "http://localhost:8080/api/search?keywords=security+oidc"
-```
-
-### Search code samples
-
-```bash
-curl "http://localhost:8080/api/code-samples?keywords=rest+endpoint&language=java"
+curl "http://localhost:8080/api/search?q=security+oidc"
 ```
 
 ### Get document content by path
@@ -320,11 +296,8 @@ curl "http://localhost:8080/api/catalog?version=main"
 ### Field selection (reduce response size)
 
 ```bash
-# Search returning only title and path (saves tokens for AI agents)
-curl "http://localhost:8080/api/search?keywords=security&fields=title,path"
-
-# Code samples returning only content and language
-curl "http://localhost:8080/api/code-samples?keywords=rest+endpoint&fields=content,language"
+# Search returning only title and page (saves tokens for AI agents)
+curl "http://localhost:8080/api/search?q=security&fields=title,page"
 ```
 
 Envelope fields (`results`, `totalCount`, `returnedCount`, `offset`, `limit`, `hasMore`) are always present in paginated responses — `fields` filters only the item-level properties inside each result.

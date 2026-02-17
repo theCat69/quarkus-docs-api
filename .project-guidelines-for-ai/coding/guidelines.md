@@ -2,7 +2,7 @@
 
 ## Project Context
 
-Quarkus REST API (Java 21, Gradle wrapper) that caches and indexes Quarkus documentation from GitHub. PostgreSQL-backed indexes. Lombok enabled. Uses Jakarta REST, Quarkus ARC (CDI), MicroProfile OpenAPI, and Jackson.
+Quarkus REST API (Java 21, Gradle wrapper) that caches and indexes Quarkus documentation from GitHub. PostgreSQL-backed full-text search using `doc_chunks` table with `tsvector`. Lombok enabled. Uses Jakarta REST, Quarkus ARC (CDI), MicroProfile OpenAPI, and Jackson.
 
 ## General Principles
 
@@ -64,9 +64,9 @@ Follow the established layout under `com.fvd`:
 | `common` | Shared exceptions, validators, error DTOs, matchers, utilities |
 | `docs` | Document stores and file-level operations |
 | `github` | GitHub API clients, zip download, upstream errors |
-| `indexs` | Indexing services, stores, keyword/code-sample models |
+| `indexs` | Indexing services, stores, doc chunk builder and models |
 | `quarkiverse` | Quarkiverse extension ingestion (models, parser, services) |
-| `search` | Search services, scoring, config |
+| `search` | Search services (DocChunkSearchService), scoring via PostgreSQL |
 | `subject` | Subject classification and derivation |
 
 ### Subpackage Conventions

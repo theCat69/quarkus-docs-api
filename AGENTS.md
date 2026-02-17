@@ -13,8 +13,8 @@ Those RULES are CRITICAL you must follow them.
 - Quarkus REST API using Gradle (wrapper only), with OpenAPI annotations.
 - Java 21 source/target compatibility.
 - Sources docs from the `quarkusio.github.io` website repository (not the Quarkus source repo).
-- Caches Quarkus docs by version and provides search across keyword, section, and code-sample indexes.
-- PostgreSQL-backed keyword and code-sample indexes.
+- Caches Quarkus docs by version and provides search via a unified full-text search index (`doc_chunks` table with `tsvector`).
+- PostgreSQL-backed full-text search using `plainto_tsquery`, `ts_rank`, and `pg_trgm` fuzzy fallback.
 - Supports quarkiverse extension docs via Antora playbook parsing (Jackson YAML).
 - `version` query parameter is optional on all endpoints; defaults to `main`.
 - Tests are JUnit 5 with QuarkusTest, RestAssured, AssertJ, Mockito.

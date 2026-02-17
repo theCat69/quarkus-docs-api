@@ -2,7 +2,7 @@
 
 ## Project Context
 
-Quarkus REST API (Java 21, Gradle wrapper) that caches and indexes Quarkus documentation from GitHub. PostgreSQL-backed indexes. Lombok enabled. API documented via SmallRye OpenAPI with Swagger UI.
+Quarkus REST API (Java 21, Gradle wrapper) that caches and indexes Quarkus documentation from GitHub. PostgreSQL-backed full-text search using `doc_chunks` table with `tsvector`, `plainto_tsquery` + `ts_rank`, and `pg_trgm` fuzzy fallback. Lombok enabled. API documented via SmallRye OpenAPI with Swagger UI.
 
 ## API Documentation
 
@@ -40,8 +40,7 @@ public SomeResponse example(
 - Document search responses use `DocumentSearchResponse` (extends `PaginatedResponse<DocumentResponse>`) which adds an optional `warning` field (included when full-content results are capped for performance).
 - Document responses use `DocumentResponse` with `path`, `title`, `description`, `subject`, `extension`, `matchedKeywords`, `score`, `sections`, and `codeBlocks`. Annotated with `@JsonInclude(NON_NULL)` so null fields (e.g., `sections`, `codeBlocks` in brief mode) are omitted from JSON output.
 - Catalog responses use `CatalogResponse` with `subjects`, `extensions`, and `versions`.
-- Quick search responses use `QuickSearchResponse` with lightweight `SearchResultRef` items.
-- Code sample responses use `CodeSampleSearchResponse` with `CodeSampleResult` items.
+- Search responses use `ChunkSearchResponse` with `results` (List of `ChunkResult`), `total`, `limit`, `offset`. `ChunkResult` fields: `id`, `page`, `title`, `section`, `url`, `topics`, `extensions`, `summary`, `score`.
 - Search syntax responses use `SearchSyntaxResponse` with static documentation of supported search operators, examples, and tips.
 - Meta responses use `MetaResponse` with `apiInfo`, `endpoints`, `searchSyntax`, `filters`, `pagination`.
 - Batch document responses use `BatchDocumentResponse` with `documents`, `errors`, `requestedCount`, `retrievedCount`, `errorCount`.
@@ -81,27 +80,18 @@ public SomeResponse example(
 
 ### Search Tuning Reference
 
+Search scoring is handled by PostgreSQL (`ts_rank` for full-text search, `pg_trgm` similarity for fuzzy fallback).
+
 | Key | Default | Description |
 |-----|---------|-------------|
-| `search.boost.filename-boost` | `10` | Score boost for filename matches |
-| `search.boost.title-boost` | `5` | Score boost for document title matches |
-| `search.boost.import-boost` | `5` | Score boost for import statement matches |
-| `search.boost.section-title-boost` | `5` | Score boost for section title matches |
-| `search.boost.multi-keyword-boost` | `1.5` | Multiplier when multiple keywords match |
-| `search.boost.prefix-match-multiplier` | `0.8` | Discount factor for prefix matches |
-| `search.fuzzy.levenshtein-weight` | `0.4` | Weight for Levenshtein similarity |
-| `search.fuzzy.containment-weight` | `0.35` | Weight for substring containment |
-| `search.fuzzy.word-overlap-weight` | `0.25` | Weight for word overlap |
-| `search.fuzzy.default-threshold` | `0.3` | Minimum fuzzy match score |
-| `search.index.min-keyword-score` | `2` | Minimum keyword score for indexing |
-| `search.index.min-token-length` | `3` | Minimum token length for indexing |
-| `search.snippet.context-size` | `100` | Characters of context around matches |
+| `search.index.min-keyword-score` | `2` | Minimum keyword score to include in index |
+| `search.boost.annotation-boost` | `10` | Score boost for annotation matches during indexing |
+| `search.boost.annotation-packages` | `io.quarkus,jakarta,...` | Annotation packages to boost during indexing |
+| `search.snippet.highlight-enabled` | `true` | Enable snippet highlighting in search results |
 | `search.related.default-limit` | `5` | Default number of related documents to return |
 | `search.related.max-limit` | `20` | Maximum allowed limit for related documents |
 | `search.related.min-similarity` | `0.05` | Minimum similarity score to include a related document |
 | `search.related.max-shared-keywords` | `10` | Maximum shared keywords to consider for similarity |
-| `search.annotation-boost` | _(unset)_ | Score boost for annotation matches |
-| `search.annotation-packages` | _(unset)_ | Annotation packages to boost during indexing |
 
 ## Feature Planning
 
