@@ -1,16 +1,13 @@
 package com.fvd.api.resources;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.fvd.api.dto.BatchDocumentRequest;
-import com.fvd.indexs.indexers.FileKeywordEntry;
-import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordScore;
-import com.fvd.indexs.indexers.SectionKeywordEntry;
+import com.fvd.indexs.model.DocChunk;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
@@ -75,7 +72,7 @@ class DocumentResourceTest extends AbstractApiResourceTest {
     @Test
     void testSearchDocumentsByKeywords() {
         seedDocFile();
-        seedKeywordIndex();
+        seedDocChunkIndex();
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
@@ -90,7 +87,7 @@ class DocumentResourceTest extends AbstractApiResourceTest {
     @Test
     void testSearchDocumentsReturnsResults() {
         seedDocFile();
-        seedKeywordIndex();
+        seedDocChunkIndex();
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
@@ -99,14 +96,13 @@ class DocumentResourceTest extends AbstractApiResourceTest {
                 .statusCode(200)
                 .body("results.size()", greaterThan(0))
                 .body("results[0].path", notNullValue())
-                .body("results[0].score", greaterThan(0f))
-                .body("results[0].matchedKeywords", notNullValue());
+                .body("results[0].score", greaterThan(0f));
     }
 
     @Test
     void testSearchDocumentsWithPagination() {
         seedDocFilesMultiple();
-        seedKeywordIndexMultiple();
+        seedDocChunksMultiple();
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "quarkus")
@@ -125,7 +121,7 @@ class DocumentResourceTest extends AbstractApiResourceTest {
     @Test
     void testSearchDocumentsWithExtensionFilter() {
         seedDocFilesMultiple();
-        seedKeywordIndexWithExtensions();
+        seedDocChunksWithExtensions();
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
@@ -156,7 +152,7 @@ class DocumentResourceTest extends AbstractApiResourceTest {
     @Test
     void testSearchDocumentsWithBriefMode() {
         seedDocFile();
-        seedKeywordIndex();
+        seedDocChunkIndex();
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
@@ -167,9 +163,7 @@ class DocumentResourceTest extends AbstractApiResourceTest {
                 .body("results.size()", greaterThan(0))
                 .body("results[0].title", notNullValue())
                 .body("results[0].path", notNullValue())
-                .body("results[0].subject", notNullValue())
                 .body("results[0].score", greaterThan(0f))
-                .body("results[0].matchedKeywords", notNullValue())
                 .body("results[0]", not(hasKey("sections")))
                 .body("results[0]", not(hasKey("codeBlocks")));
     }
@@ -177,7 +171,7 @@ class DocumentResourceTest extends AbstractApiResourceTest {
     @Test
     void testSearchDocumentsWithBriefModeHasDescription() {
         seedDocFile();
-        seedKeywordIndex();
+        seedDocChunkIndex();
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
@@ -191,7 +185,7 @@ class DocumentResourceTest extends AbstractApiResourceTest {
     @Test
     void testSearchDocumentsWithoutBriefReturnsSections() {
         seedDocFile();
-        seedKeywordIndex();
+        seedDocChunkIndex();
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
@@ -256,14 +250,14 @@ class DocumentResourceTest extends AbstractApiResourceTest {
         docStore.write("3.27", "rest.adoc", docContent);
     }
 
-    private void seedKeywordIndex() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("security.adoc",
-                        List.of(new KeywordScore("security", 15)),
-                        List.of(new SectionKeywordEntry("Overview", 4, 8,
-                                List.of(new KeywordScore("security", 12)))))
+    private void seedDocChunkIndex() {
+        seedDocChunks("3.27", List.of(
+                new DocChunk("doc-res-chunk-1", "3.27", "security", "Security Guide", "Overview",
+                        "https://quarkus.io/guides/security",
+                        List.of("security"), List.of("quarkus-core"),
+                        "Overview of security features",
+                        "This guide covers security basics and authentication in quarkus.")
         ));
-        keywordIndexStore.write("3.27", index);
     }
 
     @Test
@@ -291,7 +285,7 @@ class DocumentResourceTest extends AbstractApiResourceTest {
     @Test
     void testSearchDocumentsReturns400ForUnknownSubject() {
         seedDocFile();
-        seedKeywordIndex();
+        seedDocChunkIndex();
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "security")

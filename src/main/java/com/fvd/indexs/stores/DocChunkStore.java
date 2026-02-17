@@ -110,6 +110,32 @@ public class DocChunkStore {
         }
     }
 
+    public int countSearch(String query, String version, String extension) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT COUNT(*) FROM doc_chunks WHERE version = ? AND content_tsv @@ plainto_tsquery('english', ?)");
+
+        boolean hasExtension = extension != null && !extension.isEmpty();
+        if (hasExtension) {
+            sql.append(" AND ? = ANY(extensions)");
+        }
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+            int paramIndex = 1;
+            stmt.setString(paramIndex++, version);
+            stmt.setString(paramIndex++, query);
+            if (hasExtension) {
+                stmt.setString(paramIndex++, extension);
+            }
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to count search results for version: " + version, e);
+        }
+    }
+
     public List<ChunkSearchRow> fuzzySearch(String query, String version, int limit) {
         String sql = "SELECT id, version, page, title, section, url, topics, extensions, summary, content, "
                 + "similarity(content, ?) AS score "

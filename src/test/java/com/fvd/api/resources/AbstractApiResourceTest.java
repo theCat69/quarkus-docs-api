@@ -8,16 +8,8 @@ import javax.sql.DataSource;
 import com.fvd.api.services.CatalogService;
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
-import com.fvd.indexs.indexers.CodeSampleEntry;
-import com.fvd.indexs.indexers.CodeSampleIndex;
-import com.fvd.indexs.indexers.FileKeywordEntry;
-import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordScore;
 import com.fvd.indexs.model.DocChunk;
-import com.fvd.indexs.stores.CodeSampleIndexStore;
 import com.fvd.indexs.stores.DocChunkStore;
-import com.fvd.indexs.stores.KeywordIndexStore;
-import com.fvd.search.services.SearchService;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 
@@ -26,12 +18,6 @@ import org.junit.jupiter.api.BeforeEach;
  * Subclasses must be annotated with {@code @QuarkusTest}.
  */
 abstract class AbstractApiResourceTest {
-
-    @Inject
-    KeywordIndexStore keywordIndexStore;
-
-    @Inject
-    CodeSampleIndexStore codeSampleIndexStore;
 
     @Inject
     DocChunkStore docChunkStore;
@@ -46,9 +32,6 @@ abstract class AbstractApiResourceTest {
     CacheService cacheService;
 
     @Inject
-    SearchService searchService;
-
-    @Inject
     CatalogService catalogService;
 
     @BeforeEach
@@ -58,8 +41,6 @@ abstract class AbstractApiResourceTest {
                 + "code_samples, code_sample_keywords, github_index, document_metadata, doc_chunks CASCADE");
         }
         cacheService.deleteCache();
-        searchService.invalidateCache("3.27");
-        searchService.invalidateCache("main");
         catalogService.invalidateCache("3.27");
         catalogService.invalidateCache("main");
     }
@@ -68,48 +49,38 @@ abstract class AbstractApiResourceTest {
         docChunkStore.insertBatch(version, chunks);
     }
 
-    protected void seedKeywordIndexMultiple() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("security.adoc",
-                        List.of(new KeywordScore("security", 15), new KeywordScore("quarkus", 8)),
-                        List.of()),
-                new FileKeywordEntry("config.adoc",
-                        List.of(new KeywordScore("config", 10), new KeywordScore("quarkus", 5)),
-                        List.of())
+    protected void seedDocChunksMultiple() {
+        seedDocChunks("3.27", List.of(
+                new DocChunk("chunk-security-1", "3.27", "security", "Security Guide", "Overview",
+                        "https://quarkus.io/guides/security",
+                        List.of("security"), List.of("quarkus-core"),
+                        "Overview of security features in Quarkus",
+                        "This guide covers security basics and quarkus security features for authentication and authorization."),
+                new DocChunk("chunk-config-1", "3.27", "config", "Configuration Guide", "Overview",
+                        "https://quarkus.io/guides/config",
+                        List.of("config"), List.of("quarkus-core"),
+                        "Overview of Quarkus configuration",
+                        "This guide covers config basics and quarkus configuration for application properties and settings.")
         ));
-        keywordIndexStore.write("3.27", index);
     }
 
-    protected void seedKeywordIndexWithExtensions() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("security.adoc",
-                        List.of(new KeywordScore("security", 15)),
-                        List.of(),
-                        "quarkus-core"),
-                new FileKeywordEntry("config.adoc",
-                        List.of(new KeywordScore("security", 10)),
-                        List.of(),
-                        "quarkus-openapi-generator")
+    protected void seedDocChunksWithExtensions() {
+        seedDocChunks("3.27", List.of(
+                new DocChunk("chunk-ext-security-1", "3.27", "security", "Security Guide", "Overview",
+                        "https://quarkus.io/guides/security",
+                        List.of("security"), List.of("quarkus-core"),
+                        "Overview of security features",
+                        "This guide covers security basics and authentication in quarkus core."),
+                new DocChunk("chunk-ext-config-1", "3.27", "config", "Configuration Guide", "Overview",
+                        "https://quarkus.io/guides/config",
+                        List.of("security"), List.of("quarkus-openapi-generator"),
+                        "Overview of security configuration",
+                        "This guide covers security configuration for the openapi generator extension.")
         ));
-        keywordIndexStore.write("3.27", index);
     }
 
     protected void seedDocFilesMultiple() {
         docStore.write("3.27", "security.adoc", "= Security\nContent about security and quarkus.");
         docStore.write("3.27", "config.adoc", "= Config\nContent about config and quarkus.");
-    }
-
-    protected void seedCodeSampleIndex() {
-        CodeSampleIndex index = new CodeSampleIndex(List.of(
-                new CodeSampleEntry("security.adoc", "Authentication", "java",
-                        "import io.quarkus.security.identity.SecurityIdentity;",
-                        5, 10,
-                        List.of(new KeywordScore("security", 15), new KeywordScore("identity", 8))),
-                new CodeSampleEntry("config.adoc", "Authorization", "java",
-                        "@RolesAllowed(\"admin\")",
-                        20, 25,
-                        List.of(new KeywordScore("security", 10), new KeywordScore("roles", 5)))
-        ));
-        codeSampleIndexStore.write("3.27", index);
     }
 }

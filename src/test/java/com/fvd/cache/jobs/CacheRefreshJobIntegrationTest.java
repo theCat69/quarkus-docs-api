@@ -1,6 +1,5 @@
 package com.fvd.cache.jobs;
 
-import com.fvd.search.services.SearchService;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
@@ -14,9 +13,6 @@ class CacheRefreshJobIntegrationTest extends AbstractCacheJobIntegrationTest {
 
     @Inject
     CacheRefreshJob cacheRefreshJob;
-
-    @Inject
-    SearchService searchService;
 
     @Test
     void refreshPreservesExtractedDocsAfterWarmup() {

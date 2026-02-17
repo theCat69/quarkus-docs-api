@@ -20,7 +20,7 @@ class CacheHeaderIntegrationTest extends AbstractApiResourceTest {
 
     @Test
     void shouldReturnCacheHeadersOnDocumentSearch() {
-        seedKeywordIndexMultiple();
+        seedDocChunksMultiple();
         seedDocFilesMultiple();
         given()
                 .queryParam("version", "3.27")
@@ -59,7 +59,7 @@ class CacheHeaderIntegrationTest extends AbstractApiResourceTest {
 
     @Test
     void shouldNotReturnCacheHeadersOnPostBatch() {
-        seedKeywordIndexMultiple();
+        seedDocChunksMultiple();
         seedDocFilesMultiple();
         given()
                 .contentType("application/json")

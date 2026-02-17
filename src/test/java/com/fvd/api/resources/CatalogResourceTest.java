@@ -1,13 +1,10 @@
 package com.fvd.api.resources;
 
-import com.fvd.indexs.indexers.FileKeywordEntry;
-import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordScore;
-import com.fvd.indexs.indexers.SectionKeywordEntry;
+import java.util.List;
+
+import com.fvd.indexs.model.DocChunk;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
@@ -32,7 +29,7 @@ class CatalogResourceTest extends AbstractApiResourceTest {
     @Test
     void testCatalogEndpointWithVersion() {
         docStore.write("3.27", "test.adoc", "= Test\nContent");
-        seedKeywordIndex();
+        seedDocChunkIndex();
         given()
                 .queryParam("version", "3.27")
                 .when().get("/api/catalog")
@@ -46,7 +43,7 @@ class CatalogResourceTest extends AbstractApiResourceTest {
     @Test
     void testCatalogEndpointReturnsSubjects() {
         docStore.write("3.27", "test.adoc", "= Test\nContent");
-        seedKeywordIndex();
+        seedDocChunkIndex();
         given()
                 .queryParam("version", "3.27")
                 .when().get("/api/catalog")
@@ -60,7 +57,7 @@ class CatalogResourceTest extends AbstractApiResourceTest {
     @Test
     void testCatalogEndpointReturnsExtensions() {
         docStore.write("3.27", "test.adoc", "= Test\nContent");
-        seedKeywordIndexWithExtensionsAndSections();
+        seedDocChunkIndexWithExtensionsAndSections();
         given()
                 .queryParam("version", "3.27")
                 .when().get("/api/catalog")
@@ -85,30 +82,32 @@ class CatalogResourceTest extends AbstractApiResourceTest {
                 .body("versions", hasItem("main"));
     }
 
-    private void seedKeywordIndex() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("security-overview.adoc",
-                        List.of(new KeywordScore("security", 15)),
-                        List.of(new SectionKeywordEntry("Security Overview", 1, 10,
-                                List.of(new KeywordScore("security", 12)))))
+    private void seedDocChunkIndex() {
+        seedDocChunks("3.27", List.of(
+                new DocChunk("catalog-chunk-1", "3.27", "security-overview",
+                        "Security Overview", "Overview",
+                        "https://quarkus.io/guides/security-overview",
+                        List.of("security"), List.of("quarkus-core"),
+                        "Overview of security features",
+                        "This guide covers security basics and authentication in quarkus.")
         ));
-        keywordIndexStore.write("3.27", index);
     }
 
-    private void seedKeywordIndexWithExtensionsAndSections() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("core-security.adoc",
-                        List.of(new KeywordScore("security", 15)),
-                        List.of(new SectionKeywordEntry("Core Security", 1, 10,
-                                List.of(new KeywordScore("security", 12)))),
-                        "quarkus-core"),
-                new FileKeywordEntry("ext-security.adoc",
-                        List.of(new KeywordScore("security", 10)),
-                        List.of(new SectionKeywordEntry("Ext Security", 1, 10,
-                                List.of(new KeywordScore("security", 8)))),
-                        "quarkus-openapi-generator")
+    private void seedDocChunkIndexWithExtensionsAndSections() {
+        seedDocChunks("3.27", List.of(
+                new DocChunk("catalog-ext-chunk-1", "3.27", "core-security",
+                        "Core Security", "Overview",
+                        "https://quarkus.io/guides/core-security",
+                        List.of("security"), List.of("quarkus-core"),
+                        "Core security overview",
+                        "This guide covers core security features in quarkus."),
+                new DocChunk("catalog-ext-chunk-2", "3.27", "ext-security",
+                        "Ext Security", "Overview",
+                        "https://quarkus.io/guides/ext-security",
+                        List.of("security"), List.of("quarkus-openapi-generator"),
+                        "Extension security overview",
+                        "This guide covers security features in the openapi generator extension.")
         ));
-        keywordIndexStore.write("3.27", index);
     }
 
     @Test

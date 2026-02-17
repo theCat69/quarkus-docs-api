@@ -1,14 +1,10 @@
 package com.fvd.api.resources;
 
-import com.fvd.indexs.indexers.FileKeywordEntry;
-import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordScore;
-import com.fvd.indexs.indexers.SectionKeywordEntry;
+import java.util.List;
+
 import com.fvd.indexs.model.DocChunk;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
@@ -122,7 +118,7 @@ class FieldSelectionIntegrationTest extends AbstractApiResourceTest {
 
     @Test
     void shouldReturnFilteredFieldsOnDocumentSearch() {
-        seedDocAndKeywordIndex();
+        seedDocAndDocChunkIndex();
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
@@ -224,7 +220,7 @@ class FieldSelectionIntegrationTest extends AbstractApiResourceTest {
     private void seedDocAndChunkIndex() {
         seedDocFile();
         seedDocChunks("3.27", List.of(
-                new DocChunk("field-sel-chunk-1", "3.27", "security.adoc",
+                new DocChunk("field-sel-chunk-1", "3.27", "security",
                         "Security Guide", "Overview",
                         "https://quarkus.io/guides/security",
                         List.of("security"), List.of("quarkus-core"),
@@ -233,15 +229,16 @@ class FieldSelectionIntegrationTest extends AbstractApiResourceTest {
         ));
     }
 
-    private void seedDocAndKeywordIndex() {
+    private void seedDocAndDocChunkIndex() {
         seedDocFile();
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("security.adoc",
-                        List.of(new KeywordScore("security", 15)),
-                        List.of(new SectionKeywordEntry("Overview", 4, 8,
-                                List.of(new KeywordScore("security", 12)))))
+        seedDocChunks("3.27", List.of(
+                new DocChunk("field-sel-doc-chunk-1", "3.27", "security",
+                        "Security Guide", "Overview",
+                        "https://quarkus.io/guides/security",
+                        List.of("security"), List.of("quarkus-core"),
+                        "Overview of security features",
+                        "This guide covers security basics and authentication in quarkus.")
         ));
-        keywordIndexStore.write("3.27", index);
     }
 
     private void seedDocFile() {
@@ -259,12 +256,14 @@ class FieldSelectionIntegrationTest extends AbstractApiResourceTest {
     private void seedDocForCatalog() {
         docStore.write("3.27", "test.adoc", "= Test\nContent");
         docStore.write("main", "test.adoc", "= Test\nContent");
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("test.adoc",
-                        List.of(new KeywordScore("test", 10)),
-                        List.of())
+        seedDocChunks("3.27", List.of(
+                new DocChunk("catalog-field-chunk-1", "3.27", "test",
+                        "Test", "Overview",
+                        "https://quarkus.io/guides/test",
+                        List.of("test"), List.of("quarkus-core"),
+                        "Test overview",
+                        "Content about test features in quarkus.")
         ));
-        keywordIndexStore.write("3.27", index);
     }
 
     private void seedRelatedDocsAndIndex() {
@@ -272,16 +271,19 @@ class FieldSelectionIntegrationTest extends AbstractApiResourceTest {
                 "= Security Overview\n:description: Overview of security\n\nSecurity basics.");
         docStore.write("3.27", "security-oidc.adoc",
                 "= OIDC Auth\n:description: OIDC authentication\n\nOIDC guide.");
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("security-overview.adoc",
-                        List.of(new KeywordScore("secur", 15),
-                                new KeywordScore("oidc", 8)),
-                        List.of()),
-                new FileKeywordEntry("security-oidc.adoc",
-                        List.of(new KeywordScore("secur", 12),
-                                new KeywordScore("oidc", 15)),
-                        List.of())
+        seedDocChunks("3.27", List.of(
+                new DocChunk("field-rel-chunk-1", "3.27", "security-overview",
+                        "Security Overview", "Overview",
+                        "https://quarkus.io/guides/security-overview",
+                        List.of("security", "oidc", "authentication"), List.of("quarkus-core"),
+                        "Overview of security",
+                        "Security overview covering basics of authentication and authorization."),
+                new DocChunk("field-rel-chunk-2", "3.27", "security-oidc",
+                        "OIDC Auth", "Overview",
+                        "https://quarkus.io/guides/security-oidc",
+                        List.of("security", "oidc", "authentication"), List.of("quarkus-core"),
+                        "OIDC authentication guide",
+                        "OIDC authentication guide covering OpenID Connect features.")
         ));
-        keywordIndexStore.write("3.27", index);
     }
 }

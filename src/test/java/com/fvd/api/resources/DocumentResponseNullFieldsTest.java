@@ -1,15 +1,12 @@
 package com.fvd.api.resources;
 
+import java.util.List;
+
 import com.fvd.api.dto.BatchDocumentRequest;
-import com.fvd.indexs.indexers.FileKeywordEntry;
-import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordScore;
-import com.fvd.indexs.indexers.SectionKeywordEntry;
+import com.fvd.indexs.model.DocChunk;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.empty;
@@ -30,7 +27,7 @@ class DocumentResponseNullFieldsTest extends AbstractApiResourceTest {
     @Test
     void testBriefModeOmitsSectionsAndCodeBlocks() {
         seedDocFile();
-        seedKeywordIndex();
+        seedDocChunkIndex();
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
@@ -48,7 +45,7 @@ class DocumentResponseNullFieldsTest extends AbstractApiResourceTest {
     @Test
     void testFullModeIncludesSectionsAndCodeBlocks() {
         seedDocFile();
-        seedKeywordIndex();
+        seedDocChunkIndex();
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
@@ -110,7 +107,7 @@ class DocumentResponseNullFieldsTest extends AbstractApiResourceTest {
     @Test
     void testBriefModeWithFieldsParameterBothFiltersApply() {
         seedDocFile();
-        seedKeywordIndex();
+        seedDocChunkIndex();
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "security")
@@ -143,13 +140,13 @@ class DocumentResponseNullFieldsTest extends AbstractApiResourceTest {
         docStore.write("3.27", "security.adoc", docContent);
     }
 
-    private void seedKeywordIndex() {
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("security.adoc",
-                        List.of(new KeywordScore("security", 15)),
-                        List.of(new SectionKeywordEntry("Overview", 4, 8,
-                                List.of(new KeywordScore("security", 12)))))
+    private void seedDocChunkIndex() {
+        seedDocChunks("3.27", List.of(
+                new DocChunk("null-fields-chunk-1", "3.27", "security", "Security Guide", "Overview",
+                        "https://quarkus.io/guides/security",
+                        List.of("security"), List.of("quarkus-core"),
+                        "Overview of security features",
+                        "This guide covers security basics and authentication in quarkus.")
         ));
-        keywordIndexStore.write("3.27", index);
     }
 }

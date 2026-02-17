@@ -1,10 +1,16 @@
 package com.fvd.quarkiverse;
 
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.services.DocChunkBuilder;
 import com.fvd.quarkiverse.services.QuarkiverseService;
-import com.fvd.search.services.SearchService;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
@@ -12,12 +18,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.sql.DataSource;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,9 +39,6 @@ class QuarkiverseIntegrationTest {
     DocStore docStore;
 
     @Inject
-    SearchService searchService;
-
-    @Inject
     DataSource dataSource;
 
     @Inject
@@ -54,7 +51,6 @@ class QuarkiverseIntegrationTest {
                 + "code_samples, code_sample_keywords, github_index, document_metadata, doc_chunks CASCADE");
         }
         cacheService.deleteCache();
-        searchService.invalidateCache("main");
     }
 
     @Test
@@ -77,7 +73,6 @@ class QuarkiverseIntegrationTest {
         buildQuarkiverseIndexes();
 
         // Search for keywords from the quarkiverse doc using /api/documents endpoint
-        // (which still uses the keyword-based search)
         given()
                 .queryParam("version", "main")
                 .queryParam("keywords", "test extension")

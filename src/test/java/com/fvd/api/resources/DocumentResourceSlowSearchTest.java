@@ -1,14 +1,11 @@
 package com.fvd.api.resources;
 
-import com.fvd.indexs.indexers.FileKeywordEntry;
-import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordScore;
-import com.fvd.indexs.indexers.SectionKeywordEntry;
-import io.quarkus.test.junit.QuarkusTest;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import com.fvd.indexs.model.DocChunk;
+import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
@@ -29,7 +26,7 @@ class DocumentResourceSlowSearchTest extends AbstractApiResourceTest {
     @Test
     void testKeywordSearchDefaultsBriefToTrue() {
         seedManyDocs(3);
-        seedManyDocKeywordIndex(3);
+        seedManyDocChunkIndex(3);
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "quarkus")
@@ -46,7 +43,7 @@ class DocumentResourceSlowSearchTest extends AbstractApiResourceTest {
     @Test
     void testKeywordSearchBriefFalseCapsAtFiveResults() {
         seedManyDocs(8);
-        seedManyDocKeywordIndex(8);
+        seedManyDocChunkIndex(8);
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "quarkus")
@@ -63,7 +60,7 @@ class DocumentResourceSlowSearchTest extends AbstractApiResourceTest {
     @Test
     void testKeywordSearchBriefFalseIncludesWarningWhenCapped() {
         seedManyDocs(8);
-        seedManyDocKeywordIndex(8);
+        seedManyDocChunkIndex(8);
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "quarkus")
@@ -79,7 +76,7 @@ class DocumentResourceSlowSearchTest extends AbstractApiResourceTest {
     @Test
     void testKeywordSearchBriefFalseRespectsExplicitLimitBelowCap() {
         seedManyDocs(8);
-        seedManyDocKeywordIndex(8);
+        seedManyDocChunkIndex(8);
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "quarkus")
@@ -96,7 +93,7 @@ class DocumentResourceSlowSearchTest extends AbstractApiResourceTest {
     @Test
     void testKeywordSearchBriefFalseNoWarningWhenSmallResultSet() {
         seedManyDocs(3);
-        seedManyDocKeywordIndex(3);
+        seedManyDocChunkIndex(3);
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "quarkus")
@@ -111,7 +108,7 @@ class DocumentResourceSlowSearchTest extends AbstractApiResourceTest {
     @Test
     void testKeywordSearchExplicitBriefTrueStillWorks() {
         seedManyDocs(3);
-        seedManyDocKeywordIndex(3);
+        seedManyDocChunkIndex(3);
         given()
                 .queryParam("version", "3.27")
                 .queryParam("keywords", "quarkus")
@@ -135,16 +132,18 @@ class DocumentResourceSlowSearchTest extends AbstractApiResourceTest {
         }
     }
 
-    private void seedManyDocKeywordIndex(int count) {
-        List<FileKeywordEntry> entries = new ArrayList<>();
+    private void seedManyDocChunkIndex(int count) {
+        List<DocChunk> chunks = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            entries.add(new FileKeywordEntry(
-                    "doc" + i + ".adoc",
-                    List.of(new KeywordScore("quarkus", 10 - i)),
-                    List.of(new SectionKeywordEntry("Section " + i, 4, 6,
-                            List.of(new KeywordScore("quarkus", 5))))
+            chunks.add(new DocChunk(
+                    "slow-chunk-" + i, "3.27", "doc" + i,
+                    "Doc " + i, "Section " + i,
+                    "https://quarkus.io/guides/doc" + i,
+                    List.of("quarkus"), List.of("quarkus-core"),
+                    "Description for doc " + i,
+                    "Content about quarkus framework features in doc " + i + " covering various topics."
             ));
         }
-        keywordIndexStore.write("3.27", new KeywordIndex(entries));
+        seedDocChunks("3.27", chunks);
     }
 }

@@ -1,15 +1,21 @@
 package com.fvd.api.resources;
 
-import com.fvd.indexs.indexers.FileKeywordEntry;
-import com.fvd.indexs.indexers.KeywordIndex;
-import com.fvd.indexs.indexers.KeywordScore;
+import java.util.List;
+
+import com.fvd.indexs.model.DocChunk;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
 
 @QuarkusTest
 class RelatedDocumentResourceTest extends AbstractApiResourceTest {
@@ -138,7 +144,7 @@ class RelatedDocumentResourceTest extends AbstractApiResourceTest {
                 .when().get(RELATED_PATH)
                 .then()
                 .statusCode(200)
-                .body("results.path", not(org.hamcrest.Matchers.hasItem("security-overview.adoc")));
+                .body("results.path", not(hasItem("security-overview.adoc")));
     }
 
     @Test
@@ -179,23 +185,26 @@ class RelatedDocumentResourceTest extends AbstractApiResourceTest {
         docStore.write(version, "config.adoc",
                 "= Configuration\n:description: Configuration guide\n\nConfig basics.");
 
-        // Seed keyword index with shared keywords
-        KeywordIndex index = new KeywordIndex(List.of(
-                new FileKeywordEntry("security-overview.adoc",
-                        List.of(new KeywordScore("secur", 15),
-                                new KeywordScore("oidc", 8),
-                                new KeywordScore("authent", 5)),
-                        List.of(), "quarkus-core"),
-                new FileKeywordEntry("security-oidc.adoc",
-                        List.of(new KeywordScore("secur", 12),
-                                new KeywordScore("oidc", 15),
-                                new KeywordScore("authent", 10)),
-                        List.of(), "quarkus-core"),
-                new FileKeywordEntry("config.adoc",
-                        List.of(new KeywordScore("config", 15),
-                                new KeywordScore("secur", 2)),
-                        List.of(), "quarkus-core")
+        // Seed doc chunks with overlapping topics for relatedness
+        seedDocChunks(version, List.of(
+                new DocChunk("related-chunk-1", version, "security-overview",
+                        "Security Overview", "Overview",
+                        "https://quarkus.io/guides/security-overview",
+                        List.of("security", "oidc", "authentication"), List.of("quarkus-core"),
+                        "Overview of security",
+                        "Security overview covering basics of authentication and authorization."),
+                new DocChunk("related-chunk-2", version, "security-oidc",
+                        "OIDC Auth", "Overview",
+                        "https://quarkus.io/guides/security-oidc",
+                        List.of("security", "oidc", "authentication"), List.of("quarkus-core"),
+                        "OIDC authentication guide",
+                        "OIDC authentication guide covering OpenID Connect features."),
+                new DocChunk("related-chunk-3", version, "config",
+                        "Configuration", "Overview",
+                        "https://quarkus.io/guides/config",
+                        List.of("config", "security"), List.of("quarkus-core"),
+                        "Configuration guide",
+                        "Configuration guide covering application properties and settings.")
         ));
-        keywordIndexStore.write(version, index);
     }
 }

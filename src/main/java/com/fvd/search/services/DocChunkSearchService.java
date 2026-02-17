@@ -33,17 +33,23 @@ public class DocChunkSearchService {
                 query, version, extension, limit, offset);
 
         List<ChunkSearchRow> rows = docChunkStore.search(query, version, extension, limit, offset);
+        boolean usedFuzzyFallback = false;
 
         if (rows.isEmpty() && offset == 0) {
             log.debug("No exact results found, falling back to fuzzy search for query='{}'", query);
             rows = docChunkStore.fuzzySearch(query, version, limit);
+            usedFuzzyFallback = true;
         }
 
         List<ChunkSearchResult> results = rows.stream()
                 .map(this::toChunkSearchResult)
                 .toList();
 
-        return new PaginatedChunkResult(results, results.size(), limit, offset);
+        int total = usedFuzzyFallback
+                ? results.size()
+                : docChunkStore.countSearch(query, version, extension);
+
+        return new PaginatedChunkResult(results, total, limit, offset);
     }
 
     private ChunkSearchResult toChunkSearchResult(ChunkSearchRow row) {
