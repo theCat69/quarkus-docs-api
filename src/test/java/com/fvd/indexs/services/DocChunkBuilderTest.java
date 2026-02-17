@@ -77,8 +77,7 @@ class DocChunkBuilderTest {
 
         docChunkBuilder.build(VERSION, List.of("security.adoc"));
 
-        verify(docChunkStore).deleteByVersion(VERSION);
-        verify(docChunkStore).insertBatch(eq(VERSION), chunksCaptor.capture());
+        verify(docChunkStore).replaceVersion(eq(VERSION), chunksCaptor.capture());
 
         List<DocChunk> chunks = chunksCaptor.getValue();
         assertThat(chunks).hasSize(2);
@@ -99,8 +98,7 @@ class DocChunkBuilderTest {
 
         docChunkBuilder.build(VERSION, List.of("mailer.adoc"), "quarkus-mailer");
 
-        verify(docChunkStore).deleteByVersion(VERSION);
-        verify(docChunkStore).insertBatch(eq(VERSION), chunksCaptor.capture());
+        verify(docChunkStore).replaceVersion(eq(VERSION), chunksCaptor.capture());
 
         List<DocChunk> chunks = chunksCaptor.getValue();
         assertThat(chunks).hasSize(1);
@@ -130,8 +128,7 @@ class DocChunkBuilderTest {
 
         docChunkBuilder.build(VERSION, extensionFiles);
 
-        verify(docChunkStore).deleteByVersion(VERSION);
-        verify(docChunkStore).insertBatch(eq(VERSION), chunksCaptor.capture());
+        verify(docChunkStore).replaceVersion(eq(VERSION), chunksCaptor.capture());
 
         List<DocChunk> chunks = chunksCaptor.getValue();
         assertThat(chunks).hasSize(2);
@@ -145,12 +142,13 @@ class DocChunkBuilderTest {
         ));
         when(docParser.extractMetadata(SAMPLE_CONTENT)).thenReturn(DocumentMetadata.empty());
         when(urlBuilder.buildUrl(eq("security"), any())).thenReturn("https://quarkus.io/guides/security#overview");
+        when(urlBuilder.toSlug("Overview")).thenReturn("overview");
 
         // Build twice — IDs should be the same
         docChunkBuilder.build(VERSION, List.of("security.adoc"));
         docChunkBuilder.build(VERSION, List.of("security.adoc"));
 
-        verify(docChunkStore, org.mockito.Mockito.times(2)).insertBatch(eq(VERSION), chunksCaptor.capture());
+        verify(docChunkStore, org.mockito.Mockito.times(2)).replaceVersion(eq(VERSION), chunksCaptor.capture());
         List<List<DocChunk>> allCaptures = chunksCaptor.getAllValues();
         String firstId = allCaptures.get(0).getFirst().id();
         String secondId = allCaptures.get(1).getFirst().id();
@@ -176,7 +174,7 @@ class DocChunkBuilderTest {
 
         docChunkBuilder.build(VERSION, List.of("security.adoc"));
 
-        verify(docChunkStore).insertBatch(eq(VERSION), chunksCaptor.capture());
+        verify(docChunkStore).replaceVersion(eq(VERSION), chunksCaptor.capture());
         DocChunk chunk = chunksCaptor.getValue().getFirst();
         assertThat(chunk.title()).isEqualTo("Security Guide");
         assertThat(chunk.page()).isEqualTo("security");
@@ -195,14 +193,14 @@ class DocChunkBuilderTest {
 
         docChunkBuilder.build(VERSION, List.of("security.adoc"));
 
-        verify(docChunkStore).insertBatch(eq(VERSION), chunksCaptor.capture());
+        verify(docChunkStore).replaceVersion(eq(VERSION), chunksCaptor.capture());
         assertThat(chunksCaptor.getValue()).allSatisfy(chunk ->
                 assertThat(chunk.version()).isEqualTo(VERSION)
         );
     }
 
     @Test
-    void shouldCallDeleteBeforeInsert() {
+    void shouldCallReplaceVersionAtomically() {
         when(docStore.read(VERSION, "security.adoc")).thenReturn(Optional.of(SAMPLE_CONTENT));
         when(docParser.parseSections(SAMPLE_CONTENT)).thenReturn(List.of(
                 new DocParser.Section("Overview", 4, 6, Map.of())
@@ -212,9 +210,7 @@ class DocChunkBuilderTest {
 
         docChunkBuilder.build(VERSION, List.of("security.adoc"));
 
-        var inOrder = org.mockito.Mockito.inOrder(docChunkStore);
-        inOrder.verify(docChunkStore).deleteByVersion(VERSION);
-        inOrder.verify(docChunkStore).insertBatch(eq(VERSION), any());
+        verify(docChunkStore).replaceVersion(eq(VERSION), any());
     }
 
     @Test
@@ -229,7 +225,7 @@ class DocChunkBuilderTest {
 
         docChunkBuilder.build(VERSION, List.of("missing.adoc", "security.adoc"));
 
-        verify(docChunkStore).insertBatch(eq(VERSION), chunksCaptor.capture());
+        verify(docChunkStore).replaceVersion(eq(VERSION), chunksCaptor.capture());
         assertThat(chunksCaptor.getValue()).hasSize(1);
         assertThat(chunksCaptor.getValue().getFirst().page()).isEqualTo("security");
     }
@@ -247,7 +243,7 @@ class DocChunkBuilderTest {
 
         docChunkBuilder.build(VERSION, List.of("security.adoc"));
 
-        verify(docChunkStore).insertBatch(eq(VERSION), chunksCaptor.capture());
+        verify(docChunkStore).replaceVersion(eq(VERSION), chunksCaptor.capture());
         assertThat(chunksCaptor.getValue()).hasSize(3);
     }
 
@@ -274,12 +270,5 @@ class DocChunkBuilderTest {
     void extractFirstSentenceShouldReturnEmptyForBlankInput() {
         assertThat(docChunkBuilder.extractFirstSentence("")).isEqualTo("");
         assertThat(docChunkBuilder.extractFirstSentence(null)).isEqualTo("");
-    }
-
-    @Test
-    void slugifyShouldConvertToUrlSafeSlug() {
-        assertThat(docChunkBuilder.slugify("Getting Started")).isEqualTo("getting-started");
-        assertThat(docChunkBuilder.slugify("What's New?")).isEqualTo("whats-new");
-        assertThat(docChunkBuilder.slugify("")).isEqualTo("");
     }
 }

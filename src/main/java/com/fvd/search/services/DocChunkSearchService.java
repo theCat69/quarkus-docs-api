@@ -1,13 +1,15 @@
 package com.fvd.search.services;
 
-import com.fvd.common.utils.UrlBuilder;
-import com.fvd.indexs.model.ChunkSearchRow;
-import com.fvd.indexs.stores.DocChunkStore;
+import java.util.List;
+
 import jakarta.enterprise.context.ApplicationScoped;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.List;
+import com.fvd.common.utils.UrlBuilder;
+import com.fvd.indexs.model.ChunkSearchRow;
+import com.fvd.indexs.stores.DocChunkStore;
 
 @Slf4j
 @ApplicationScoped

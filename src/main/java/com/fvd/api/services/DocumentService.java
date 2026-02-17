@@ -2,10 +2,11 @@ package com.fvd.api.services;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -49,12 +50,20 @@ public class DocumentService {
      */
     private static final int FULL_CONTENT_MAX_LIMIT = 5;
 
+    private static final int MAX_DOCUMENT_CACHE_SIZE = 500;
+
     private final DocStore docStore;
     private final DocParser docParser;
     private final DocChunkSearchService docChunkSearchService;
     private final DocChunkStore docChunkStore;
 
-    private final Map<String, ParsedDocument> documentCache = new ConcurrentHashMap<>();
+    private final Map<String, ParsedDocument> documentCache = Collections.synchronizedMap(
+            new LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, ParsedDocument> eldest) {
+                    return size() > MAX_DOCUMENT_CACHE_SIZE;
+                }
+            });
 
     @ConfigProperty(name = "app.document-cache.enabled", defaultValue = "true")
     boolean documentCacheEnabled;

@@ -1,15 +1,5 @@
 package com.fvd.indexs.services;
 
-import com.fvd.asciidocs.model.DocumentMetadata;
-import com.fvd.common.utils.UrlBuilder;
-import com.fvd.docs.parser.DocParser;
-import com.fvd.docs.stores.DocStore;
-import com.fvd.indexs.model.DocChunk;
-import com.fvd.indexs.stores.DocChunkStore;
-import jakarta.enterprise.context.ApplicationScoped;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -17,6 +7,18 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import jakarta.enterprise.context.ApplicationScoped;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import com.fvd.asciidocs.model.DocumentMetadata;
+import com.fvd.common.utils.UrlBuilder;
+import com.fvd.docs.parser.DocParser;
+import com.fvd.docs.stores.DocStore;
+import com.fvd.indexs.model.DocChunk;
+import com.fvd.indexs.stores.DocChunkStore;
 
 /**
  * Builds DocChunk records from parsed document sections and persists them
@@ -34,9 +36,6 @@ public class DocChunkBuilder {
     private static final Pattern TITLE_PATTERN = Pattern.compile("^= (.+)$", Pattern.MULTILINE);
     private static final Pattern HEADING_PREFIX = Pattern.compile("^={1,5}\\s+");
     private static final Pattern FIRST_SENTENCE = Pattern.compile("^(.*?\\.)(?:\\s|$)");
-    private static final Pattern APOSTROPHES = Pattern.compile("['`]");
-    private static final Pattern NON_SLUG_CHARS = Pattern.compile("[^a-z0-9-]");
-    private static final Pattern MULTIPLE_DASHES = Pattern.compile("-{2,}");
 
     private final DocParser docParser;
     private final DocChunkStore docChunkStore;
@@ -59,8 +58,7 @@ public class DocChunkBuilder {
 
         List<DocChunk> allChunks = processFiles(version, filePaths, extension);
 
-        docChunkStore.deleteByVersion(version);
-        docChunkStore.insertBatch(version, allChunks);
+        docChunkStore.replaceVersion(version, allChunks);
 
         log.info("Finished building doc chunks for version '{}': {} chunks from {} files",
                 version, allChunks.size(), filePaths.size());
@@ -80,8 +78,7 @@ public class DocChunkBuilder {
             allChunks.addAll(processFiles(version, files, extension));
         }
 
-        docChunkStore.deleteByVersion(version);
-        docChunkStore.insertBatch(version, allChunks);
+        docChunkStore.replaceVersion(version, allChunks);
 
         log.info("Finished building doc chunks for version '{}': {} chunks total",
                 version, allChunks.size());
@@ -109,7 +106,7 @@ public class DocChunkBuilder {
                 DocParser.Section section = sections.get(i);
                 String sectionContent = extractSectionContent(content, section, sections, i);
                 String summary = extractFirstSentence(sectionContent);
-                String id = page + "#" + slugify(section.title());
+                String id = page + "#" + urlBuilder.toSlug(section.title());
 
                 DocChunk chunk = new DocChunk(
                         id,
@@ -216,16 +213,5 @@ public class DocChunkBuilder {
             return cleaned.substring(0, MAX_SUMMARY_LENGTH);
         }
         return cleaned;
-    }
-
-    String slugify(String text) {
-        if (text == null || text.isBlank()) {
-            return "";
-        }
-        String lower = text.toLowerCase();
-        String noApostrophes = APOSTROPHES.matcher(lower).replaceAll("");
-        String replaced = NON_SLUG_CHARS.matcher(noApostrophes).replaceAll("-");
-        String collapsed = MULTIPLE_DASHES.matcher(replaced).replaceAll("-");
-        return collapsed.replaceAll("^-+|-+$", "");
     }
 }

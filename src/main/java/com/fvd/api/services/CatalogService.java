@@ -3,9 +3,10 @@ package com.fvd.api.services;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -29,7 +30,15 @@ public class CatalogService {
     private final DocChunkStore docChunkStore;
     private final CacheService cacheService;
 
-    private final Map<String, CatalogResponse> catalogCache = new ConcurrentHashMap<>();
+    private static final int MAX_CATALOG_CACHE_SIZE = 100;
+
+    private final Map<String, CatalogResponse> catalogCache = Collections.synchronizedMap(
+            new LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, CatalogResponse> eldest) {
+                    return size() > MAX_CATALOG_CACHE_SIZE;
+                }
+            });
 
     /**
      * Gets the catalog for a specific version.

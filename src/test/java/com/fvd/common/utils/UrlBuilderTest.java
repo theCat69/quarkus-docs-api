@@ -67,4 +67,12 @@ class UrlBuilderTest {
         assertThat(urlBuilder.buildUrl("rest-client", "!Hello World!"))
                 .isEqualTo("https://quarkus.io/guides/rest-client#hello-world");
     }
+
+    @Test
+    void toSlugShouldConvertToUrlSafeSlug() {
+        assertThat(urlBuilder.toSlug("Getting Started")).isEqualTo("getting-started");
+        assertThat(urlBuilder.toSlug("What's New?")).isEqualTo("whats-new");
+        assertThat(urlBuilder.toSlug("")).isEqualTo("");
+        assertThat(urlBuilder.toSlug(null)).isEqualTo("");
+    }
 }

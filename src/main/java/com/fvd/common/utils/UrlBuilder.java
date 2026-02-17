@@ -54,7 +54,7 @@ public class UrlBuilder {
      * Lowercase, replace non-alphanumeric characters with dashes, collapse consecutive dashes,
      * strip leading/trailing dashes.
      */
-    private String toSlug(String sectionTitle) {
+    public String toSlug(String sectionTitle) {
         if (sectionTitle == null || sectionTitle.isBlank()) {
             return "";
         }

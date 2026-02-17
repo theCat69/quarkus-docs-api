@@ -1,13 +1,14 @@
 package com.fvd.common.validators;
 
-import com.fvd.common.StopWords;
-import com.fvd.common.exceptions.InvalidInputException;
-import lombok.experimental.UtilityClass;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+
+import lombok.experimental.UtilityClass;
+
+import com.fvd.common.StopWords;
+import com.fvd.common.exceptions.InvalidInputException;
 
 @UtilityClass
 public class InputValidator {
@@ -161,6 +162,9 @@ public class InputValidator {
         String trimmed = filter.trim();
         if (trimmed.length() > MAX_FILTER_LENGTH) {
             throw new InvalidInputException(paramName + " must not exceed " + MAX_FILTER_LENGTH + " characters");
+        }
+        if (!trimmed.matches("[a-zA-Z0-9.:_-]+")) {
+            throw new InvalidInputException(paramName + " contains invalid characters");
         }
         return trimmed;
     }

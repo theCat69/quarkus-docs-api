@@ -11,13 +11,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import jakarta.enterprise.context.ApplicationScoped;
-
 import javax.sql.DataSource;
+
+import jakarta.enterprise.context.ApplicationScoped;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import com.fvd.common.exceptions.StoreException;
 import com.fvd.indexs.model.ChunkSearchRow;
 import com.fvd.indexs.model.DocChunk;
 
@@ -26,16 +27,72 @@ import com.fvd.indexs.model.DocChunk;
 @RequiredArgsConstructor
 public class DocChunkStore {
 
+    private static final int BATCH_SIZE = 500;
+
     private final DataSource dataSource;
 
+    /**
+     * Atomically replaces all doc chunks for a version: deletes existing chunks
+     * and inserts new ones within a single transaction.
+     */
+    public void replaceVersion(String version, List<DocChunk> chunks) {
+        try (Connection conn = dataSource.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                deleteByVersion(conn, version);
+                insertBatch(conn, version, chunks);
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            throw new StoreException("Failed to replace doc chunks", e);
+        }
+    }
+
     public void insertBatch(String version, List<DocChunk> chunks) {
+        try (Connection conn = dataSource.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                insertBatch(conn, version, chunks);
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            throw new StoreException("Failed to insert doc chunks", e);
+        }
+    }
+
+    public void deleteByVersion(String version) {
+        try (Connection conn = dataSource.getConnection()) {
+            deleteByVersion(conn, version);
+        } catch (SQLException e) {
+            throw new StoreException("Failed to delete doc chunks", e);
+        }
+    }
+
+    private void deleteByVersion(Connection conn, String version) throws SQLException {
+        try (PreparedStatement stmt = conn.prepareStatement("DELETE FROM doc_chunks WHERE version = ?")) {
+            stmt.setString(1, version);
+            stmt.executeUpdate();
+        }
+    }
+
+    private void insertBatch(Connection conn, String version, List<DocChunk> chunks) throws SQLException {
         String sql = "INSERT INTO doc_chunks (id, version, page, title, section, url, topics, extensions, summary, content, content_tsv) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, to_tsvector('english', ?))";
 
-        try (Connection conn = dataSource.getConnection()) {
-            conn.setAutoCommit(false);
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                for (DocChunk chunk : chunks) {
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            for (int i = 0; i < chunks.size(); i += BATCH_SIZE) {
+                List<DocChunk> batch = chunks.subList(i, Math.min(i + BATCH_SIZE, chunks.size()));
+                for (DocChunk chunk : batch) {
                     stmt.setString(1, chunk.id());
                     stmt.setString(2, version);
                     stmt.setString(3, chunk.page());
@@ -52,25 +109,7 @@ public class DocChunkStore {
                     stmt.addBatch();
                 }
                 stmt.executeBatch();
-                conn.commit();
-            } catch (SQLException e) {
-                conn.rollback();
-                throw e;
-            } finally {
-                conn.setAutoCommit(true);
             }
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to insert doc chunks for version: " + version, e);
-        }
-    }
-
-    public void deleteByVersion(String version) {
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement("DELETE FROM doc_chunks WHERE version = ?")) {
-            stmt.setString(1, version);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to delete doc chunks for version: " + version, e);
         }
     }
 
@@ -106,7 +145,7 @@ public class DocChunkStore {
                 return results;
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to search doc chunks for version: " + version, e);
+            throw new StoreException("Failed to search doc chunks", e);
         }
     }
 
@@ -132,7 +171,7 @@ public class DocChunkStore {
                 return rs.next() ? rs.getInt(1) : 0;
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to count search results for version: " + version, e);
+            throw new StoreException("Failed to count search results", e);
         }
     }
 
@@ -157,7 +196,7 @@ public class DocChunkStore {
                 return results;
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to fuzzy search doc chunks for version: " + version, e);
+            throw new StoreException("Failed to fuzzy search doc chunks", e);
         }
     }
 
@@ -182,7 +221,7 @@ public class DocChunkStore {
                 return results;
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to find doc chunks by page for version: " + version, e);
+            throw new StoreException("Failed to find doc chunks by page", e);
         }
     }
 
@@ -206,7 +245,7 @@ public class DocChunkStore {
                 return result;
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to find distinct extensions for version: " + version, e);
+            throw new StoreException("Failed to find distinct extensions", e);
         }
     }
 
@@ -229,7 +268,7 @@ public class DocChunkStore {
                 return result;
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to find distinct topics for version: " + version, e);
+            throw new StoreException("Failed to find distinct topics", e);
         }
     }
 
@@ -281,7 +320,7 @@ public class DocChunkStore {
                 return results;
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to find related pages for version: " + version, e);
+            throw new StoreException("Failed to find related pages", e);
         }
     }
 

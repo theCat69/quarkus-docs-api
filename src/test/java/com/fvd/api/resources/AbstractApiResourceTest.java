@@ -5,13 +5,15 @@ import java.util.List;
 
 import javax.sql.DataSource;
 
+import jakarta.inject.Inject;
+
+import org.junit.jupiter.api.BeforeEach;
+
 import com.fvd.api.services.CatalogService;
 import com.fvd.cache.services.CacheService;
 import com.fvd.docs.stores.DocStore;
 import com.fvd.indexs.model.DocChunk;
 import com.fvd.indexs.stores.DocChunkStore;
-import jakarta.inject.Inject;
-import org.junit.jupiter.api.BeforeEach;
 
 /**
  * Shared setup and seed helpers for API resource integration tests.

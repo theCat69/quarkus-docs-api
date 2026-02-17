@@ -1,5 +1,12 @@
 package com.fvd.api.services;
 
+import java.util.List;
+
+import jakarta.enterprise.context.ApplicationScoped;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import com.fvd.api.dto.MetaResponse;
 import com.fvd.api.dto.meta.ApiInfo;
 import com.fvd.api.dto.meta.ConstraintsMeta;
@@ -12,11 +19,6 @@ import com.fvd.cache.services.CacheService;
 import com.fvd.common.SearchConstants;
 import com.fvd.common.validators.InputValidator;
 import com.fvd.subject.services.SubjectDeriver;
-import jakarta.enterprise.context.ApplicationScoped;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
-import java.util.List;
 
 /**
  * Service that assembles the API meta/capabilities response.

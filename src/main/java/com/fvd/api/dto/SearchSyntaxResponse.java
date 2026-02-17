@@ -1,12 +1,13 @@
 package com.fvd.api.dto;
 
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fvd.common.StopWords;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import com.fvd.common.StopWords;
 
 /**
  * Static, machine-readable documentation of search query syntax,
