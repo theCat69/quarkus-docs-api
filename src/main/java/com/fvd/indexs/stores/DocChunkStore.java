@@ -1,26 +1,15 @@
 package com.fvd.indexs.stores;
 
-import java.sql.Array;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.sql.DataSource;
-
-import jakarta.enterprise.context.ApplicationScoped;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
 import com.fvd.common.exceptions.StoreException;
 import com.fvd.indexs.model.ChunkSearchRow;
 import com.fvd.indexs.model.DocChunk;
+import jakarta.enterprise.context.ApplicationScoped;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import javax.sql.DataSource;
+import java.sql.*;
+import java.util.*;
 
 @Slf4j
 @ApplicationScoped
@@ -86,26 +75,25 @@ public class DocChunkStore {
     }
 
     private void insertBatch(Connection conn, String version, List<DocChunk> chunks) throws SQLException {
-        String sql = "INSERT INTO doc_chunks (id, version, page, title, section, url, topics, extensions, summary, content, content_tsv) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, to_tsvector('english', ?))";
+        String sql = "INSERT INTO doc_chunks (version, page, title, section, url, topics, extensions, summary, content, content_tsv) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, to_tsvector('english', ?))";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             for (int i = 0; i < chunks.size(); i += BATCH_SIZE) {
                 List<DocChunk> batch = chunks.subList(i, Math.min(i + BATCH_SIZE, chunks.size()));
                 for (DocChunk chunk : batch) {
-                    stmt.setString(1, chunk.id());
-                    stmt.setString(2, version);
-                    stmt.setString(3, chunk.page());
-                    stmt.setString(4, chunk.title());
-                    stmt.setString(5, chunk.section());
-                    stmt.setString(6, chunk.url());
-                    stmt.setArray(7, conn.createArrayOf("text",
+                    stmt.setString(1, version);
+                    stmt.setString(2, chunk.page());
+                    stmt.setString(3, chunk.title());
+                    stmt.setString(4, chunk.section());
+                    stmt.setString(5, chunk.url());
+                    stmt.setArray(6, conn.createArrayOf("text",
                             chunk.topics() != null ? chunk.topics().toArray(new String[0]) : new String[0]));
-                    stmt.setArray(8, conn.createArrayOf("text",
+                    stmt.setArray(7, conn.createArrayOf("text",
                             chunk.extensions() != null ? chunk.extensions().toArray(new String[0]) : new String[0]));
-                    stmt.setString(9, chunk.summary());
+                    stmt.setString(8, chunk.summary());
+                    stmt.setString(9, chunk.content());
                     stmt.setString(10, chunk.content());
-                    stmt.setString(11, chunk.content());
                     stmt.addBatch();
                 }
                 stmt.executeBatch();

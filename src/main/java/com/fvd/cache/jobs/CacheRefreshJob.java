@@ -1,19 +1,5 @@
 package com.fvd.cache.jobs;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
-import jakarta.enterprise.context.ApplicationScoped;
-
-import io.quarkus.scheduler.Scheduled;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-
 import com.fvd.api.services.DocumentService;
 import com.fvd.cache.services.CacheService;
 import com.fvd.common.utils.ExtensionPathUtils;
@@ -25,6 +11,16 @@ import com.fvd.github.services.GitHubService;
 import com.fvd.indexs.services.DocChunkBuilder;
 import com.fvd.indexs.stores.IndexStore;
 import com.fvd.quarkiverse.services.QuarkiverseService;
+import io.quarkus.scheduler.Scheduled;
+import jakarta.enterprise.context.ApplicationScoped;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @ApplicationScoped
@@ -55,7 +51,7 @@ public class CacheRefreshJob {
 
         for (String version : versions) {
             try {
-                refreshVersion(version);
+                refreshVersion(version, false);
                 if ("main".equals(version)) {
                     mainRefreshed = true;
                 }
@@ -70,7 +66,7 @@ public class CacheRefreshJob {
         }
     }
 
-    void refreshVersion(String version) {
+    void refreshVersion(String version, boolean force) {
         log.info("Refreshing cache for version {}", version);
 
         List<GithubApiIndex> newIndex = gitHubService.fetchIndex(version);
@@ -93,7 +89,7 @@ public class CacheRefreshJob {
             }
         }
 
-        if (!newIndex.isEmpty()) {
+        if (!newIndex.isEmpty() || force) {
             log.info("Should rebuild index stores");
 
             // Replace file index with new data
@@ -114,7 +110,7 @@ public class CacheRefreshJob {
         log.info("Cache refresh completed for version {}", version);
     }
 
-    private void refreshQuarkiverse() {
+    public void refreshQuarkiverse() {
         try {
             boolean anyChanges = quarkiverseService.refreshAll();
             if (!anyChanges) {

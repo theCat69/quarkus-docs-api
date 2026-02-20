@@ -4,7 +4,7 @@
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE TABLE IF NOT EXISTS doc_chunks (
-    id TEXT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     version TEXT NOT NULL,
     page TEXT NOT NULL,
     title TEXT NOT NULL,
