@@ -13,7 +13,6 @@ import jakarta.ws.rs.core.UriInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Field;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,17 +33,13 @@ class FieldSelectionFilterTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        filter = new FieldSelectionFilter();
         objectMapper = new ObjectMapper();
         SimpleFilterProvider filterProvider = new SimpleFilterProvider()
                 .addFilter("fieldSelector", SimpleBeanPropertyFilter.serializeAll())
                 .setFailOnUnknownId(false);
         objectMapper.setFilterProvider(filterProvider);
 
-        // Inject objectMapper via reflection
-        Field omField = FieldSelectionFilter.class.getDeclaredField("objectMapper");
-        omField.setAccessible(true);
-        omField.set(filter, objectMapper);
+        filter = new FieldSelectionFilter(objectMapper);
 
         request = mock(ContainerRequestContext.class);
         response = mock(ContainerResponseContext.class);

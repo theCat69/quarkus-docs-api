@@ -1,6 +1,7 @@
 package com.fvd.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonFilter;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,6 +14,7 @@ import java.util.List;
  * Single chunk result from a semantic or keyword-based chunk search.
  */
 @JsonFilter("fieldSelector")
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @RegisterForReflection
 @NoArgsConstructor
 @AllArgsConstructor

@@ -31,13 +31,8 @@ class CacheHeaderFilterTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        filter = new CacheHeaderFilter();
         objectMapper = new ObjectMapper();
-
-        // Inject objectMapper via reflection
-        Field omField = CacheHeaderFilter.class.getDeclaredField("objectMapper");
-        omField.setAccessible(true);
-        omField.set(filter, objectMapper);
+        filter = new CacheHeaderFilter(objectMapper);
 
         // Inject config properties via reflection
         setField("maxAgeVersioned", 3600);

@@ -3,12 +3,13 @@ package com.fvd.common.filters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.annotation.Priority;
-import jakarta.inject.Inject;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.ext.Provider;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -21,13 +22,14 @@ import java.util.HexFormat;
  * Runs after {@link FieldSelectionFilter} so ETags are computed on the final (field-filtered) entity.
  */
 @Slf4j
+@ApplicationScoped
 @Provider
 @Priority(Priorities.ENTITY_CODER)
 @RegisterForReflection
+@RequiredArgsConstructor
 public class CacheHeaderFilter implements ContainerResponseFilter {
 
-    @Inject
-    ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
     @ConfigProperty(name = "app.cache.http.max-age.versioned", defaultValue = "3600")
     int maxAgeVersioned;
