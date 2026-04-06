@@ -2,6 +2,7 @@ package com.fvd.api.dto;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
@@ -9,6 +10,7 @@ import lombok.NoArgsConstructor;
 /**
  * Information about a Quarkus extension.
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @RegisterForReflection
 @NoArgsConstructor
 @AllArgsConstructor

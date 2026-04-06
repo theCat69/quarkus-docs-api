@@ -1,5 +1,6 @@
 package com.fvd.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fvd.api.dto.meta.ApiInfo;
 import com.fvd.api.dto.meta.EndpointMeta;
 import com.fvd.api.dto.meta.FiltersMeta;
@@ -14,6 +15,7 @@ import java.util.List;
 /**
  * Top-level response for the API meta/capabilities endpoint.
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @RegisterForReflection
 @NoArgsConstructor
 @AllArgsConstructor

@@ -3,6 +3,7 @@ package com.fvd.api.dto;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFilter;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
@@ -10,6 +11,7 @@ import lombok.NoArgsConstructor;
 /**
  * Lightweight reference to a related document with similarity score.
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonFilter("fieldSelector")
 @RegisterForReflection
 @NoArgsConstructor
