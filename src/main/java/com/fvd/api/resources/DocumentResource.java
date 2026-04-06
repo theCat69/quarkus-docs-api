@@ -1,6 +1,7 @@
 package com.fvd.api.resources;
 
 import java.util.List;
+import java.util.Optional;
 
 import com.fvd.api.dto.BatchDocumentRequest;
 import com.fvd.api.dto.BatchDocumentResponse;
@@ -154,11 +155,8 @@ public class DocumentResource {
             String resolvedVersion = InputValidator.resolveVersion(version);
             InputValidator.validateVersionExists(resolvedVersion, cacheService.listCachedVersions());
             InputValidator.validatePath(path);
-            DocumentResponse doc = documentService.getDocumentByPath(resolvedVersion, path);
-            if (doc == null) {
-                throw new DocNotFoundException("Document not found: " + path);
-            }
-            return doc;
+            return documentService.getDocumentByPath(resolvedVersion, path)
+                    .orElseThrow(() -> new DocNotFoundException("Document not found: " + path));
         }
 
         // Search mode

@@ -132,20 +132,7 @@ public class CatalogService {
         if (name == null || name.isEmpty()) {
             return "";
         }
-        String[] parts = name.split("-");
-        StringBuilder sb = new StringBuilder();
-        for (String part : parts) {
-            if (!part.isEmpty()) {
-                if (!sb.isEmpty()) {
-                    sb.append(" ");
-                }
-                sb.append(Character.toUpperCase(part.charAt(0)));
-                if (part.length() > 1) {
-                    sb.append(part.substring(1));
-                }
-            }
-        }
-        return sb.toString();
+        return capitalizeHyphenatedWords(name);
     }
 
     private String formatExtensionDisplayName(String name) {
@@ -154,7 +141,11 @@ public class CatalogService {
         }
         // Convert "quarkus-resteasy-reactive" to "Resteasy Reactive"
         String withoutPrefix = name.startsWith("quarkus-") ? name.substring(8) : name;
-        String[] parts = withoutPrefix.split("-");
+        return capitalizeHyphenatedWords(withoutPrefix);
+    }
+
+    private String capitalizeHyphenatedWords(String hyphenated) {
+        String[] parts = hyphenated.split("-");
         StringBuilder sb = new StringBuilder();
         for (String part : parts) {
             if (!part.isEmpty()) {

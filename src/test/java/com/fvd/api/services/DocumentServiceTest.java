@@ -80,7 +80,8 @@ class DocumentServiceTest {
         when(docParser.parseCodeBlocks(SAMPLE_CONTENT)).thenReturn(List.of());
 
         // First call - should parse
-        DocumentResponse first = documentService.getDocumentByPath("main", "security-overview.adoc");
+        DocumentResponse first = documentService.getDocumentByPath("main", "security-overview.adoc")
+                .orElse(null);
         assertThat(first).isNotNull();
         assertThat(first.title).isEqualTo("Security Overview");
         assertThat(first.sections).hasSize(2);
@@ -88,7 +89,8 @@ class DocumentServiceTest {
         assertThat(first.score).isNull();
 
         // Second call - should use cache
-        DocumentResponse second = documentService.getDocumentByPath("main", "security-overview.adoc");
+        DocumentResponse second = documentService.getDocumentByPath("main", "security-overview.adoc")
+                .orElse(null);
         assertThat(second).isNotNull();
         assertThat(second.title).isEqualTo(first.title);
         assertThat(second.sections).hasSize(2);
@@ -154,10 +156,12 @@ class DocumentServiceTest {
     void cacheMissWhenFileNotFoundReturnsNullAndDoesNotCache() {
         when(docStore.read("main", "missing.adoc")).thenReturn(Optional.empty());
 
-        DocumentResponse first = documentService.getDocumentByPath("main", "missing.adoc");
+        DocumentResponse first = documentService.getDocumentByPath("main", "missing.adoc")
+                .orElse(null);
         assertThat(first).isNull();
 
-        DocumentResponse second = documentService.getDocumentByPath("main", "missing.adoc");
+        DocumentResponse second = documentService.getDocumentByPath("main", "missing.adoc")
+                .orElse(null);
         assertThat(second).isNull();
 
         // Should read from docStore every time since null is not cached

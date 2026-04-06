@@ -87,18 +87,18 @@ public class DocumentService {
      *
      * @param version the documentation version
      * @param path the document path
-     * @return the document response, or null if not found
+     * @return the document response, or empty if not found
      */
-    public DocumentResponse getDocumentByPath(String version, String path) {
+    public Optional<DocumentResponse> getDocumentByPath(String version, String path) {
         ParsedDocument parsed = getOrParseDocument(version, path);
         if (parsed == null) {
-            return null;
+            return Optional.empty();
         }
-        return new DocumentResponse(
+        return Optional.of(new DocumentResponse(
                 parsed.title(), parsed.description(), parsed.path(),
                 parsed.subject(), parsed.extension(),
                 parsed.sections(), parsed.codeBlocks(),
-                List.of(), null);
+                List.of(), null));
     }
 
     /**
@@ -115,11 +115,11 @@ public class DocumentService {
 
         for (String path : paths) {
             try {
-                DocumentResponse doc = brief
-                        ? getDocumentByPathBrief(version, path)
+                Optional<DocumentResponse> docOpt = brief
+                        ? Optional.ofNullable(getDocumentByPathBrief(version, path))
                         : getDocumentByPath(version, path);
-                if (doc != null) {
-                    documents.add(doc);
+                if (docOpt.isPresent()) {
+                    documents.add(docOpt.get());
                 } else {
                     errors.add(new BatchDocumentError(path, "Document not found"));
                 }
