@@ -30,8 +30,6 @@ import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-import java.util.List;
-
 /**
  * REST endpoint for document retrieval and search.
  */
@@ -175,7 +173,7 @@ public class DocumentResource {
             InputValidator.validateSubjectExists(normalizedSubject, subjectDeriver.getValidSubjectNames());
 
             // brief defaults to true for keyword searches (performance)
-            boolean briefMode = (brief == null) ? true : brief;
+            boolean briefMode = brief == null || brief;
             return documentService.searchDocuments(resolvedVer, parsedKeywords, normalizedSubject,
                     normalizedExtension, validLimit, validOffset, briefMode);
         }

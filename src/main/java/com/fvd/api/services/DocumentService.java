@@ -184,9 +184,9 @@ public class DocumentService {
             }
 
             String resultSubject = (chunkResult.topics() != null && !chunkResult.topics().isEmpty())
-                    ? chunkResult.topics().get(0) : null;
+                    ? chunkResult.topics().getFirst() : null;
             String resultExtension = (chunkResult.extensions() != null && !chunkResult.extensions().isEmpty())
-                    ? chunkResult.extensions().get(0) : null;
+                    ? chunkResult.extensions().getFirst() : null;
             String resultPath = chunkResult.page() + ".adoc";
 
             if (brief) {
@@ -325,9 +325,9 @@ public class DocumentService {
         if (chunks.isEmpty()) {
             return new PageMeta(null, null);
         }
-        ChunkSearchRow first = chunks.get(0);
-        String subject = (first.topics() != null && !first.topics().isEmpty()) ? first.topics().get(0) : null;
-        String extension = (first.extensions() != null && !first.extensions().isEmpty()) ? first.extensions().get(0) : null;
+        ChunkSearchRow first = chunks.getFirst();
+        String subject = (first.topics() != null && !first.topics().isEmpty()) ? first.topics().getFirst() : null;
+        String extension = (first.extensions() != null && !first.extensions().isEmpty()) ? first.extensions().getFirst() : null;
         return new PageMeta(subject, extension);
     }
 }

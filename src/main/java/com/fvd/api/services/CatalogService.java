@@ -4,6 +4,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -99,10 +100,8 @@ public class CatalogService {
         }
 
         // Sort by doc count descending, then by name
-        extensions.sort((a, b) -> {
-            int cmp = Integer.compare(b.docCount, a.docCount);
-            return cmp != 0 ? cmp : a.name.compareTo(b.name);
-        });
+        extensions.sort(Comparator.comparingInt((ExtensionInfo e) -> e.docCount).reversed()
+                .thenComparing(e -> e.name));
 
         return extensions;
     }

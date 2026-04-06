@@ -8,7 +8,7 @@ import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.ExceptionMapper;
 
 /**
- * Abstract base for RFC 7807 Problem Detail exception mappers.
+ * Abstract base for RFC 9457 Problem Detail exception mappers.
  * Concrete subclasses must be annotated with {@code @Provider}.
  *
  * @param <T> the exception type to map

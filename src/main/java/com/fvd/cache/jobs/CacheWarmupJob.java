@@ -55,7 +55,7 @@ public class CacheWarmupJob {
         log.info("Starting cache warmup for versions: {}", versions);
 
         try {
-            fullReset.ifPresent((bool) -> { if (bool) cacheService.deleteCache(); });
+            fullReset.ifPresent((resetRequested) -> { if (resetRequested) cacheService.deleteCache(); });
 
             // Filter out versions that are already cached
             List<String> versionsToWarm = versions.stream()
