@@ -20,7 +20,22 @@ Those RULES are CRITICAL you must follow them.
 - Tests are JUnit 5 with QuarkusTest, RestAssured, AssertJ, Mockito.
 - Lombok is available; use it to reduce boilerplate when possible.
 
-## Additional guidelines 
+## Skill files (structured agent guidelines)
+
+Detailed, structured guidelines are in `.opencode/skills/`. Load the relevant skill(s) for your task:
+
+| Skill | File | Use When |
+|-------|------|----------|
+| `project-coding` | `.opencode/skills/project-coding/SKILL.md` | Writing or reviewing code |
+| `project-build` | `.opencode/skills/project-build/SKILL.md` | Building or configuring the project |
+| `project-test` | `.opencode/skills/project-test/SKILL.md` | Writing or running tests |
+| `project-documentation` | `.opencode/skills/project-documentation/SKILL.md` | Updating docs, OpenAPI annotations, or config |
+| `project-security` | `.opencode/skills/project-security/SKILL.md` | Security review or adding new endpoints/inputs |
+| `project-code-examples` | `.opencode/skills/project-code-examples/SKILL.md` | Finding real code pattern examples |
+
+Code examples (real snippets from this codebase): `.code-examples-for-ai/`
+
+## Additional guidelines (authoritative source)
 Depending on your mission, identity, role or goal you may need additional guidelines.
 ALWAYS read additional guidelines if it is relevant for your mission, identity, role or goal.
 
