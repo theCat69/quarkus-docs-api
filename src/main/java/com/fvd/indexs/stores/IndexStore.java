@@ -1,5 +1,6 @@
 package com.fvd.indexs.stores;
 
+import com.fvd.common.exceptions.StoreException;
 import com.fvd.common.validators.InputValidator;
 import com.fvd.github.clients.GithubApiIndex;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -43,7 +44,7 @@ public class IndexStore {
                 return Optional.of(entries);
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to read file index for version: " + version, e);
+            throw new StoreException("Failed to read file index for version: " + version, e);
         }
     }
 
@@ -81,7 +82,7 @@ public class IndexStore {
                 conn.setAutoCommit(true);
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to write file index for version: " + version, e);
+            throw new StoreException("Failed to write file index for version: " + version, e);
         }
     }
 }

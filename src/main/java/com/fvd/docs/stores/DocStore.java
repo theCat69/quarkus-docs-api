@@ -1,6 +1,7 @@
 package com.fvd.docs.stores;
 
 import com.fvd.cache.services.CacheService;
+import com.fvd.common.exceptions.StoreException;
 import com.fvd.common.validators.InputValidator;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,7 @@ public class DocStore {
         try {
             return Optional.of(Files.readString(docFile));
         } catch (IOException e) {
-            throw new RuntimeException("Failed to read doc: " + filePath, e);
+            throw new StoreException("Failed to read doc: " + filePath, e);
         }
     }
 
@@ -41,7 +42,7 @@ public class DocStore {
             Files.createDirectories(docFile.getParent());
             Files.writeString(docFile, content);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to write doc: " + filePath, e);
+            throw new StoreException("Failed to write doc: " + filePath, e);
         }
     }
 
@@ -58,7 +59,7 @@ public class DocStore {
                     .sorted()
                     .toList();
         } catch (IOException e) {
-            throw new RuntimeException("Failed to list doc files for version: " + version, e);
+            throw new StoreException("Failed to list doc files for version: " + version, e);
         }
     }
 
